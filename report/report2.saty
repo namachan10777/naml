@@ -1,0 +1,93 @@
+@import: ./coins.satyh/coins-report
+
+document(|
+  author = {中野 将生};
+  department = {情報科};
+  faculty = {情報};
+  id = 2013553;
+  title = {関数プログラミング 2};
+|) '<
+
+  +section ?* ?* ?:((2,3)) {課題2-2} <
+    +subsection{型の表示} <
+      +code(```
+      # IntLit 1;;
+      - : exp = IntLit 1
+      # Plus(IntLit 1, IntLit 3);;
+      - : exp = Plus(IntLit 1, IntLit 3)
+      ```);
+      +p{
+        再帰的な型となっており、`IntLit 1`も`Plus(IntLit 1, IntLit 3)`も同様の型を持つ値として扱える。
+      }
+    >
+    +subsection{定義の拡張}<
+      +code(```
+      type exp =
+          | IntLit of int
+          | Plus of exp * exp
+          | Times of exp * exp
+          (* 減算と除算の追加 *)
+          | Subtract of exp * exp
+          | Divide of exp * exp
+      ```);
+    >
+    +subsection{2を足す式を返す関数}<
+      +code(```
+      let f e = Plus(e, IntLit 2)
+      ```);
+    >
+    +subsection{整数リテラルを全て絶対値に置換する関数}<
+      +code(```
+      let rec g = function
+          | IntLit n -> IntLit (abs n)
+          | Plus (a, b) -> Plus (g a, g b)
+          | Subtract (a, b) -> Subtract (g a, g b)
+          | Times (a, b) -> Times (g a, g b)
+          | Divide (a, b) -> Divide (g a, g b)
+      ```);
+      +p{
+        function式を用いて木構造を辿り置き換えた。
+      }
+    >
+  >
+  +section {課題2-3}<
+    +subsection{evalのテスト}<
+      +code(```
+      # eval (IntLit 1);;
+      - : int = 1
+      # eval (Plus (IntLit 1, Times(IntLit 2, IntLit 3)));;
+      - : int = 7
+      ```);
+    >
+    +subsection{誤った定義でのテスト}<
+      +code(```
+      # eval Times(IntLit 1, IntLit 2);;
+      Exception: Failure "unknown expression".
+      ```);
+    >
+    +subsection{減算と除算の実装}<
+      +code(```
+      let rec eval = function
+          | IntLit n -> n
+          | Plus (a, b) -> (eval a) + (eval b)
+          | Times (a, b) -> (eval a) * (eval b)
+          | Subtract (a, b) -> (eval a) - (eval b)
+          | Divide (a, b) ->
+              let divider = eval b in
+              if divider = 0
+              then failwith "divided by 0"
+              else (eval a) / divider
+      ```);
+      +p{
+        ここでは例外を用いてゼロ除算を処理することにした。
+        分母を予め評価し、それが0であれば例外を投げて計算を中止する。
+      }
+      +code(```
+      # eval (Divide (IntLit 4, IntLit 2));;
+      - : int = 2
+      # eval Times(IntLit 4, Plus(IntLit (-1), IntLit 1));;
+      Exception: Failure "divided by 0".
+      ```);
+    >
+  >
+>

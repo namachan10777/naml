@@ -1,0 +1,122 @@
+@import: ./coins.satyh/coins-report
+
+document(|
+  author = {中野 将生};
+  department = {情報科};
+  faculty = {情報};
+  id = 2013553;
+  title = {関数プログラミング 2-4,2-5};
+|) '<
+
+  +section ?* ?* ?:((2,3)) {課題2-4} <
+    +subsection{テスト} <
+      +code(```
+      # eval2 (IntLit 1);;
+      - : value_t = IntVal 1
+      # eval2 (IntLit 11);;
+      - : value_t = IntVal 11
+      # eval2 (Plus (IntLit 1, Plus (IntLit 2, IntLit 11)));;
+      - : value_t = IntVal 14
+      # eval2 (Times (IntLit 1, Plus (IntLit 2, IntLit 11)));;
+      - : value_t = IntVal 13
+      # eval2 (If (Eq(IntLit 2, IntLit 11),
+        Times(IntLit 1, IntLit 2),
+        Times(IntLit 1, Plus(IntLit 2,IntLit 3))));;
+      - : value_t = IntVal 5
+      # eval2 (Eq (IntLit 1, IntLit 1));;
+      - : value_t = BoolVal true
+      # eval2 (Eq (IntLit 1, IntLit 2));;
+      - : value_t = BoolVal false
+      # eval2 (Eq (BoolLit true, BoolLit true));;
+      - : value_t = BoolVal true
+      # eval2 (Eq (BoolLit true, BoolLit false));;
+      - : value_t = BoolVal false
+      ```);
+    >
+    +subsection{エラ―例} <
+      +code(```
+      # eval2 (Plus (IntLit 1, BoolLit true));;
+      Exception: Failure "interger values expected".
+      # eval2 (Div (BoolLit false, IntVal 0));;
+      Exception: Failure "interger values expected".
+      # eval2 (Div (IntLit 1, IntVal 0));;
+      Exception: Failure "divided by 0".
+      ```);
+    >
+    +subsection{整数値と真偽値の比較} <
+      +p{
+        下記のようになる。
+      }
+      +code(```
+      # eval2 (Eq (IntLit 1, BoolLit true));;
+      Exception: Failure "wrong value".
+      # eval2 (Eq (BoolLit true, IntLit 1));;
+      Exception: Failure "wrong value".
+      ```);
+    >
+    +subsection{Greaterの追加} <
+      +p{
+        全ての実装は本レポート末尾記載のソースコードか、添付したソースコードファイルを参照。
+        以下に該当部分を抜粋
+      }
+      +code(```
+        | Greater of exp_t * exp_t
+      ```);
+      +code(```
+        | Greater (lhr, rhr) -> begin match (eval2 lhr, eval2 rhr) with
+            | (IntVal lhr, IntVal rhr) -> BoolVal(lhr > rhr)
+            | _ -> failwith "integer value expected"
+        end
+      ```);
+      +code(```
+      # eval2 (Greater (IntLit 5, IntLit 1));;
+      - : value_t = BoolVal true
+      # eval2 (Greater (IntLit 5, IntLit 5));;
+      - : value_t = BoolVal false
+      # eval2 (Greater (IntLit 5, IntLit 6));;
+      - : value_t = BoolVal false
+      ```);
+    >
+  >
+  +section{課題2-5} <
+    +subsection{binopのスコープの確認}<
+      +p{
+        以下のようになり参照出来ない。
+      }
+      +code(```
+      utop # binop;;
+      Line 1, characters 0-5:
+      Error: Unbound value binop
+      ```);
+    >
+    +subsection{外から使えない事の利点の考察}<
+      +p{
+        内部実装に使っている関数が外から見えることは好ましくない。
+        そのモジュールを第三者や、暫く先の自分が使う場合に混乱を招くもととなる。
+        また、スコープが狭い範囲閉じていることで、
+        上書きされることを気にせずに既存既存の関数と被るような名前の関数を作ることが出来る。
+      }
+    >
+    +subsection{eval2bへの修正}<
+      +p{
+        詳細な実装は本レポート末尾記載のソースコードか、添付したソースコードファイルを参照。
+        私の実装では`Less`、`And`、`Or`の二項演算子を定義していることから、
+        `(int -> int -> int) -> exp_t -> exp_t -> value_t`を持つ`binop_ii`と、
+        `(int -> int -> bool) -> exp_t -> exp_t -> value_t`を持つ`binop_ib`、
+        `(bool -> bool -> bool) -> exp_t -> exp_t -> value_t`を持つ`binop_bb`を定義した。
+      }
+    >
+    +subsection{型の確認}<
+      +p{
+        REPLにて`binop`を定義したところ
+        `val binop : (int -> int -> int) -> exp_t -> exp_t -> value_t = <fun>`と表示された。
+        `int`と`int`を取り`int`を返すカリー化された関数を第一引数に、
+        第二、第三引数に`exp_t`を取り、`value_t`を返す関数である。
+      }
+    >
+  >
+  +appendix{ソースコード}<
+    +code(```
+    ```);
+  >
+>

@@ -6,6 +6,7 @@ document(|
   faculty = {情報};
   id = 2013553;
   title = {関数プログラミング 3-1};
+  en = false;
 |) '<
   +section ?* ?* ?:((3,1)) {} <
     +subsection ?:(`build-env`) {環境の作成} <
@@ -35,31 +36,31 @@ document(|
       Exception: Failure "unbound variable: w".
       ```);
     >
-  >
-  +subsection ?:(`lookup1`) {1つの環境に2つの同じ名前の変数が登録された場合の挙動}<
-    +p{
-      実際に試したところ以下のようになった。
-      `lookup`関数は先頭から順に線形探索を行うので、先頭にあるペアが優先される。
-    }
-    +code(```
-    # let env = emptyenv ();;
-    val env : 'a list = []
-    # let env = ext env "x" (IntVal 1);;
-    val env : (string * value_t) list = [("x", IntVal 1)]
-    # let env = ext env "y" (IntVal 2);;
-    val env : (string * value_t) list = [("y", IntVal 2); ("x", IntVal 1)]
-    # let env = ext env "x" (IntVal 3);;
-    val env : (string * value_t) list =
-      [("x", IntVal 3); ("y", IntVal 2); ("x", IntVal 1)]
-    # lookup "x" env;;
-    - : value_t = IntVal 3
-    ```);
-  >
-  +subsection{新しく環境にペアを定義した場合の挙動}<
-    +p{
-      \ref-sec(`build-env`);での`ext`の挙動から、新しく定義されたペアは先頭に追加されていく。
-      また、\ref-sec(`lookup1`);での挙動から見ると環境の先頭から読まれていっているので、
-      古い定義のものから順に死んでいく。
-    }
+    +subsection ?:(`lookup1`) {1つの環境に2つの同じ名前の変数が登録された場合の挙動}<
+      +p{
+        実際に試したところ以下のようになった。
+        `lookup`関数は先頭から順に線形探索を行うので、先頭にあるペアが優先される。
+      }
+      +code(```
+      # let env = emptyenv ();;
+      val env : 'a list = []
+      # let env = ext env "x" (IntVal 1);;
+      val env : (string * value_t) list = [("x", IntVal 1)]
+      # let env = ext env "y" (IntVal 2);;
+      val env : (string * value_t) list = [("y", IntVal 2); ("x", IntVal 1)]
+      # let env = ext env "x" (IntVal 3);;
+      val env : (string * value_t) list =
+        [("x", IntVal 3); ("y", IntVal 2); ("x", IntVal 1)]
+      # lookup "x" env;;
+      - : value_t = IntVal 3
+      ```);
+    >
+    +subsection{新しく環境にペアを定義した場合の挙動}<
+      +p{
+        \ref-sec(`build-env`);での`ext`の挙動から、新しく定義されたペアは先頭に追加されていく。
+        また、\ref-sec(`lookup1`);での挙動から見ると環境の先頭から読まれていっているので、
+        古い定義のものから順に死んでいく。
+      }
+    >
   >
 >

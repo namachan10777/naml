@@ -6,6 +6,7 @@ document(|
   faculty = {情報};
   id = 2013553;
   title = {関数プログラミング 1-3};
+  en = false;
 |) '<
 
   +section ?* ?* ?:((1,3)) {課題} <

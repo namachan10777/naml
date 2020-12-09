@@ -6,3 +6,7 @@ all: $(OUT)
 
 %.pdf: %.saty Makefile
 	satysfi -b $< -o $@
+
+.PHONY: clean
+clean:
+	rm *.satysfi-aux *.pdf

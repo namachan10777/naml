@@ -63,4 +63,47 @@ document(|
       }
     >
   >
+  +section{} <
+    +subsection{} <
+      +code(```
+      # eval3 [] (Let("x", IntLit 1, Var "x"));;
+      - : value_t = IntVal 1
+      # eval3 ["y", IntVal 43; "y", IntVal 34] (Plus (Var "y", Var "y"));;
+      - : value_t = IntVal 86
+      ```);
+    >
+    +subsection{} <
+      +code(```
+      # eval3 [] (Let("x", IntLit 1, Let ("x", IntLit 2, Var "x")));;
+      - : value_t = IntVal 2
+      # let x = 1 in let x = 2 in x;;
+      - : int = 2
+      ```);
+    >
+    +subsection{} <
+      +code(```
+      # eval3 [] @@ Let ("x", IntLit 1, Let ("y", Plus(Var "x", IntLit 1), Plus(Var "x", Var "y")));;
+      []
+      []
+      [("x", (Kadai3_2.IntVal 1))]
+      [("x", (Kadai3_2.IntVal 1))]
+      [("x", (Kadai3_2.IntVal 1))]
+      [("x", (Kadai3_2.IntVal 1))]
+      [("y", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
+      [("y", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
+      [("y", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
+      - : value_t = IntVal 3
+      ```);
+    >
+    +subsection{} <
+      +p{
+        外側の`let`が評価されると環境に${1}が入った`x`が追加される。
+        ここで内側の`let`を評価すると、この環境に${2}を束縛した`x`が追加されるが、
+        これは最初の`x`を上書きしない。
+        また、OCamlではリストは不変であり、`::`演算子は要素を追加した新しいリストを返すだけである。
+        内側の`let`で変数を追加しても外側の環境には影響を及ぼさない。
+        最後の式の計算に用いられるのは外側の環境なので、OCamlのリストの特性により、結果として解除が実現できている。
+      }
+    >
+  >
 >

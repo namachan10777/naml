@@ -14,3 +14,7 @@ let parse_string s =
     let buf = Kadai4_lex.create_lexbuf ~file:"no file"
         @@ Sedlexing.Utf8.from_string s in
     parse Kadai4_parser.main buf
+
+let eval_string s =
+    let ast = parse_string s in
+    Kadai4_ast.eval (Kadai4_ast.emptyenv ()) ast

@@ -46,7 +46,6 @@ let rec lookup x env =
                   else lookup x tl 
 
 let rec eval env =
-    let () = print_endline (show_env_t env) in
     (* Plus, Times, Minus向け *)
     let binop_ii f lhr rhr = match (eval env lhr, eval env rhr) with
         | (IntVal lhr, IntVal rhr) -> IntVal (f lhr rhr)

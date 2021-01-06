@@ -3,4 +3,4 @@
  (preprocess (pps sedlex.ppx ppx_deriving.show))
  (libraries sedlex menhirLib core))
 (menhir
- (modules parser))
+ (modules kadai4_parser))

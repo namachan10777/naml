@@ -1,2 +1,3 @@
 (test
- (name s8))
+ (name s8)
+ (libraries oUnit s8))

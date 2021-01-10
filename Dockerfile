@@ -2,7 +2,7 @@ FROM ubuntu:20.10
 
 RUN apt-get update && \
 	apt-get upgrade -y && \
-	apt-get install -y wget make m4 gcc patch unzip git bzip2 pkg-config
+	apt-get install -y wget make m4 gcc patch unzip git bzip2 pkg-config gzip
 
 RUN wget https://github.com/ocaml/opam/releases/download/2.0.7/opam-2.0.7-x86_64-linux -O /usr/local/bin/opam && \
 	chmod +x /usr/local/bin/opam

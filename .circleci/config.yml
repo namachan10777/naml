@@ -1,0 +1,21 @@
+version: 2
+jobs:
+  build:
+    docker:
+      # specify the version you desire here
+      - image: namachan10777/s8:latest
+
+    working_directory: ~/coins-reports
+
+    steps:
+      - checkout
+
+      - run:
+          name: submodule update
+          command: git submodule update --init --recursive
+      - run:
+          name: test code
+          command: cd code && dune runtest
+      - run:
+          name: build document
+          command: cd reports && eval $(opam env) && make all

@@ -32,29 +32,43 @@ REPORT5_OUTPUTS= \
 	code/lib/kadai4_top.ml \
 	code/lib/kadai4_parser.mly
 
+DIST=dist
+
 OUTPUTS= \
-	kadai1.tar.gz \
-	kadai2.tar.gz \
-	kadai3.tar.gz \
-	kadai4.tar.gz \
-	kadai5.tar.gz
+	$(DIST)/kadai1.tar.gz \
+	$(DIST)/kadai2.tar.gz \
+	$(DIST)/kadai3.tar.gz \
+	$(DIST)/kadai4.tar.gz \
+	$(DIST)/kadai5.tar.gz
 
 .PHONY: all
 all: $(OUTPUTS)
 
-kadai1.tar.gz: $(REPORT1_OUTPUTS)
+.PHONY: clean
+clean:
+	rm -f $(shell find . -type f -name '*.satysfi-aux')
+	rm -f $(shell find . -type f -name '*.pdf')
+	rm -f $(shell find . -type f -name '*.tar.gz')
+	rm -rf $(shell find . -type d -name '_build')
+
+$(DIST)/kadai1.tar.gz: $(REPORT1_OUTPUTS)
+	mkdir -p $(DIST)
 	tar czf $@ $(REPORT1_OUTPUTS)
 
-kadai2.tar.gz: $(REPORT2_OUTPUTS)
+$(DIST)/kadai2.tar.gz: $(REPORT2_OUTPUTS)
+	mkdir -p $(DIST)
 	tar czf $@ $(REPORT2_OUTPUTS)
 
-kadai3.tar.gz: $(REPORT3_OUTPUTS)
+$(DIST)/kadai3.tar.gz: $(REPORT3_OUTPUTS)
+	mkdir -p $(DIST)
 	tar czf $@ $(REPORT3_OUTPUTS)
 
-kadai4.tar.gz: $(REPORT4_OUTPUTS)
+$(DIST)/kadai4.tar.gz: $(REPORT4_OUTPUTS)
+	mkdir -p $(DIST)
 	tar czf $@ $(REPORT4_OUTPUTS)
 
-kadai5.tar.gz: $(REPORT5_OUTPUTS)
+$(DIST)/kadai5.tar.gz: $(REPORT5_OUTPUTS)
+	mkdir -p $(DIST)
 	tar czf $@ $(REPORT5_OUTPUTS)
 
 %.pdf: %.saty

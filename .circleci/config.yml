@@ -18,4 +18,4 @@ jobs:
           command: cd code && eval $(opam env) && dune runtest
       - run:
           name: build document
-          command: cd report && eval $(opam env) && make all
+          command: eval $(opam env) && make all

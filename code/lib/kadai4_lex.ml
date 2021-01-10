@@ -96,6 +96,9 @@ let rec lex lexbuf =
     | "->" ->
         update lexbuf;
         Arrow
+    | "<>" ->
+        update lexbuf;
+        NotEq
     (* keywords *)
     | "fun" ->
         update lexbuf;

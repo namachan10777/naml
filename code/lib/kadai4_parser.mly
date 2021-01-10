@@ -6,6 +6,7 @@
 %token Asterisk     (* '*'  *)
 %token Slash        (* '/'  *)
 %token Equal        (* '='  *)
+%token NotEq        (* '<>' *)
 %token Less         (* '<'  *)
 %token Gret         (* '>'  *)
 %token ColCol       (* "::" *)
@@ -30,18 +31,16 @@
 %token Else         (* "else"    *)
 %token Match        (* "match"   *)
 %token With         (* "with"    *)
-%token Head         (* "List.hd" *)
-%token Tail         (* "List/tl" *)
+%token Head         (* "List.hd" *) %token Tail         (* "List/tl" *)
 
 %token Eof
-%nonassoc Else Arrow With If Let
+%nonassoc With
 %left VBar
-%left Equal Gret Less
+%left Equal Gret Less NotEq
 %right ColCol
 %left Plus Minus
 %left Asterisk Slash
 %nonassoc Unary
-%left Var Int True False LBra LParen
 
 %start main
 %type <Kadai4_ast.exp_t> main
@@ -88,6 +87,8 @@ exp_op:
         { Kadai4_ast.Less(e1, e2) }
     | e1 = exp_op Equal e2 = exp_op
         { Kadai4_ast.Eq(e1, e2) }
+    | e1 = exp_op NotEq e2 = exp_op
+        { Kadai4_ast.Neq(e1, e2) }
     | e1 = exp_op ColCol e2 = exp_op
         { Kadai4_ast.Cons(e1, e2) }
 

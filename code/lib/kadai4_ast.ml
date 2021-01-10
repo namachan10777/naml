@@ -8,6 +8,7 @@ type exp_t =
     | Fun of string * exp_t
     | App of exp_t * exp_t
     | Eq of exp_t * exp_t
+    | Neq of exp_t * exp_t
     | Greater of exp_t * exp_t
     | Less of exp_t * exp_t
     | Plus of exp_t * exp_t
@@ -86,6 +87,11 @@ let rec eval env =
         | (IntVal lhr, IntVal rhr) -> BoolVal (lhr = rhr)
         | (BoolVal lhr, BoolVal rhr) -> BoolVal (lhr = rhr)
         | _ -> failwith "integer type expected"
+    end
+    | Neq(lhr, rhr) -> begin match (eval env lhr, eval env rhr) with
+        | (IntVal lhr, IntVal rhr) -> BoolVal (lhr != rhr)
+        | (BoolVal lhr, BoolVal rhr) -> BoolVal (lhr != rhr)
+        | _ -> BoolVal false
     end
     | If (cond, e1, e2) -> begin match eval env cond with
         | BoolVal true -> eval env e1

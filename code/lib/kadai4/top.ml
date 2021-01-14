@@ -1,5 +1,5 @@
 let parse f lexbuf =
-    let open Kadai4_lex in
+    let open Lex in
     let lexer () =
         let ante_position = lexbuf.pos in
         let token = lex lexbuf in
@@ -11,10 +11,10 @@ let parse f lexbuf =
     parser lexer
 
 let parse_string s =
-    let buf = Kadai4_lex.create_lexbuf ~file:"no file"
+    let buf = Lex.create_lexbuf ~file:"no file"
         @@ Sedlexing.Utf8.from_string s in
-    parse Kadai4_parser.main buf
+    parse Parser.main buf
 
 let eval_string s =
     let ast = parse_string s in
-    Kadai4_ast.eval (Kadai4_ast.emptyenv ()) ast
+    Ast.eval (Ast.emptyenv ()) ast

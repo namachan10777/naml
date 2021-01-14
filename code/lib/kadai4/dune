@@ -1,4 +1,6 @@
 (library
- (name s8)
+ (name kadai4)
  (preprocess (pps sedlex.ppx ppx_deriving.show))
  (libraries sedlex menhirLib core))
+(menhir
+ (modules parser))

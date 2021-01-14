@@ -65,12 +65,12 @@ arg_exp:
     | LBra inner = list_inner RBra { inner }
     | LParen e = exp RParen { e }
 
-exp_fun:
-    | LParen e = exp RParen { e }
-    | sym = Var { Kadai4_ast.Var sym }
+fun_apps:
+    | arg = arg_exp { arg }
+    | f = fun_apps arg = arg_exp { Kadai4_ast.App(f, arg) }
 
 exp_op:
-    | e = arg_exp { e }
+    | apps = fun_apps { apps }
     | Minus e = exp_op %prec Unary
         { Kadai4_ast.Minus(Kadai4_ast.IntLit 0, e) }
     | e1 = exp_op Plus e2 = exp_op
@@ -109,7 +109,6 @@ exp_open:
         { Kadai4_ast.Eq(e1, e2) }
     | e1 = exp_op ColCol e2 = exp_open
         { Kadai4_ast.Cons(e1, e2) }
-    | f = exp_fun arg = arg_exp { Kadai4_ast.App(f, arg) }
     | Tail e = arg_exp
         { Kadai4_ast.Tail(e) }
     | Head e = arg_exp

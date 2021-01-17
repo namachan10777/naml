@@ -56,6 +56,10 @@ list_inner:
     | e = exp Semicolon last = list_inner
         { K5ast.Cons (e, last) }
 
+evals:
+    | e1 = dont_derive_evals Semicolon e2 = dont_derive_evals { [e1; e2] }
+    | e = dont_derive_evals Semicolon last = evals
+        { e :: last }
 arg_exp:
     | sym = Var { K5ast.Var sym }
     | lit = Int { K5ast.IntLit lit }

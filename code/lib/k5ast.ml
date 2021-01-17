@@ -23,6 +23,8 @@ type exp_t =
     | Cons of exp_t * exp_t
     | Head of exp_t
     | Tail of exp_t
+    | DebugPrint of exp_t
+    | Evals of exp_t list
 [@@deriving show]
 
 type value_t =

@@ -1,6 +1,6 @@
 open OUnit2
-open S8.K4ast
-open S8.K4top
+open S8.K5ast
+open S8.K5top
 
 let parse_int _ =
     let ast = parse_string "1" in
@@ -74,6 +74,16 @@ let parse_fun _ =
     let expected = Fun ("f", Fun ("x", Fun ("y", IntLit 1)))  in
     assert_equal ast expected 
 
+let test_fun _ =
+    let ret = eval_string "let f = fun x -> fun y -> fun z -> x * 100 + y * 10 + z in f 1 2 3" in
+    assert_equal ret (IntVal 123)
+
+let test_z _ = 
+    let fix = parse_string "fun f -> (fun x -> f (fun y -> x x y)) (fun x -> f (fun y -> x x y))" in
+    let fact = parse_string "fun f -> fun n -> if n = 1 then 1 else n * (f (n-1))" in
+    let exp = App (App (fix, fact), IntLit 5) in
+    assert_equal (eval (emptyenv ()) exp) (IntVal 120)
+
 let suite =
     "Parser" >::: [
         "int" >:: parse_int;
@@ -84,4 +94,6 @@ let suite =
         "parse_exp_open" >:: parse_exp_open;
         "parse_lit" >:: parse_list;
         "parse_fun" >:: parse_fun;
+        "test_fun" >:: test_fun;
+        "test_z" >:: test_z;
     ]

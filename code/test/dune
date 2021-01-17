@@ -1,3 +1,3 @@
 (test
- (name kadai4)
+ (name main)
  (libraries oUnit s8))

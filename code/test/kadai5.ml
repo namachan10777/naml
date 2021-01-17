@@ -69,6 +69,11 @@ let parse_list _ =
     let expected = Cons(IntLit 1, Cons (IntLit 2, Cons (IntLit 3, Empty))) in
     assert_equal ast expected 
 
+let parse_fun _ =
+    let ast = parse_string "fun f -> fun x -> fun y -> 1" in
+    let expected = Fun ("f", Fun ("x", Fun ("y", IntLit 1)))  in
+    assert_equal ast expected 
+
 let suite =
     "Parser" >::: [
         "int" >:: parse_int;
@@ -78,4 +83,5 @@ let suite =
         "match" >:: parse_match;
         "parse_exp_open" >:: parse_exp_open;
         "parse_lit" >:: parse_list;
+        "parse_fun" >:: parse_fun;
     ]

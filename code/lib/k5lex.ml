@@ -140,6 +140,9 @@ let rec lex lexbuf =
     | "false" ->
         update lexbuf;
         False
+    | "debug_print" ->
+        update lexbuf;
+        DebugPrint
     | integer ->
         update lexbuf;
         Int (int_of_string @@ lexeme lexbuf)

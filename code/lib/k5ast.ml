@@ -112,4 +112,14 @@ let rec eval env =
             eval env expr
         | _ -> raise @@ Failure "function expected"
         end
+    | Evals evals -> begin match List.rev evals with
+        | e :: es ->
+            let () = es |> List.rev |> List.map(fun e -> eval env e) |> ignore in
+            eval env e
+        | _ -> raise @@ Failure "unreachable"
+    end
+    | DebugPrint e ->
+        let value = eval env e in
+        print_endline @@ show_value_t value;
+        value
     | e -> raise @@ Failure (Printf.sprintf "unimplemented! %s" (show_exp_t e))

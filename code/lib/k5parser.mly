@@ -32,6 +32,7 @@
 %token Match        (* "match"   *)
 %token With         (* "with"    *)
 %token Head         (* "List.hd" *) %token Tail         (* "List/tl" *)
+%token DebugPrint
 
 %token Eof
 %nonassoc With
@@ -51,14 +52,14 @@ main:
     e = exp Eof { e }
 
 list_inner:
-    | e = exp { K5ast.Cons (e, K5ast.Empty) }
-    | e = exp Semicolon { K5ast.Cons (e, K5ast.Empty) }
-    | e = exp Semicolon last = list_inner
+    | e = exp_dont_derive_evals { K5ast.Cons (e, K5ast.Empty) }
+    | e = exp_dont_derive_evals Semicolon { K5ast.Cons (e, K5ast.Empty) }
+    | e = exp_dont_derive_evals Semicolon last = list_inner
         { K5ast.Cons (e, last) }
 
 evals:
-    | e1 = dont_derive_evals Semicolon e2 = dont_derive_evals { [e1; e2] }
-    | e = dont_derive_evals Semicolon last = evals
+    | e1 = exp_dont_derive_evals Semicolon e2 = exp_dont_derive_evals { [e1; e2] }
+    | e = exp_dont_derive_evals Semicolon last = evals
         { e :: last }
 arg_exp:
     | sym = Var { K5ast.Var sym }
@@ -117,25 +118,31 @@ exp_open:
         { K5ast.Tail(e) }
     | Head e = arg_exp
         { K5ast.Tail(e) }
-    | Fun arg = Var Arrow e = exp
+    | DebugPrint e = arg_exp
+        { K5ast.DebugPrint e }
+    | Fun arg = Var Arrow e = exp_dont_derive_evals
         { K5ast.Fun(arg, e) }
-    | Let var = Var Equal e1 = exp In e2 = exp
+    | Let var = Var Equal e1 = exp In e2 = exp_dont_derive_evals
         { K5ast.Let(var, e1, e2) }
-    | Let Rec fname = Var argname = Var Equal e1 = exp In e2 = exp
+    | Let Rec fname = Var argname = Var Equal e1 = exp In e2 = exp_dont_derive_evals
         { K5ast.LetRec(fname, argname, e1, e2) }
-    | If cond = exp Then e1 = exp Else e2 = exp
+    | If cond = exp Then e1 = exp Else e2 = exp_dont_derive_evals
         { K5ast.If (cond, e1, e2) }
     | Match e = exp With cases = cases_rev
         { K5ast.Match (e, List.rev cases) }
 
-exp:
+exp_dont_derive_evals:
     | e = exp_op { e }
     | e = exp_open { e }
 
+exp:
+    | e = exp_dont_derive_evals { e }
+    | e = evals { K5ast.Evals e }
+
 cases_rev:
-    | p = pattern Arrow e = exp
+    | p = pattern Arrow e = exp_dont_derive_evals
         { [(p, e)] }
-    | cases = cases_rev VBar p = pattern Arrow e = exp
+    | cases = cases_rev VBar p = pattern Arrow e = exp_dont_derive_evals
         { (p, e) :: cases }
 pattern:
     | sym = Var { K5ast.Var sym }

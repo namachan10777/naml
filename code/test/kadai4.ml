@@ -1,6 +1,6 @@
 open OUnit2
-open S8.Kadai4_ast
-open S8.Kadai4_top
+open S8.K4ast
+open S8.K4top
 
 let parse_int _ =
     let ast = parse_string "1" in

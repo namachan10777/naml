@@ -1,4 +1,0 @@
-(library
- (name kadai1)
- (preprocess (pps sedlex.ppx ppx_deriving.show))
- (libraries sedlex menhirLib core))

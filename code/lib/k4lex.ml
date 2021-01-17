@@ -41,7 +41,7 @@ let space = [%sedlex.regexp? '\t' | ' ' | '\r' | '\n' ]
 let integer = [%sedlex.regexp? Plus digit]
 let identifier = [%sedlex.regexp? (alphabetic | "_"), Star ("_" | "." | "'" | '0'..'9')]
 
-open Parser
+open K4parser
 
 let rec lex lexbuf =
     let buf = lexbuf.stream in

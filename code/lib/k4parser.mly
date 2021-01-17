@@ -43,7 +43,7 @@
 %nonassoc Unary
 
 %start main
-%type <Ast.exp_t> main
+%type <K4ast.exp_t> main
 
 %%
 
@@ -51,78 +51,78 @@ main:
     e = exp Eof { e }
 
 list_inner:
-    | e = exp { Ast.Cons (e, Ast.Empty) }
-    | e = exp Semicolon { Ast.Cons (e, Ast.Empty) }
+    | e = exp { K4ast.Cons (e, K4ast.Empty) }
+    | e = exp Semicolon { K4ast.Cons (e, K4ast.Empty) }
     | e = exp Semicolon last = list_inner
-        { Ast.Cons (e, last) }
+        { K4ast.Cons (e, last) }
 
 arg_exp:
-    | sym = Var { Ast.Var sym }
-    | lit = Int { Ast.IntLit lit }
-    | True { Ast.BoolLit true }
-    | False { Ast.BoolLit false }
-    | LBra RBra { Ast.Empty }
+    | sym = Var { K4ast.Var sym }
+    | lit = Int { K4ast.IntLit lit }
+    | True { K4ast.BoolLit true }
+    | False { K4ast.BoolLit false }
+    | LBra RBra { K4ast.Empty }
     | LBra inner = list_inner RBra { inner }
     | LParen e = exp RParen { e }
 
 fun_apps:
     | arg = arg_exp { arg }
-    | f = fun_apps arg = arg_exp { Ast.App(f, arg) }
+    | f = fun_apps arg = arg_exp { K4ast.App(f, arg) }
 
 exp_op:
     | apps = fun_apps { apps }
     | Minus e = exp_op %prec Unary
-        { Ast.Minus(Ast.IntLit 0, e) }
+        { K4ast.Minus(K4ast.IntLit 0, e) }
     | e1 = exp_op Plus e2 = exp_op
-        { Ast.Plus(e1, e2) }
+        { K4ast.Plus(e1, e2) }
     | e1 = exp_op Minus e2 = exp_op
-        { Ast.Minus(e1, e2) }
+        { K4ast.Minus(e1, e2) }
     | e1 = exp_op Asterisk e2 = exp_op
-        { Ast.Times(e1, e2) }
+        { K4ast.Times(e1, e2) }
     | e1 = exp_op Slash e2 = exp_op
-        { Ast.Div(e1, e2) }
+        { K4ast.Div(e1, e2) }
     | e1 = exp_op Gret e2 = exp_op
-        { Ast.Greater(e1, e2) }
+        { K4ast.Greater(e1, e2) }
     | e1 = exp_op Less e2 = exp_op
-        { Ast.Less(e1, e2) }
+        { K4ast.Less(e1, e2) }
     | e1 = exp_op Equal e2 = exp_op
-        { Ast.Eq(e1, e2) }
+        { K4ast.Eq(e1, e2) }
     | e1 = exp_op NotEq e2 = exp_op
-        { Ast.Neq(e1, e2) }
+        { K4ast.Neq(e1, e2) }
     | e1 = exp_op ColCol e2 = exp_op
-        { Ast.Cons(e1, e2) }
+        { K4ast.Cons(e1, e2) }
 
 exp_open:
     | e1 = exp_op Plus e2 = exp_open
-        { Ast.Plus(e1, e2) }
+        { K4ast.Plus(e1, e2) }
     | e1 = exp_op Minus e2 = exp_open
-        { Ast.Minus(e1, e2) }
+        { K4ast.Minus(e1, e2) }
     | e1 = exp_op Asterisk e2 = exp_open
-        { Ast.Times(e1, e2) }
+        { K4ast.Times(e1, e2) }
     | e1 = exp_op Slash e2 = exp_open
-        { Ast.Div(e1, e2) }
+        { K4ast.Div(e1, e2) }
     | e1 = exp_op Gret e2 = exp_open
-        { Ast.Greater(e1, e2) }
+        { K4ast.Greater(e1, e2) }
     | e1 = exp_op Less e2 = exp_open
-        { Ast.Less(e1, e2) }
+        { K4ast.Less(e1, e2) }
     | e1 = exp_op Equal e2 = exp_open
-        { Ast.Eq(e1, e2) }
+        { K4ast.Eq(e1, e2) }
     | e1 = exp_op ColCol e2 = exp_open
-        { Ast.Cons(e1, e2) }
+        { K4ast.Cons(e1, e2) }
     | Tail e = arg_exp
-        { Ast.Tail(e) }
+        { K4ast.Tail(e) }
     | Head e = arg_exp
-        { Ast.Tail(e) }
+        { K4ast.Tail(e) }
     | Fun arg = Var Arrow e = exp
-        { Ast.Fun(arg, e) }
+        { K4ast.Fun(arg, e) }
     | Let var = Var Equal e1 = exp In e2 = exp
-        { Ast.Let(var, e1, e2) }
+        { K4ast.Let(var, e1, e2) }
     | Let Rec fname = Var argname = Var Equal e1 = exp In e2 = exp
-        { Ast.LetRec(fname, argname, e1, e2) }
+        { K4ast.LetRec(fname, argname, e1, e2) }
     | If cond = exp Then e1 = exp Else e2 = exp
-        { Ast.If (cond, e1, e2) }
+        { K4ast.If (cond, e1, e2) }
     | Match e = exp With cases = cases_rev
-        { Ast.Match (e, List.rev cases) }
+        { K4ast.Match (e, List.rev cases) }
 
 exp:
     | e = exp_op { e }
@@ -134,9 +134,9 @@ cases_rev:
     | cases = cases_rev VBar p = pattern Arrow e = exp
         { (p, e) :: cases }
 pattern:
-    | sym = Var { Ast.Var sym }
-    | lit = Int { Ast.IntLit lit }
-    | True { Ast.BoolLit true }
-    | False { Ast.BoolLit false }
-    | LBra RBra { Ast.Empty }
-    | p1 = pattern ColCol p2 = pattern { Ast.Cons(p1, p2) }
+    | sym = Var { K4ast.Var sym }
+    | lit = Int { K4ast.IntLit lit }
+    | True { K4ast.BoolLit true }
+    | False { K4ast.BoolLit false }
+    | LBra RBra { K4ast.Empty }
+    | p1 = pattern ColCol p2 = pattern { K4ast.Cons(p1, p2) }

@@ -1,5 +1,5 @@
 let parse f lexbuf =
-    let open Lex in
+    let open K4lex in
     let lexer () =
         let ante_position = lexbuf.pos in
         let token = lex lexbuf in
@@ -11,10 +11,10 @@ let parse f lexbuf =
     parser lexer
 
 let parse_string s =
-    let buf = Lex.create_lexbuf ~file:"no file"
+    let buf = K4lex.create_lexbuf ~file:"no file"
         @@ Sedlexing.Utf8.from_string s in
-    parse Parser.main buf
+    parse K4parser.main buf
 
 let eval_string s =
     let ast = parse_string s in
-    Ast.eval (Ast.emptyenv ()) ast
+    K4ast.eval (K4ast.emptyenv ()) ast

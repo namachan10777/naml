@@ -31,4 +31,26 @@ document(|
       }
     >
   >
+  +section {関数の処理とクロージャ} <
+    +subsection{eval4の確認} <
+      +code(```
+        # Kadai5.Top.eval_string "let x = 1 in let f = fun y -> x + y in let x = 2 in f (x + 3)";;
+        - : Kadai5.Ast.value_t = Kadai5.Ast.IntVal 6
+      ```);
+    >
+    +subsection{動的束縛への変更}<
+      +code(```
+        # Kadai5.Top.eval_string "let x = 1 in let f = fun y -> x + y in let x = 2 in f (x + 3)";;
+        - : Kadai5.Ast.value_t = Kadai5.Ast.IntVal 7
+      ```);
+      +p{
+        fが適用される時点でfが定義された時点には無かった`x = 2`を用いて計算が行われているので動的束縛と言える。
+      }
+    >
+    +subsection{階乗を求める関数が定義出来るかどうか} <
+      +p{
+
+      }
+    >
+  >
 >

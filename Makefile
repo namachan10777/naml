@@ -2,37 +2,41 @@ REPORT1_OUTPUTS= \
 	report/report1.pdf \
 	code/dune-project \
 	code/lib/dune \
-	code/lib/kadai1/main.ml
+	code/lib/k1main.ml
 
 REPORT2_OUTPUTS= \
 	report/report2.pdf \
 	code/dune-project \
 	code/lib/dune \
-	code/lib/kadai2/kadai2_2.ml \
+	code/lib/kadai2_2.ml \
 
 REPORT3_OUTPUTS= \
 	report/report3.pdf \
 	code/dune-project \
 	code/lib/dune \
-	code/lib/kadai2/kadai2_4.ml \
-	code/lib/kadai2/kadai2_5.ml
+	code/lib/kadai2_4.ml \
+	code/lib/kadai2_5.ml
 
 REPORT4_OUTPUTS= \
 	report/report4.pdf \
 	code/dune-project \
 	code/lib/dune \
-	code/lib/kadai3/kadai3_2.ml
+	code/lib/kadai3_2.ml
 
 REPORT5_OUTPUTS= \
 	report/report5.pdf \
 	code/dune-project \
 	code/lib/dune \
-	code/lib/kadai4/ast.ml \
-	code/lib/kadai4/lex.ml \
-	code/lib/kadai4/top.ml \
-	code/lib/kadai4/parser.mly
+	code/lib/k4ast.ml \
+	code/lib/k4lex.ml \
+	code/lib/k4top.ml \
+	code/lib/k4parser.mly
 
 REPORT6_OUTPUTS = \
+	code/lib/k5ast.ml \
+	code/lib/k5lex.ml \
+	code/lib/k5top.ml \
+	code/lib/k5parser.mly \
 	report/report6.pdf
 
 DIST=dist

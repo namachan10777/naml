@@ -49,7 +49,35 @@ document(|
     >
     +subsection{階乗を求める関数が定義出来るかどうか} <
       +p{
-
+        型無しなので不動点コンビネータを定義することが出来る。評価戦略は`call-by-value`で実装しているのでZコンビネータを用い、
+        以下のように計算される。式が長いためテストコードから引用する。
+      }
+      +code(```
+      let test_z _ = 
+          let fix = parse_string "fun f -> (fun x -> f (fun y -> x x y)) (fun x -> f (fun y -> x x y))" in
+          let fact = parse_string "fun f -> fun n -> if n = 1 then 1 else n * (f (n-1))" in
+          let exp = App (App (fix, fact), IntLit 5) in
+          assert_equal (eval (emptyenv ()) exp) (IntVal 120)
+      ```);
+    >
+    +subsection{評価順序の確認} <
+      +p{
+        右の引数を評価してから左の引数を評価するようになっている。
+        ここでは見やすさのため`print_endline`を使った。
+      }
+      +code(```
+        # (print_endline "1"; 10) + (print_endline "2"; 20);;
+        2
+        1
+        - : int = 30
+        # (print_endline "1"; (fun x -> x))  (print_endline "2"; 20);;
+        2
+        1
+        - : int = 20
+      ```);
+    >
+    +subsection{本実験の処理系での評価順序の確認} <
+      +p{
       }
     >
   >

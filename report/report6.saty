@@ -78,6 +78,23 @@ document(|
     >
     +subsection{本実験の処理系での評価順序の確認} <
       +p{
+        仕様を拡張し、デバッグ出力を行う`debug_print`と`;`演算子を追加して実験を行った。
+        `ocaml`の実装とは逆となっていることが分かる。
+      }
+      +code(```
+        # eval_string "(debug_print 1; 10) + (debug_print 2; 20)";;
+        (K5ast.IntVal 1)
+        (K5ast.IntVal 2)
+        - : S8.K5ast.value_t = S8.K5ast.IntVal 30
+        # eval_string "(debug_print 1; (fun x -> x)) (debug_print 2; 20)";;
+        (K5ast.IntVal 1)
+        (K5ast.IntVal 2)
+        - : S8.K5ast.value_t = S8.K5ast.IntVal 20
+      ```);
+    >
+    +subsection{修正} <
+      +p{
+        添付のソースコードでは修正が行われている。
       }
     >
   >

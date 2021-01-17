@@ -50,17 +50,26 @@ let rec lookup x env =
 
 let rec eval env =
     (* Plus, Times, Minus向け *)
-    let binop_ii f lhr rhr = match (eval env lhr, eval env rhr) with
+    let binop_ii f lhr rhr =
+        let rhr = eval env rhr in
+        let lhr = eval env lhr in
+        match (lhr, rhr) with
         | (IntVal lhr, IntVal rhr) -> IntVal (f lhr rhr)
         | _ -> failwith "integer type expected"
     in
     (* Less, Greater向け *)
-    let binop_ib f lhr rhr = match (eval env lhr, eval env rhr) with
+    let binop_ib f lhr rhr =
+        let rhr = eval env rhr in
+        let lhr = eval env lhr in
+        match (lhr, rhr) with
         | (IntVal lhr, IntVal rhr) -> BoolVal (f lhr rhr)
         | _ -> failwith "integer type expected"
     in
     (* And, Or向け *)
-    let binop_bb f lhr rhr = match (eval env lhr, eval env rhr) with
+    let binop_bb f lhr rhr =
+        let rhr = eval env rhr in
+        let lhr = eval env lhr in
+        match (lhr, rhr) with
         | (BoolVal lhr, BoolVal rhr) -> BoolVal (f lhr rhr)
         | _ -> failwith "boolean type expected"
     in
@@ -71,7 +80,10 @@ let rec eval env =
     | Minus (lhr, rhr) -> binop_ii (-) lhr rhr
     | Times (lhr, rhr) -> binop_ii ( * ) lhr rhr
     (* Divは分母が0の場合の処理を入れる必要があるので使えない *)
-    | Div (lhr, rhr) -> begin match (eval env lhr, eval env rhr) with
+    | Div (lhr, rhr) ->
+        let rhr = eval env rhr in
+        let lhr = eval env lhr in
+        begin match (lhr, rhr) with
         | (IntVal _, IntVal 0) -> failwith "divided by 0"
         | (IntVal lhr, IntVal rhr) -> IntVal(lhr / rhr)
         | _ -> failwith "integer value expected"
@@ -85,17 +97,24 @@ let rec eval env =
         | _ -> failwith "boolean type expected"
     end
     (* Eqはint、bool両方を受けるので使えない *)
-    | Eq(lhr, rhr) -> begin match (eval env lhr, eval env rhr) with
+    | Eq(lhr, rhr) ->
+        let rhr = eval env rhr in
+        let lhr = eval env lhr in
+        begin match (lhr, rhr) with
         | (IntVal lhr, IntVal rhr) -> BoolVal (lhr = rhr)
         | (BoolVal lhr, BoolVal rhr) -> BoolVal (lhr = rhr)
         | _ -> failwith "integer type expected"
     end
-    | Neq(lhr, rhr) -> begin match (eval env lhr, eval env rhr) with
+    | Neq(lhr, rhr) ->
+        let rhr = eval env rhr in
+        let lhr = eval env lhr in
+        begin match (lhr, rhr) with
         | (IntVal lhr, IntVal rhr) -> BoolVal (lhr != rhr)
         | (BoolVal lhr, BoolVal rhr) -> BoolVal (lhr != rhr)
         | _ -> BoolVal false
     end
-    | If (cond, e1, e2) -> begin match eval env cond with
+    | If (cond, e1, e2) ->
+        begin match eval env cond with
         | BoolVal true -> eval env e1
         | BoolVal false -> eval env e2
         | _ -> failwith "boolean type expected"
@@ -104,8 +123,8 @@ let rec eval env =
     | Let(id, e1, e2) -> eval (ext env id (eval env e1)) e2
     | Fun(param, e) -> FunVal(param, e, env)
     | App(f, arg) ->
-        let f = eval env f in
         let arg = eval env arg in
+        let f = eval env f in
         begin match f with
         | FunVal(param, expr, env) ->
             let env = (param, arg) :: env in

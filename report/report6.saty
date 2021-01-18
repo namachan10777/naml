@@ -98,4 +98,30 @@ document(|
       }
     >
   >
+  +section{再帰関数の処理}<
+    +subsection{テストプログラム} <
+      +code(```
+      # eval_string "let rec f x = x in 0";;
+      - : S8.K5ast.value_t = S8.K5ast.IntVal 0
+      # eval_string "let rec f x = x in f 0";;
+      - : S8.K5ast.value_t = S8.K5ast.IntVal 0
+      # eval_string "let rec f x = if x = 0 then 1 else 2 + f (x + (- 1)) in f 0";;
+      - : S8.K5ast.value_t = S8.K5ast.IntVal 1
+      # eval_string "let rec f x = if x = 0 then 1 else x * f (x + (- 1)) in f 3";;
+      - : S8.K5ast.value_t = S8.K5ast.IntVal 6
+      # eval_string "let rec f x = if x = 0 then 1 else x * f (x + (- 1)) in f 5";;
+      - : S8.K5ast.value_t = S8.K5ast.IntVal 120
+      ```);
+    >
+    +subsection{フィボナッチ関数} <
+      +code(```
+      # eval_string "let rec fib n = if n = 0 || n = 1 then 1 else (fib (n-1)) + (fib (n-2)) in fib 4";;
+      - : S8.K5ast.value_t = S8.K5ast.IntVal 5
+      # eval_string "let rec fib n = if n = 0 || n = 1 then 1 else (fib (n-1)) + (fib (n-2)) in fib 5";;
+      - : S8.K5ast.value_t = S8.K5ast.IntVal 8
+      # eval_string "let rec fib n = if n = 0 || n = 1 then 1 else (fib (n-1)) + (fib (n-2)) in fib 6";;
+      - : S8.K5ast.value_t = S8.K5ast.IntVal 13
+      ```);
+    >
+  >
 >

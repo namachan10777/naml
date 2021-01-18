@@ -92,6 +92,11 @@ let test_z _ =
     let exp = App (App (fix, fact), IntLit 5) in
     assert_equal (eval (emptyenv ()) exp) (IntVal 120)
 
+let test_fact _ =
+    let ret = eval_string "let rec fact n = if n = 1 then 1 else n * fact (n-1) in fact 5" in
+    let expected = IntVal (5*4*3*2*1) in
+    assert_equal ret expected
+
 let suite =
     "Parser" >::: [
         "int" >:: parse_int;
@@ -105,4 +110,5 @@ let suite =
         "parse_op_and_app" >:: parse_op_and_app;
         "test_fun" >:: test_fun;
         "test_z" >:: test_z;
+        "test_fact" >:: test_fact;
     ]

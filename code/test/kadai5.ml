@@ -64,6 +64,14 @@ let parse_exp_open _ =
     ) in
     assert_equal ast expected 
 
+let parse_op_and_app _ =
+    let ast = parse_string "1 * a 2" in
+    let expected = Times (
+        (IntLit 1),
+        App (Var "a", IntLit 2)
+    ) in
+    assert_equal ast expected
+
 let parse_list _ =
     let ast = parse_string "1 :: [2;3]" in
     let expected = Cons(IntLit 1, Cons (IntLit 2, Cons (IntLit 3, Empty))) in
@@ -94,6 +102,7 @@ let suite =
         "parse_exp_open" >:: parse_exp_open;
         "parse_lit" >:: parse_list;
         "parse_fun" >:: parse_fun;
+        "parse_op_and_app" >:: parse_op_and_app;
         "test_fun" >:: test_fun;
         "test_z" >:: test_z;
     ]

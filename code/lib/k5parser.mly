@@ -6,9 +6,13 @@
 %token Asterisk     (* '*'  *)
 %token Slash        (* '/'  *)
 %token Equal        (* '='  *)
+%token Neq          (* '!=' *)
 %token NotEq        (* '<>' *)
 %token Less         (* '<'  *)
 %token Gret         (* '>'  *)
+%token Or           (* '||' *)
+%token And          (* '&&' *)
+%token Not          (* '!' *)
 %token ColCol       (* "::" *)
 
 %token LParen       (* '('  *)
@@ -37,7 +41,9 @@
 %token Eof
 %nonassoc With
 %left VBar
-%left Equal Gret Less NotEq
+%left And
+%left Or
+%left Equal Neq Gret Less NotEq
 %right ColCol
 %left Plus Minus
 %left Asterisk Slash
@@ -78,6 +84,8 @@ exp_op:
     | apps = fun_apps { apps }
     | Minus e = exp_op %prec Unary
         { K5ast.Minus(K5ast.IntLit 0, e) }
+    | Not e = exp_op %prec Unary
+        { K5ast.Not e }
     | e1 = exp_op Plus e2 = exp_op
         { K5ast.Plus(e1, e2) }
     | e1 = exp_op Minus e2 = exp_op
@@ -93,6 +101,12 @@ exp_op:
     | e1 = exp_op Equal e2 = exp_op
         { K5ast.Eq(e1, e2) }
     | e1 = exp_op NotEq e2 = exp_op
+        { K5ast.Neq(e1, e2) }
+    | e1 = exp_op Or e2 = exp_op
+        { K5ast.Or(e1, e2) }
+    | e1 = exp_op And e2 = exp_op
+        { K5ast.And(e1, e2) }
+    | e1 = exp_op Neq e2 = exp_op
         { K5ast.Neq(e1, e2) }
     | e1 = exp_op ColCol e2 = exp_op
         { K5ast.Cons(e1, e2) }
@@ -114,6 +128,12 @@ exp_open:
         { K5ast.Eq(e1, e2) }
     | e1 = exp_op ColCol e2 = exp_open
         { K5ast.Cons(e1, e2) }
+    | e1 = exp_op Or e2 = exp_open
+        { K5ast.Or(e1, e2) }
+    | e1 = exp_op Neq e2 = exp_open
+        { K5ast.Neq(e1, e2) }
+    | e1 = exp_op And e2 = exp_open
+        { K5ast.And(e1, e2) }
     | Tail e = arg_exp
         { K5ast.Tail(e) }
     | Head e = arg_exp

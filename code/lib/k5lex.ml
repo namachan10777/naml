@@ -81,6 +81,18 @@ let rec lex lexbuf =
     | "=" ->
         update lexbuf;
         Equal
+    | "!=" ->
+        update lexbuf;
+        Neq
+    | "||" ->
+        update lexbuf;
+        Or
+    | "&&" ->
+        update lexbuf;
+        And
+    | '!' ->
+        update lexbuf;
+        Not
     | "<" ->
         update lexbuf;
         Less

@@ -121,6 +121,9 @@ let rec eval env =
     end
     | Var(id) -> lookup id env
     | Let(id, e1, e2) -> eval (ext env id (eval env e1)) e2
+    | LetRec(id, arg, e1, e2) ->
+        let env = ext env id (RecFunVal (id, arg, e1, env)) in
+        eval env e2 
     | Fun(param, e) -> FunVal(param, e, env)
     | App(f, arg) ->
         let arg = eval env arg in
@@ -129,6 +132,9 @@ let rec eval env =
         | FunVal(param, expr, env) ->
             let env = (param, arg) :: env in
             eval env expr
+        | RecFunVal(id, param, body, env) ->
+            let env = ext (ext env param arg) id f in
+            eval env body
         | _ -> raise @@ Failure "function expected"
         end
     | Evals evals -> begin match List.rev evals with

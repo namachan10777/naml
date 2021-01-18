@@ -1,4 +1,7 @@
 # S8
+
+[![CircleCI](https://circleci.com/gh/namachan10777/S8.svg?style=shield)](https://app.circleci.com/pipelines/github/namachan10777)
+
 筑波大学情報学群情報科学類 主専攻実験S-8
 
 # MileStone

@@ -26,6 +26,10 @@ let parse_op_let _ =
     let ast = parse_repl_string "1 + let x = 1 in x" in
     assert_equal ast (Add (IntLit 1, Let ("x", IntLit 1, Var "x")))
 
+let parse_let_op _ =
+    let ast = parse_repl_string "(let x = 1 in x) + 1" in
+    assert_equal ast (Add (Let ("x", IntLit 1, Var "x"), IntLit 1))
+
 let parse_let_let _ =
     let ast = parse_repl_string "let x = let y = 1 in y in let z = x in z" in
     let expected = Let ("x", Let ("y", IntLit 1, Var "y"), Let ("z", Var "x", Var "z")) in

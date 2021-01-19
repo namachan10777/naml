@@ -4,17 +4,9 @@
 
 %token Add Sub Mul Div
 %token Eq
-
-%token LP
-%token RP
-%token LB
-%token RB
-
-%token Semicol
-%token Comma
-
-%token Let
-%token In
+%token LP RP LB RB
+%token Semicol Comma
+%token Let In
 
 (*%token Add
 %token Mul

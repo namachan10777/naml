@@ -53,6 +53,18 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Add
+    | "-" ->
+        update lexbuf;
+        new_line lexbuf;
+        Sub
+    | "*" ->
+        update lexbuf;
+        new_line lexbuf;
+        Mul
+    | "/" ->
+        update lexbuf;
+        new_line lexbuf;
+        Div
     | ";" ->
         update lexbuf;
         new_line lexbuf;

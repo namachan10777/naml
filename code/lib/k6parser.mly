@@ -2,7 +2,7 @@
 %token<int> Int
 %token<string> Ident
 
-%token Add
+%token Add Sub Mul Div
 %token Eq
 
 %token LP
@@ -55,7 +55,8 @@
 %type <K6ast.exp_t> repl
 
 %left Comma
-%left Add
+%left Add Sub
+%left Mul Div
 
 %%
 
@@ -69,6 +70,9 @@ term:
     | i = Int { K6ast.IntLit i }
     | LP e = exp RP { e }
     | lhr = term Add rhr = term { K6ast.Add(lhr, rhr) }
+    | lhr = term Sub rhr = term { K6ast.Sub(lhr, rhr) }
+    | lhr = term Mul rhr = term { K6ast.Mul(lhr, rhr) }
+    | lhr = term Div rhr = term { K6ast.Div(lhr, rhr) }
     | lhr = term Comma rhr = term
         {
             match lhr with
@@ -80,6 +84,9 @@ term:
 
 exp_open:
     | lhr = term Add rhr = exp_open { K6ast.Add(lhr, rhr) }
+    | lhr = term Sub rhr = exp_open { K6ast.Sub(lhr, rhr) }
+    | lhr = term Mul rhr = exp_open { K6ast.Mul(lhr, rhr) }
+    | lhr = term Div rhr = exp_open { K6ast.Div(lhr, rhr) }
     | lhr = term Comma rhr = exp_open
         {
             match lhr with

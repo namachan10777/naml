@@ -71,6 +71,14 @@ let parse_tuple2 _ =
     let ast = parse_repl_string "1+2, 2+3" in
     assert_equal ast (Tuple [Add (IntLit 1, IntLit 2); Add(IntLit 2, IntLit 3)])
 
+let parse_4arith _ =
+    let ast = parse_repl_string "1*(2+3)/4-5" in
+    let expected = Sub (
+        Div (Mul (IntLit 1, Add (IntLit 2, IntLit 3)), IntLit 4),
+        IntLit 5
+    )
+    in assert_equal ast expected
+
 let suite =
     "Kadai6" >::: [
         "parse_add" >:: parse_add;
@@ -88,4 +96,5 @@ let suite =
         "parse_list2" >:: parse_list2;
         "parse_tuple1" >:: parse_tuple1;
         "parse_tuple2" >:: parse_tuple2;
+        "parse_4arith" >:: parse_4arith;
     ]

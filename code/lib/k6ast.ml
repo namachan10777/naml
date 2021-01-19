@@ -1,8 +1,8 @@
 type pat_t =
-    | Var of string
-    | Cons of pat_t * pat_t
-    | Emp
-    | Tuple of pat_t * pat_t
+    | PVar of string
+    | PCons of pat_t * pat_t
+    | PEmp
+    | PTuple of pat_t * pat_t
 [@@deriving show]
 
 (* LetRecもLetと同じ形にしておく *)

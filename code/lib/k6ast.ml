@@ -62,4 +62,7 @@ let rec eval env =
     function
     | IntLit i -> IntVal i
     | Add(lhr, rhr) -> binop_int (+) lhr rhr
+    | Let (id, def, expr) ->
+        let env = (ext env id (eval env def)) in
+        eval env expr
     | e -> failwith @@ Printf.sprintf "unsupported expression %s" @@ show_exp_t e

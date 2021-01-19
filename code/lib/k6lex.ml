@@ -61,6 +61,18 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         RP
+    | "let" ->
+        update lexbuf;
+        new_line lexbuf;
+        Let
+    | "=" ->
+        update lexbuf;
+        new_line lexbuf;
+        Eq
+    | "in" ->
+        update lexbuf;
+        new_line lexbuf;
+        In
     | integer ->
         update lexbuf;
         new_line lexbuf;

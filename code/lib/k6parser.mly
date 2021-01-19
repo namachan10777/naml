@@ -5,6 +5,9 @@
 %token Add
 %token LP
 %token RP
+%token Let
+%token Eq
+%token In
 
 (*%token Add
 %token Sub
@@ -47,11 +50,20 @@
 
 %%
 
-exp:
+term:
     | id = Ident { K6ast.Var id }
     | i = Int { K6ast.IntLit i }
-    | lhr = exp Add rhr = exp { K6ast.Add(lhr, rhr) }
     | LP e = exp RP { e }
+    | lhr = term Add rhr = term { K6ast.Add(lhr, rhr) }
+
+exp_open:
+    | lhr = term Add rhr = exp_open { K6ast.Add(lhr, rhr) }
+    | Let id = Ident Eq def = exp In expr = exp
+        { K6ast.Let (id, def, expr) }
+
+exp:
+    | e = term { e }
+    | e = exp_open { e }
 
 main:
     e = exp Eof { e }

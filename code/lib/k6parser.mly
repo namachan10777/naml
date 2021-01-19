@@ -40,6 +40,7 @@ fun_arg:
 
 term:
     | e = fun_arg { e }
+    | app = fun_apps { app }
     | lhr = term Add rhr = term { K6ast.Add(lhr, rhr) }
     | lhr = term Sub rhr = term { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = term { K6ast.Mul(lhr, rhr) }
@@ -58,7 +59,6 @@ fun_apps:
         { K6ast.App (f, a) }
 
 exp_open:
-    | app = fun_apps { app }
     | lhr = term Add rhr = exp_open { K6ast.Add(lhr, rhr) }
     | lhr = term Sub rhr = exp_open { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open { K6ast.Mul(lhr, rhr) }
@@ -75,7 +75,6 @@ exp_open:
         { K6ast.Match (e, arms) }
 
 exp_open_without_match:
-    | app = fun_apps { app }
     | lhr = term Add rhr = exp_open_without_match { K6ast.Add(lhr, rhr) }
     | lhr = term Sub rhr = exp_open_without_match { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open_without_match { K6ast.Mul(lhr, rhr) }

@@ -75,6 +75,14 @@ let parse_tuple2 _ =
     let ast = parse_repl_string "1+2, 2+3" in
     assert_equal ast (Tuple [Add (IntLit 1, IntLit 2); Add(IntLit 2, IntLit 3)])
 
+let parse_tuple_list1 _ =
+    let ast = parse_repl_string "[1,2]" in
+    assert_equal ast (Cons (Tuple [IntLit 1; IntLit 2], Emp))
+
+let parse_tuple_list2 _ =
+    let ast = parse_repl_string "[1,2;3,4]" in
+    assert_equal ast (Cons (Tuple [IntLit 1; IntLit 2], Cons (Tuple [IntLit 3; IntLit 4], Emp)))
+
 let parse_4arith _ =
     let ast = parse_repl_string "3*(200+300)/4-5" in
     let expected = Sub (
@@ -123,6 +131,11 @@ let parse_app3 _ =
     let expected = App (App (Var "a", Var "b"), Var "c") in
     assert_equal ast expected
 
+let parse_app_list _ =
+    let ast = parse_repl_string "[a b]" in
+    let expected = Cons (App (Var "a", Var "b"), Emp) in
+    assert_equal ast expected
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -141,6 +154,8 @@ let suite =
         "parse_list2" >:: parse_list2;
         "parse_tuple1" >:: parse_tuple1;
         "parse_tuple2" >:: parse_tuple2;
+        "parse_tuple_list1" >:: parse_tuple_list1;
+        "parse_tuple_list2" >:: parse_tuple_list2;
         "parse_4arith" >:: parse_4arith;
         "eval_4arith" >:: eval_4arith;
         "parse_match1" >:: parse_match1;
@@ -149,4 +164,5 @@ let suite =
         "parse_app1" >:: parse_app1;
         "parse_app2" >:: parse_app2;
         "parse_app3" >:: parse_app3;
+        "parse_app_list" >:: parse_app_list;
     ]

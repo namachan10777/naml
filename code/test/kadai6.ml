@@ -83,6 +83,22 @@ let eval_4arith _ =
     let ast = eval_string "3*(200+300)/4-5" in
     assert_equal ast (IntVal 370)
 
+let parse_match1 _ =
+    let ast = parse_repl_string "match x with y -> 0 | z -> match z with a -> a" in
+    let expected = Match (Var "x", [
+        (PVar "y", IntLit 0);
+        (PVar "z", Match (Var "z", [PVar "a", Var "a"]));
+    ])
+    in assert_equal ast expected
+
+let parse_match2 _ =
+    let ast = parse_repl_string "match x with y -> let x = 1 in x | z -> 1" in
+    let expected = Match (Var "x", [
+        (PVar "y", Let ("x", IntLit 1, Var "x"));
+        (PVar "z", IntLit 1);
+    ])
+    in assert_equal ast expected
+
 let suite =
     "Kadai6" >::: [
         "parse_add" >:: parse_add;
@@ -102,4 +118,6 @@ let suite =
         "parse_tuple2" >:: parse_tuple2;
         "parse_4arith" >:: parse_4arith;
         "eval_4arith" >:: eval_4arith;
+        "parse_match1" >:: parse_match1;
+        "parse_match2" >:: parse_match2;
     ]

@@ -49,6 +49,10 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         lex lexbuf
+    | "->" ->
+        update lexbuf;
+        new_line lexbuf;
+        Arrow
     | "+" ->
         update lexbuf;
         new_line lexbuf;
@@ -73,6 +77,10 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Comma
+    | "|" ->
+        update lexbuf;
+        new_line lexbuf;
+        VBar
     | '(' ->
         update lexbuf;
         new_line lexbuf;
@@ -101,6 +109,14 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         In
+    | "match" ->
+        update lexbuf;
+        new_line lexbuf;
+        Match
+    | "with" ->
+        update lexbuf;
+        new_line lexbuf;
+        With
     | integer ->
         update lexbuf;
         new_line lexbuf;

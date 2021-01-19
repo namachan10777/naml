@@ -26,6 +26,7 @@ type exp_t =
     | Sub of exp_t * exp_t
     | Mul of exp_t * exp_t
     | Div of exp_t * exp_t
+    | Not of exp_t
     | Match of exp_t * ((pat_t * exp_t) list)
     | Emp
     | Tuple of exp_t list

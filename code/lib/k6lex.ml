@@ -118,6 +118,10 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         RB
+    | "not" ->
+        update lexbuf;
+        new_line lexbuf;
+        Not
     | "let" ->
         update lexbuf;
         new_line lexbuf;

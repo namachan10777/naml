@@ -6,9 +6,13 @@ let parse_str _ =
     let ast = parse_repl_string "\"hoge\\\"fuga\"" in
     assert_equal ast (StrLit "hoge\\\"fuga")
 
-let parse_add _ =
+let parse_add1 _ =
     let ast = parse_repl_string "1+2+3" in
     assert_equal ast (Add (Add (IntLit 1, IntLit 2), IntLit 3))
+
+let parse_add2 _ =
+    let ast = parse_repl_string "1+-2" in
+    assert_equal ast (Add (IntLit 1, Sub (IntLit 0, IntLit 2)))
 
 let eval_add _ =
     let value = eval_string "1+2+3" in
@@ -92,10 +96,10 @@ let parse_4arith _ =
     in assert_equal ast expected
 
 let parse_cmp_and _ =
-    let ast = parse_repl_string "3>2 && 1 < 0" in
+    let ast = parse_repl_string "3>2 && not not (1 < 0)" in
     let expected = And (
         Gret(IntLit 3, IntLit 2),
-        Less(IntLit 1, IntLit 0)
+        Not (Not (Less(IntLit 1, IntLit 0)))
     )
     in assert_equal ast expected
 
@@ -160,8 +164,9 @@ let parse_app_list _ =
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
-        "parse_add" >:: parse_add;
-        "eval_add" >:: parse_add;
+        "parse_add1" >:: parse_add1;
+        "parse_add2" >:: parse_add2;
+        "eval_add" >:: eval_add;
         "parse_expr_with_paren" >:: parse_expr_with_paren;
         "eval_expr_with_paren" >:: eval_expr_with_paren;
         "parse_let" >:: parse_let;

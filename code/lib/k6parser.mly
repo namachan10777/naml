@@ -12,6 +12,7 @@
 %token Let In
 %token Match With
 %token Builtin DebugPrint
+%token Not
 
 %token Eof
 
@@ -26,6 +27,7 @@
 %nonassoc Eq Neq Gret Less
 %left Add Sub
 %left Mul Div
+%nonassoc Unary Not
 
 %%
 
@@ -49,6 +51,8 @@ term:
     | DebugPrint e = fun_arg { DebugPrint e }
     | Builtin s = Str { K6ast.Builtin s }
     | app = fun_apps { app }
+    | Not e = term { K6ast.Not e }
+    | Sub e = term %prec Unary { K6ast.Sub(K6ast.IntLit 0, e) }
     | lhr = term Add rhr = term { K6ast.Add(lhr, rhr) }
     | lhr = term Sub rhr = term { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = term { K6ast.Mul(lhr, rhr) }
@@ -73,6 +77,8 @@ fun_apps:
         { K6ast.App (f, a) }
 
 exp_open:
+    | Not e = exp_open { K6ast.Not e }
+    | Sub e = exp_open { K6ast.Sub(K6ast.IntLit 0, e) }
     | lhr = term Add rhr = exp_open { K6ast.Add(lhr, rhr) }
     | lhr = term Sub rhr = exp_open { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open { K6ast.Mul(lhr, rhr) }
@@ -95,6 +101,8 @@ exp_open:
         { K6ast.Match (e, arms) }
 
 exp_open_without_match:
+    | Not e = exp_open_without_match { K6ast.Not e }
+    | Sub e = exp_open_without_match { K6ast.Sub(K6ast.IntLit 0, e) }
     | lhr = term Add rhr = exp_open_without_match { K6ast.Add(lhr, rhr) }
     | lhr = term Sub rhr = exp_open_without_match { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open_without_match { K6ast.Mul(lhr, rhr) }

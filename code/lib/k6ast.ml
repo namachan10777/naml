@@ -1,6 +1,7 @@
 type pat_t =
     | Var of string
     | Cons of pat_t * pat_t
+    | Emp
 [@@deriving show]
 
 (* LetRecもLetと同じ形にしておく *)
@@ -23,8 +24,8 @@ type exp_t =
     | Sub of exp_t * exp_t
     | Mul of exp_t * exp_t
     | Div of exp_t * exp_t
-    | Emp of exp_t * exp_t
     | Match of exp_t * ((pat_t * exp_t) list)
+    | Emp
     | Cons of exp_t * exp_t
     | Builtin of string
     | Seq of exp_t list

@@ -53,6 +53,10 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Add
+    | ";" ->
+        update lexbuf;
+        new_line lexbuf;
+        Semicol
     | '(' ->
         update lexbuf;
         new_line lexbuf;
@@ -61,6 +65,14 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         RP
+    | '[' ->
+        update lexbuf;
+        new_line lexbuf;
+        LB
+    | ']' ->
+        update lexbuf;
+        new_line lexbuf;
+        RB
     | "let" ->
         update lexbuf;
         new_line lexbuf;

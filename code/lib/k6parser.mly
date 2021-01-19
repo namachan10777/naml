@@ -3,10 +3,16 @@
 %token<string> Ident
 
 %token Add
+%token Eq
+
 %token LP
 %token RP
+%token LB
+%token RB
+
+%token Semicol
+
 %token Let
-%token Eq
 %token In
 
 (*%token Add
@@ -52,11 +58,18 @@
 
 %%
 
+list_inner:
+    | e = term { Cons(e, Emp) }
+    | e = term Semicol { Cons(e, Emp) }
+    | e = term Semicol last = list_inner { Cons(e, last) }
+
 term:
     | id = Ident { K6ast.Var id }
     | i = Int { K6ast.IntLit i }
     | LP e = exp RP { e }
     | lhr = term Add rhr = term { K6ast.Add(lhr, rhr) }
+    | LB RB { K6ast.Emp }
+    | LB inner = list_inner RB { inner }
 
 exp_open:
     | lhr = term Add rhr = exp_open { K6ast.Add(lhr, rhr) }

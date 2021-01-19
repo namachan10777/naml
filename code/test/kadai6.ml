@@ -115,6 +115,14 @@ let eval_4arith _ =
     let ast = eval_string "3*(200+300)/4-5" in
     assert_equal ast (IntVal 370)
 
+let eval_gret _ =
+    let value = eval_string "3 > 2" in
+    assert_equal value (BoolVal true)
+
+let eval_less _ =
+    let value = eval_string "3 < 2" in
+    assert_equal value (BoolVal false)
+
 let parse_match1 _ =
     let ast = parse_repl_string "match x with y -> 0 | z -> match z with a -> a" in
     let expected = Match (Var "x", [
@@ -186,6 +194,8 @@ let suite =
         "parse_bool_op" >:: parse_bool_op;
         "parse_4arith" >:: parse_4arith;
         "eval_4arith" >:: eval_4arith;
+        "eval_gret" >:: eval_gret;
+        "eval_less" >:: eval_less;
         "parse_match1" >:: parse_match1;
         "parse_match2" >:: parse_match2;
         "parse_builtin" >:: parse_builtin;

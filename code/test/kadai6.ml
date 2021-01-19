@@ -87,6 +87,10 @@ let parse_tuple2 _ =
     let ast = parse_repl_string "1+2, 2+3" in
     assert_equal ast (Tuple [Add (IntLit 1, IntLit 2); Add(IntLit 2, IntLit 3)])
 
+let parse_tuple3 _ =
+    let ast = parse_repl_string "1, 2, 3, 4" in
+    assert_equal ast (Tuple [IntLit 1; IntLit 2; IntLit 3; IntLit 4])
+
 let parse_tuple_list1 _ =
     let ast = parse_repl_string "[1,2]" in
     assert_equal ast (Cons (Tuple [IntLit 1; IntLit 2], Emp))
@@ -214,6 +218,7 @@ let suite =
         "parse_list2" >:: parse_list2;
         "parse_tuple1" >:: parse_tuple1;
         "parse_tuple2" >:: parse_tuple2;
+        "parse_tuple3" >:: parse_tuple3;
         "parse_tuple_list1" >:: parse_tuple_list1;
         "parse_tuple_list2" >:: parse_tuple_list2;
         "parse_cmp_and" >:: parse_cmp_and;

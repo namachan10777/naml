@@ -25,15 +25,21 @@
 %%
 
 list_inner:
-    | e = term { Cons(e, Emp) }
-    | e = term Semicol { Cons(e, Emp) }
-    | e = term Semicol last = list_inner { Cons(e, last) }
+    | e = term { K6ast.Cons(e, Emp) }
+    | e = term Semicol { K6ast.Cons(e, Emp) }
+    | e = term Semicol last = list_inner { K6ast.Cons(e, last) }
 
-term:
+fun_arg:
     | s = Str { K6ast.StrLit s }
     | id = Ident { K6ast.Var id }
     | i = Int { K6ast.IntLit i }
     | LP e = exp RP { e }
+    | LB RB { K6ast.Emp }
+    | LB inner = list_inner RB { inner }
+    | Builtin s = Str { K6ast.Builtin s }
+
+term:
+    | e = fun_arg { e }
     | lhr = term Add rhr = term { K6ast.Add(lhr, rhr) }
     | lhr = term Sub rhr = term { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = term { K6ast.Mul(lhr, rhr) }
@@ -41,14 +47,18 @@ term:
     | lhr = term Comma rhr = term
         {
             match lhr with
-            | Tuple t -> Tuple (List.append t [rhr])
-            | e -> Tuple ([e; rhr])
+            | K6ast.Tuple t -> K6ast.Tuple (List.append t [rhr])
+            | e -> K6ast.Tuple ([e; rhr])
         }
-    | LB RB { K6ast.Emp }
-    | LB inner = list_inner RB { inner }
-    | Builtin s = Str { K6ast.Builtin s }
+
+fun_apps:
+    | f = fun_arg a = fun_arg 
+        { K6ast.App (f, a) }
+    | f = fun_apps a = fun_arg
+        { K6ast.App (f, a) }
 
 exp_open:
+    | app = fun_apps { app }
     | lhr = term Add rhr = exp_open { K6ast.Add(lhr, rhr) }
     | lhr = term Sub rhr = exp_open { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open { K6ast.Mul(lhr, rhr) }
@@ -65,6 +75,7 @@ exp_open:
         { K6ast.Match (e, arms) }
 
 exp_open_without_match:
+    | app = fun_apps { app }
     | lhr = term Add rhr = exp_open_without_match { K6ast.Add(lhr, rhr) }
     | lhr = term Sub rhr = exp_open_without_match { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open_without_match { K6ast.Mul(lhr, rhr) }

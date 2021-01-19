@@ -108,6 +108,21 @@ let parse_builtin _ =
     let expected = Builtin "hd" in
     assert_equal ast expected
 
+let parse_app1 _ =
+    let ast = parse_repl_string "a b c" in
+    let expected = App (App (Var "a", Var "b"), Var "c") in
+    assert_equal ast expected
+
+let parse_app2 _ =
+    let ast = parse_repl_string "1 + a b" in
+    let expected = Add (IntLit 1, App (Var "a", Var "b")) in
+    assert_equal ast expected
+
+let parse_app3 _ =
+    let ast = parse_repl_string "(a b) c" in
+    let expected = App (App (Var "a", Var "b"), Var "c") in
+    assert_equal ast expected
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -131,4 +146,7 @@ let suite =
         "parse_match1" >:: parse_match1;
         "parse_match2" >:: parse_match2;
         "parse_builtin" >:: parse_builtin;
+        "parse_app1" >:: parse_app1;
+        "parse_app2" >:: parse_app2;
+        "parse_app3" >:: parse_app3;
     ]

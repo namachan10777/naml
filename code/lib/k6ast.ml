@@ -51,5 +51,15 @@ let rec lookup x env =
         then v
         else lookup x tl
 
-let eval _ = function
+let rec eval env =
+    let binop_int op lhr rhr =
+        let lhr = eval env lhr in
+        let rhr = eval env rhr in
+        match (lhr, rhr) with
+        | (IntVal lhr, IntVal rhr) -> IntVal (op lhr rhr)
+        | _ -> failwith @@ Printf.sprintf "integer expected"
+    in
+    function
+    | IntLit i -> IntVal i
+    | Add(lhr, rhr) -> binop_int (+) lhr rhr
     | e -> failwith @@ Printf.sprintf "unsupported expression %s" @@ show_exp_t e

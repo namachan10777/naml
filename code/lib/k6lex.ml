@@ -53,6 +53,14 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Add
+    | '(' ->
+        update lexbuf;
+        new_line lexbuf;
+        LP
+    | ')' ->
+        update lexbuf;
+        new_line lexbuf;
+        RP
     | integer ->
         update lexbuf;
         new_line lexbuf;

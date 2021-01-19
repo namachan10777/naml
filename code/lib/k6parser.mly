@@ -3,6 +3,8 @@
 %token<string> Ident
 
 %token Add
+%token LP
+%token RP
 
 (*%token Add
 %token Sub
@@ -49,6 +51,7 @@ exp:
     | id = Ident { K6ast.Var id }
     | i = Int { K6ast.IntLit i }
     | lhr = exp Add rhr = exp { K6ast.Add(lhr, rhr) }
+    | LP e = exp RP { e }
 
 main:
     e = exp Eof { e }

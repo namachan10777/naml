@@ -1,5 +1,8 @@
 (*%token<int> Int*)
+%token<int> Int
 %token<string> Ident
+
+%token Add
 
 (*%token Add
 %token Sub
@@ -38,10 +41,14 @@
 %start main
 %type <K6ast.exp_t> main
 
+%left Add
+
 %%
 
 exp:
-    id = Ident { K6ast.Var id }
+    | id = Ident { K6ast.Var id }
+    | i = Int { K6ast.IntLit i }
+    | lhr = exp Add rhr = exp { K6ast.Add(lhr, rhr) }
 
 main:
     e = exp Eof { e }

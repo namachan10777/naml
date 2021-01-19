@@ -37,6 +37,7 @@ let raise_parse_error lexbuf =
     raise @@ ParseError (pos.pos_fname, line, col, tok)
 
 let identifier = [%sedlex.regexp? (alphabetic | "_"), Star (alphabetic | "_" | "." | "'" | '0'..'9')]
+let integer = [%sedlex.regexp? Plus ('0'..'9')]
 let space = [%sedlex.regexp? '\t' | ' ' | '\r' | '\n' ]
 
 open K6parser
@@ -48,6 +49,14 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         lex lexbuf
+    | "+" ->
+        update lexbuf;
+        new_line lexbuf;
+        Add
+    | integer ->
+        update lexbuf;
+        new_line lexbuf;
+        Int (int_of_string @@ lexeme lexbuf)
     | identifier ->
         update lexbuf;
         Ident (lexeme lexbuf)

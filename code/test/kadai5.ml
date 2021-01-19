@@ -98,7 +98,7 @@ let test_fact _ =
     assert_equal ret expected
 
 let suite =
-    "Parser" >::: [
+    "Kadai5" >::: [
         "int" >:: parse_int;
         "add" >:: parse_add;
         "op_complex" >:: parse_op_complex;

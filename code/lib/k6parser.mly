@@ -11,12 +11,12 @@
 %token RB
 
 %token Semicol
+%token Comma
 
 %token Let
 %token In
 
 (*%token Add
-%token Sub
 %token Mul
 %token Div
 %token Eq
@@ -54,6 +54,7 @@
 %type <K6ast.stmt_t list> main
 %type <K6ast.exp_t> repl
 
+%left Comma
 %left Add
 
 %%
@@ -68,11 +69,23 @@ term:
     | i = Int { K6ast.IntLit i }
     | LP e = exp RP { e }
     | lhr = term Add rhr = term { K6ast.Add(lhr, rhr) }
+    | lhr = term Comma rhr = term
+        {
+            match lhr with
+            | Tuple t -> Tuple (List.append t [rhr])
+            | e -> Tuple ([e; rhr])
+        }
     | LB RB { K6ast.Emp }
     | LB inner = list_inner RB { inner }
 
 exp_open:
     | lhr = term Add rhr = exp_open { K6ast.Add(lhr, rhr) }
+    | lhr = term Comma rhr = exp_open
+        {
+            match lhr with
+            | Tuple t -> Tuple (List.append t [rhr])
+            | e -> Tuple ([e; rhr])
+        }
     | Let id = Ident Eq def = exp In expr = exp
         { K6ast.Let (id, def, expr) }
 

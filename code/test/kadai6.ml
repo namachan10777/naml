@@ -18,6 +18,14 @@ let eval_add _ =
     let value = eval_string "1+2+3" in
     assert_equal value (IntVal 6)
 
+let parse_mod _ =
+    let ast = parse_repl_string "3 mod 2" in
+    assert_equal ast (Mod (IntLit 3, IntLit 2))
+
+let eval_mod _ =
+    let ast = eval_string "3 mod 2" in
+    assert_equal ast (IntVal 1)
+
 let parse_expr_with_paren _ =
     let ast = parse_repl_string "1+(2+3)" in
     assert_equal ast (Add (IntLit 1, Add (IntLit 2, IntLit 3)))
@@ -191,6 +199,8 @@ let suite =
         "parse_add1" >:: parse_add1;
         "parse_add2" >:: parse_add2;
         "eval_add" >:: eval_add;
+        "parse_mod" >:: parse_mod;
+        "eval_mod" >:: eval_mod;
         "parse_expr_with_paren" >:: parse_expr_with_paren;
         "eval_expr_with_paren" >:: eval_expr_with_paren;
         "parse_let" >:: parse_let;

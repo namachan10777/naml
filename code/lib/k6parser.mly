@@ -4,7 +4,7 @@
 %token<string> Str
 %token True False
 
-%token Add Sub Mul Div
+%token Add Sub Mul Div Mod
 %token Gret Less
 %token Eq Neq And Or
 %token LP RP LB RB
@@ -26,7 +26,7 @@
 %left And
 %nonassoc Eq Neq Gret Less
 %left Add Sub
-%left Mul Div
+%left Mul Div Mod
 %nonassoc Unary Not
 
 %%
@@ -57,6 +57,7 @@ term:
     | lhr = term Sub rhr = term { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = term { K6ast.Mul(lhr, rhr) }
     | lhr = term Div rhr = term { K6ast.Div(lhr, rhr) }
+    | lhr = term Mod rhr = term { K6ast.Mod(lhr, rhr) }
     | lhr = term Gret rhr = term { K6ast.Gret(lhr, rhr) }
     | lhr = term Less rhr = term { K6ast.Less(lhr, rhr) }
     | lhr = term Eq rhr = term { K6ast.Eq(lhr, rhr) }
@@ -83,6 +84,7 @@ exp_open:
     | lhr = term Sub rhr = exp_open { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open { K6ast.Mul(lhr, rhr) }
     | lhr = term Div rhr = exp_open { K6ast.Div(lhr, rhr) }
+    | lhr = term Mod rhr = exp_open { K6ast.Mod(lhr, rhr) }
     | lhr = term Gret rhr = exp_open { K6ast.Gret(lhr, rhr) }
     | lhr = term Less rhr = exp_open { K6ast.Less(lhr, rhr) }
     | lhr = term Eq rhr = exp_open { K6ast.Eq(lhr, rhr) }
@@ -107,6 +109,7 @@ exp_open_without_match:
     | lhr = term Sub rhr = exp_open_without_match { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open_without_match { K6ast.Mul(lhr, rhr) }
     | lhr = term Div rhr = exp_open_without_match { K6ast.Div(lhr, rhr) }
+    | lhr = term Mod rhr = exp_open_without_match { K6ast.Mod(lhr, rhr) }
     | lhr = term Gret rhr = exp_open_without_match { K6ast.Gret(lhr, rhr) }
     | lhr = term Less rhr = exp_open_without_match { K6ast.Less(lhr, rhr) }
     | lhr = term Eq rhr = exp_open_without_match { K6ast.Eq(lhr, rhr) }

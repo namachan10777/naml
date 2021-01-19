@@ -26,6 +26,7 @@ type exp_t =
     | Sub of exp_t * exp_t
     | Mul of exp_t * exp_t
     | Div of exp_t * exp_t
+    | Mod of exp_t * exp_t
     | Not of exp_t
     | Match of exp_t * ((pat_t * exp_t) list)
     | Emp
@@ -97,6 +98,7 @@ let rec eval env =
     | Sub(lhr, rhr) -> binop_int ( - ) lhr rhr
     | Mul(lhr, rhr) -> binop_int ( * ) lhr rhr
     | Div(lhr, rhr) -> binop_int ( / ) lhr rhr
+    | Mod(lhr, rhr) -> binop_int ( mod ) lhr rhr
     | Gret(lhr, rhr) -> binop_less_gret ( > ) lhr rhr
     | Less(lhr, rhr) -> binop_less_gret ( < ) lhr rhr
     | And(lhr, rhr) -> binop_bool ( && ) lhr rhr

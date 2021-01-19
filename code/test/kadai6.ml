@@ -72,12 +72,16 @@ let parse_tuple2 _ =
     assert_equal ast (Tuple [Add (IntLit 1, IntLit 2); Add(IntLit 2, IntLit 3)])
 
 let parse_4arith _ =
-    let ast = parse_repl_string "1*(2+3)/4-5" in
+    let ast = parse_repl_string "3*(200+300)/4-5" in
     let expected = Sub (
-        Div (Mul (IntLit 1, Add (IntLit 2, IntLit 3)), IntLit 4),
+        Div (Mul (IntLit 3, Add (IntLit 200, IntLit 300)), IntLit 4),
         IntLit 5
     )
     in assert_equal ast expected
+
+let eval_4arith _ =
+    let ast = eval_string "3*(200+300)/4-5" in
+    assert_equal ast (IntVal 370)
 
 let suite =
     "Kadai6" >::: [
@@ -97,4 +101,5 @@ let suite =
         "parse_tuple1" >:: parse_tuple1;
         "parse_tuple2" >:: parse_tuple2;
         "parse_4arith" >:: parse_4arith;
+        "eval_4arith" >:: eval_4arith;
     ]

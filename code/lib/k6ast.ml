@@ -68,7 +68,10 @@ let rec eval env =
     in
     function
     | IntLit i -> IntVal i
-    | Add(lhr, rhr) -> binop_int (+) lhr rhr
+    | Add(lhr, rhr) -> binop_int ( + ) lhr rhr
+    | Sub(lhr, rhr) -> binop_int ( - ) lhr rhr
+    | Mul(lhr, rhr) -> binop_int ( * ) lhr rhr
+    | Div(lhr, rhr) -> binop_int ( / ) lhr rhr
     | Let (id, def, expr) ->
         let env = (ext env id (eval env def)) in
         eval env expr

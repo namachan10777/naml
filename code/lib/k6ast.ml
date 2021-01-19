@@ -30,7 +30,7 @@ type exp_t =
     | Tuple of exp_t list
     | Cons of exp_t * exp_t
     | Builtin of string
-    | Seq of exp_t list
+    | Seq of exp_t * exp_t
     | DebugPrint of exp_t
 [@@deriving show]
 

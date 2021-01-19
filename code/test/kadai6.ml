@@ -103,6 +103,11 @@ let parse_match2 _ =
     ])
     in assert_equal ast expected
 
+let parse_builtin _ =
+    let ast = parse_repl_string "builtin \"hd\"" in
+    let expected = Builtin "hd" in
+    assert_equal ast expected
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -125,4 +130,5 @@ let suite =
         "eval_4arith" >:: eval_4arith;
         "parse_match1" >:: parse_match1;
         "parse_match2" >:: parse_match2;
+        "parse_builtin" >:: parse_builtin;
     ]

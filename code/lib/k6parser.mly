@@ -9,6 +9,7 @@
 %token Semicol Comma VBar Arrow
 %token Let In
 %token Match With
+%token Builtin
 
 %token Eof
 
@@ -45,6 +46,7 @@ term:
         }
     | LB RB { K6ast.Emp }
     | LB inner = list_inner RB { inner }
+    | Builtin s = Str { K6ast.Builtin s }
 
 exp_open:
     | lhr = term Add rhr = exp_open { K6ast.Add(lhr, rhr) }

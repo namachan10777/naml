@@ -118,6 +118,10 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         With
+    | "builtin" ->
+        update lexbuf;
+        new_line lexbuf;
+        Builtin
     | str -> 
         update lexbuf;
         new_line lexbuf;

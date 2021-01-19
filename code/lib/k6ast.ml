@@ -62,8 +62,8 @@ let rec lookup x env =
 
 let rec eval env =
     let binop_int op lhr rhr =
-        let lhr = eval env lhr in
         let rhr = eval env rhr in
+        let lhr = eval env lhr in
         match (lhr, rhr) with
         | (IntVal lhr, IntVal rhr) -> IntVal (op lhr rhr)
         | _ -> failwith @@ Printf.sprintf "integer expected"

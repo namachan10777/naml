@@ -123,6 +123,14 @@ let eval_less _ =
     let value = eval_string "3 < 2" in
     assert_equal value (BoolVal false)
 
+let eval_and _ =
+    let value = eval_string "true && false" in
+    assert_equal value (BoolVal false)
+
+let eval_or _ =
+    let value = eval_string "true || false" in
+    assert_equal value (BoolVal true)
+
 let parse_match1 _ =
     let ast = parse_repl_string "match x with y -> 0 | z -> match z with a -> a" in
     let expected = Match (Var "x", [
@@ -196,6 +204,8 @@ let suite =
         "eval_4arith" >:: eval_4arith;
         "eval_gret" >:: eval_gret;
         "eval_less" >:: eval_less;
+        "eval_and" >:: eval_and;
+        "eval_or" >:: eval_or;
         "parse_match1" >:: parse_match1;
         "parse_match2" >:: parse_match2;
         "parse_builtin" >:: parse_builtin;

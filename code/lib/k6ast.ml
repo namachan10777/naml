@@ -75,14 +75,24 @@ let rec eval env =
         | (IntVal lhr, IntVal rhr) -> BoolVal (op lhr rhr)
         | _ -> failwith @@ Printf.sprintf "integer expected"
     in
+    let binop_bool op lhr rhr =
+        let lhr = eval env lhr in
+        let rhr = eval env rhr in
+        match (lhr, rhr) with
+        | (BoolVal lhr, BoolVal rhr) -> BoolVal (op lhr rhr)
+        | _ -> failwith @@ Printf.sprintf "boolean expected"
+    in
     function
     | IntLit i -> IntVal i
+    | BoolLit b -> BoolVal b
     | Add(lhr, rhr) -> binop_int ( + ) lhr rhr
     | Sub(lhr, rhr) -> binop_int ( - ) lhr rhr
     | Mul(lhr, rhr) -> binop_int ( * ) lhr rhr
     | Div(lhr, rhr) -> binop_int ( / ) lhr rhr
     | Gret(lhr, rhr) -> binop_less_gret ( > ) lhr rhr
     | Less(lhr, rhr) -> binop_less_gret ( < ) lhr rhr
+    | And(lhr, rhr) -> binop_bool ( && ) lhr rhr
+    | Or(lhr, rhr) -> binop_bool ( || ) lhr rhr
     | Let (id, def, expr) ->
         let env = (ext env id (eval env def)) in
         eval env expr

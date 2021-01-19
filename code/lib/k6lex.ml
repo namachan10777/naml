@@ -122,6 +122,10 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Builtin
+    | "debugprint" ->
+        update lexbuf;
+        new_line lexbuf;
+        DebugPrint
     | str -> 
         update lexbuf;
         new_line lexbuf;

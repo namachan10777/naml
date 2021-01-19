@@ -116,6 +116,11 @@ let parse_builtin _ =
     let expected = Builtin "hd" in
     assert_equal ast expected
 
+let parse_debugprint _ =
+    let ast = parse_repl_string "debugprint 1" in
+    let expected = DebugPrint (IntLit 1) in
+    assert_equal ast expected
+
 let parse_app1 _ =
     let ast = parse_repl_string "a b c" in
     let expected = App (App (Var "a", Var "b"), Var "c") in
@@ -161,6 +166,7 @@ let suite =
         "parse_match1" >:: parse_match1;
         "parse_match2" >:: parse_match2;
         "parse_builtin" >:: parse_builtin;
+        "parse_debugprint" >:: parse_debugprint;
         "parse_app1" >:: parse_app1;
         "parse_app2" >:: parse_app2;
         "parse_app3" >:: parse_app3;

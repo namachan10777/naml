@@ -69,15 +69,15 @@ let rec eval env =
         | _ -> failwith @@ Printf.sprintf "integer expected"
     in
     let binop_less_gret op lhr rhr =
-        let lhr = eval env lhr in
         let rhr = eval env rhr in
+        let lhr = eval env lhr in
         match (lhr, rhr) with
         | (IntVal lhr, IntVal rhr) -> BoolVal (op lhr rhr)
         | _ -> failwith @@ Printf.sprintf "integer expected"
     in
     let binop_bool op lhr rhr =
-        let lhr = eval env lhr in
         let rhr = eval env rhr in
+        let lhr = eval env lhr in
         match (lhr, rhr) with
         | (BoolVal lhr, BoolVal rhr) -> BoolVal (op lhr rhr)
         | _ -> failwith @@ Printf.sprintf "boolean expected"
@@ -93,6 +93,10 @@ let rec eval env =
     | Less(lhr, rhr) -> binop_less_gret ( < ) lhr rhr
     | And(lhr, rhr) -> binop_bool ( && ) lhr rhr
     | Or(lhr, rhr) -> binop_bool ( || ) lhr rhr
+    | Not(v) -> begin match eval env v with
+        | BoolVal b -> BoolVal (not b)
+        | _ -> failwith @@ Printf.sprintf "boolean expected"
+    end
     | Let (id, def, expr) ->
         let env = (ext env id (eval env def)) in
         eval env expr

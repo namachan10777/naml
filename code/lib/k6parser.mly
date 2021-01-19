@@ -1,7 +1,7 @@
-%token<int> Int
+(*%token<int> Int*)
 %token<string> Ident
 
-%token Add
+(*%token Add
 %token Sub
 %token Mul
 %token Div
@@ -31,7 +31,7 @@
 %token Match
 %token With
 %token DebugPrint
-%token Builtin
+%token Builtin*)
 
 %token Eof
 

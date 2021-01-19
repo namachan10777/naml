@@ -10,6 +10,7 @@ type exp_t =
     | Var of string
     | IntLit of int
     | BoolLit of bool
+    | StrLit of string
     | If of exp_t * exp_t * exp_t
     | Let of string * exp_t * exp_t
     | LetRec of string * exp_t * exp_t

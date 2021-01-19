@@ -39,6 +39,7 @@ let raise_parse_error lexbuf =
 let identifier = [%sedlex.regexp? (alphabetic | "_"), Star (alphabetic | "_" | "." | "'" | '0'..'9')]
 let integer = [%sedlex.regexp? Plus ('0'..'9')]
 let space = [%sedlex.regexp? '\t' | ' ' | '\r' | '\n' ]
+let str = [%sedlex.regexp? '"', Star ("\\\"" | any), '"']
 
 open K6parser
 
@@ -117,6 +118,11 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         With
+    | str -> 
+        update lexbuf;
+        new_line lexbuf;
+        let s = lexeme lexbuf in
+        Str (String.sub s 1 ((String.length s) - 2))
     | integer ->
         update lexbuf;
         new_line lexbuf;

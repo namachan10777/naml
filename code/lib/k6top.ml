@@ -10,11 +10,16 @@ let parse f lexbuf =
     in
     parser lexer
 
+let parse_repl_string s =
+    let buf = K6lex.create_lexbuf ~file:"no file"
+        @@ Sedlexing.Utf8.from_string s in
+    parse K6parser.repl buf
+
 let parse_string s =
     let buf = K6lex.create_lexbuf ~file:"no file"
         @@ Sedlexing.Utf8.from_string s in
     parse K6parser.main buf
 
 let eval_string s =
-    let ast = parse_string s in
+    let ast = parse_repl_string s in
     K6ast.eval (K6ast.emptyenv ()) ast

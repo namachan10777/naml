@@ -44,7 +44,9 @@
 %token Eof
 
 %start main
-%type <K6ast.exp_t> main
+%start repl
+%type <K6ast.stmt_t list> main
+%type <K6ast.exp_t> repl
 
 %left Add
 
@@ -65,5 +67,18 @@ exp:
     | e = term { e }
     | e = exp_open { e }
 
+stmt:
+    | Let id = Ident Eq def = exp
+        { K6ast.LetStmt (id, def) }
+
+stmts:
+    | s = stmt ss = stmts
+        { s :: ss }
+    |
+        { [] }
+
 main:
+    ss = stmts Eof { ss }
+
+repl:
     e = exp Eof { e }

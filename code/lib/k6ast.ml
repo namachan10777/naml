@@ -41,6 +41,10 @@ type value_t =
 and env_t = (string * value_t) list
 [@@deriving show]
 
+type stmt_t =
+    | LetStmt of string * exp_t
+[@@deriving show]
+
 let emptyenv () = []
 let ext env x v = (x, v) :: env
 let rec lookup x env =

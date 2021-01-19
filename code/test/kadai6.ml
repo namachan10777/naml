@@ -135,6 +135,9 @@ let eval_not _ =
     let value = eval_string "not true" in
     assert_equal value (BoolVal false)
 
+let eval_eq _ =
+    let value = eval_string "1 = 1 && true = true" in
+    assert_equal value (BoolVal true)
 
 let parse_match1 _ =
     let ast = parse_repl_string "match x with y -> 0 | z -> match z with a -> a" in
@@ -212,6 +215,7 @@ let suite =
         "eval_and" >:: eval_and;
         "eval_or" >:: eval_or;
         "eval_not" >:: eval_not;
+        "eval_eq" >:: eval_eq;
         "parse_match1" >:: parse_match1;
         "parse_match2" >:: parse_match2;
         "parse_builtin" >:: parse_builtin;

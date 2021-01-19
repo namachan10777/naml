@@ -82,6 +82,14 @@ let rec eval env =
         | (BoolVal lhr, BoolVal rhr) -> BoolVal (op lhr rhr)
         | _ -> failwith @@ Printf.sprintf "boolean expected"
     in
+    let eq lhr rhr =
+        let rhr = eval env rhr in
+        let lhr = eval env lhr in
+        match (lhr, rhr) with
+        | (BoolVal lhr, BoolVal rhr) -> lhr = rhr
+        | (IntVal lhr, IntVal rhr) -> lhr = rhr
+        | (lhr, rhr) -> failwith @@ Printf.sprintf "cannot compare %s and %s" (show_value_t lhr) (show_value_t rhr)
+    in
     function
     | IntLit i -> IntVal i
     | BoolLit b -> BoolVal b
@@ -97,6 +105,8 @@ let rec eval env =
         | BoolVal b -> BoolVal (not b)
         | _ -> failwith @@ Printf.sprintf "boolean expected"
     end
+    | Eq (lhr, rhr) -> BoolVal (eq lhr rhr)
+    | Neq (lhr, rhr) -> BoolVal(not (eq lhr rhr))
     | Let (id, def, expr) ->
         let env = (ext env id (eval env def)) in
         eval env expr

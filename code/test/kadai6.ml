@@ -91,6 +91,22 @@ let parse_4arith _ =
     )
     in assert_equal ast expected
 
+let parse_cmp_and _ =
+    let ast = parse_repl_string "3>2 && 1 < 0" in
+    let expected = And (
+        Gret(IntLit 3, IntLit 2),
+        Less(IntLit 1, IntLit 0)
+    )
+    in assert_equal ast expected
+
+let parse_bool_op _ =
+    let ast = parse_repl_string "true && false || 1 = 2 && false" in
+    let expected = Or (
+        And (BoolLit true, BoolLit false),
+        And (Eq (IntLit 1, IntLit 2), BoolLit false)
+    )
+    in assert_equal ast expected
+
 let eval_4arith _ =
     let ast = eval_string "3*(200+300)/4-5" in
     assert_equal ast (IntVal 370)
@@ -161,6 +177,8 @@ let suite =
         "parse_tuple2" >:: parse_tuple2;
         "parse_tuple_list1" >:: parse_tuple_list1;
         "parse_tuple_list2" >:: parse_tuple_list2;
+        "parse_cmp_and" >:: parse_cmp_and;
+        "parse_bool_op" >:: parse_bool_op;
         "parse_4arith" >:: parse_4arith;
         "eval_4arith" >:: eval_4arith;
         "parse_match1" >:: parse_match1;

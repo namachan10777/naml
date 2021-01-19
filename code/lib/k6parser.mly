@@ -2,9 +2,11 @@
 %token<int> Int
 %token<string> Ident
 %token<string> Str
+%token True False
 
 %token Add Sub Mul Div
-%token Eq
+%token Gret Less
+%token Eq Neq And Or
 %token LP RP LB RB
 %token Semicol Comma VBar Arrow
 %token Let In
@@ -19,6 +21,9 @@
 %type <K6ast.exp_t> repl
 
 %left Comma
+%left Or
+%left And
+%nonassoc Eq Neq Gret Less
 %left Add Sub
 %left Mul Div
 
@@ -30,6 +35,8 @@ list_inner:
     | e = term Semicol last = list_inner { K6ast.Cons(e, last) }
 
 fun_arg:
+    | True { K6ast.BoolLit true }
+    | False { K6ast.BoolLit false }
     | s = Str { K6ast.StrLit s }
     | id = Ident { K6ast.Var id }
     | i = Int { K6ast.IntLit i }
@@ -46,6 +53,12 @@ term:
     | lhr = term Sub rhr = term { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = term { K6ast.Mul(lhr, rhr) }
     | lhr = term Div rhr = term { K6ast.Div(lhr, rhr) }
+    | lhr = term Gret rhr = term { K6ast.Gret(lhr, rhr) }
+    | lhr = term Less rhr = term { K6ast.Less(lhr, rhr) }
+    | lhr = term Eq rhr = term { K6ast.Eq(lhr, rhr) }
+    | lhr = term Neq rhr = term { K6ast.Neq(lhr, rhr) }
+    | lhr = term And rhr = term { K6ast.And(lhr, rhr) }
+    | lhr = term Or rhr = term { K6ast.Or(lhr, rhr) }
     | lhr = term Comma rhr = term
         {
             match lhr with
@@ -64,6 +77,12 @@ exp_open:
     | lhr = term Sub rhr = exp_open { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open { K6ast.Mul(lhr, rhr) }
     | lhr = term Div rhr = exp_open { K6ast.Div(lhr, rhr) }
+    | lhr = term Gret rhr = exp_open { K6ast.Gret(lhr, rhr) }
+    | lhr = term Less rhr = exp_open { K6ast.Less(lhr, rhr) }
+    | lhr = term Eq rhr = exp_open { K6ast.Eq(lhr, rhr) }
+    | lhr = term Neq rhr = exp_open { K6ast.Neq(lhr, rhr) }
+    | lhr = term And rhr = exp_open { K6ast.And(lhr, rhr) }
+    | lhr = term Or rhr = exp_open { K6ast.Or(lhr, rhr) }
     | lhr = term Comma rhr = exp_open
         {
             match lhr with
@@ -80,6 +99,12 @@ exp_open_without_match:
     | lhr = term Sub rhr = exp_open_without_match { K6ast.Sub(lhr, rhr) }
     | lhr = term Mul rhr = exp_open_without_match { K6ast.Mul(lhr, rhr) }
     | lhr = term Div rhr = exp_open_without_match { K6ast.Div(lhr, rhr) }
+    | lhr = term Gret rhr = exp_open_without_match { K6ast.Gret(lhr, rhr) }
+    | lhr = term Less rhr = exp_open_without_match { K6ast.Less(lhr, rhr) }
+    | lhr = term Eq rhr = exp_open_without_match { K6ast.Eq(lhr, rhr) }
+    | lhr = term Neq rhr = exp_open_without_match { K6ast.Neq(lhr, rhr) }
+    | lhr = term And rhr = exp_open_without_match { K6ast.And(lhr, rhr) }
+    | lhr = term Or rhr = exp_open_without_match { K6ast.Or(lhr, rhr) }
     | lhr = term Comma rhr = exp_open_without_match
         {
             match lhr with

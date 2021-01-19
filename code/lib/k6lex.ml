@@ -70,6 +70,26 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Div
+    | "&&" ->
+        update lexbuf;
+        new_line lexbuf;
+        And
+    | "||" ->
+        update lexbuf;
+        new_line lexbuf;
+        Or
+    | "<>" ->
+        update lexbuf;
+        new_line lexbuf;
+        Neq
+    | ">" ->
+        update lexbuf;
+        new_line lexbuf;
+        Gret
+    | "<" ->
+        update lexbuf;
+        new_line lexbuf;
+        Less
     | ";" ->
         update lexbuf;
         new_line lexbuf;
@@ -126,6 +146,14 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         DebugPrint
+    | "true" ->
+        update lexbuf;
+        new_line lexbuf;
+        True
+    | "false" ->
+        update lexbuf;
+        new_line lexbuf;
+        False
     | str -> 
         update lexbuf;
         new_line lexbuf;

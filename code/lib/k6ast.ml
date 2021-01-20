@@ -43,6 +43,7 @@ type exp_t =
 type value_t =
     | IntVal of int
     | BoolVal of bool
+    | StrVal of string
     | ListVal of value_t list
     | FunVal of string * exp_t * env_t ref
     | BuiltinVal of string
@@ -108,6 +109,7 @@ let rec eval ctx =
     | Emp -> ListVal []
     | IntLit i -> IntVal i
     | BoolLit b -> BoolVal b
+    | StrLit s -> StrVal s
     | Builtin builtin -> BuiltinVal builtin
     | Cons(e, next) -> begin match eval ctx next with
         | ListVal l -> ListVal ((eval ctx e) :: l)

@@ -8,6 +8,10 @@ let parse_str _ =
     let ast = parse_repl_string "\"hoge\\\"fuga\"" in
     assert_equal ast (StrLit "hoge\\\"fuga")
 
+let eval_str _ =
+    let value = eval_string "\"hoge\\\"fuga\"" in
+    assert_equal value (StrVal "hoge\\\"fuga")
+
 let parse_add1 _ =
     let ast = parse_repl_string "1+2+3" in
     assert_equal ast (Add (Add (IntLit 1, IntLit 2), IntLit 3))
@@ -325,6 +329,7 @@ let parse_pattern _ =
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
+        "eval_str" >:: eval_str;
         "parse_add1" >:: parse_add1;
         "parse_add2" >:: parse_add2;
         "eval_add" >:: eval_add;

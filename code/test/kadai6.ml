@@ -2,6 +2,8 @@ open OUnit2
 open S8.K6ast
 open S8.K6top
 
+(* TODO: Lexical scopeになっているか異常系の確認 *)
+
 let parse_str _ =
     let ast = parse_repl_string "\"hoge\\\"fuga\"" in
     assert_equal ast (StrLit "hoge\\\"fuga")

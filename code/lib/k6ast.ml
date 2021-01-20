@@ -154,6 +154,7 @@ let rec eval ctx =
     | Let(id, def, body) ->
         let env = ext !env id (eval ctx def) in
         eval { env = ref env }body
+    (* 遅延して評価されるFunの中では自身を参照できるが、即時評価される式では自身を参照できない *)
     | LetRec(id, def, body) ->
         let env_ref = ref [] in
         env_ref := !env;

@@ -154,6 +154,12 @@ let rec eval ctx =
     | Let(id, def, body) ->
         let env = ext !env id (eval ctx def) in
         eval { env = ref env }body
+    | LetRec(id, def, body) ->
+        let env_ref = ref [] in
+        env_ref := !env;
+        let env = ext !env id (eval { env = env_ref } def) in
+        env_ref := env;
+        eval { env = env_ref } body
     | If (cond, exp_then, exp_else) ->
         begin match eval ctx cond with
         | BoolVal true -> eval ctx exp_then

@@ -293,6 +293,9 @@ let parse_letrec_fun _ =
     )
     in assert_equal ast expected
 
+let eval_letrec_fun _ =
+    let value = eval_string "let rec fact n = if n = 1 then 1 else n * fact (n-1) in fact 5" in
+    assert_equal value (IntVal 120)
 
 let parse_if _ =
     let ast = parse_repl_string "if 1 = 2 then 1 else let x = 2 in x" in
@@ -380,4 +383,5 @@ let suite =
         "parse_pattern" >:: parse_pattern;
         "parse_letrec" >:: parse_letrec;
         "parse_letrec_fun" >:: parse_letrec_fun;
+        "eval_letrec_fun" >:: eval_letrec_fun;
     ]

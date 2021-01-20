@@ -227,6 +227,11 @@ let eval_let_seq _ =
     let value = eval_string "let x = 1 in 0; let y = x in y" in 
     assert_equal value (IntVal 1)
 
+let parse_cons _ =
+    let ast = parse_repl_string "1 :: 2 :: []" in
+    let expected = Cons(IntLit 1, Cons(IntLit 2, Emp)) in
+    assert_equal ast expected
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -275,4 +280,5 @@ let suite =
         "parse_let_seq" >:: parse_let_seq;
         "parse_seq_match" >:: parse_seq_match;
         "eval_seq" >:: eval_seq;
+        "parse_cons" >:: parse_cons;
     ]

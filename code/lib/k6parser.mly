@@ -5,6 +5,7 @@
 %token True False
 
 %token Add Sub Mul Div Mod
+%token Cons
 %token Gret Less
 %token Eq Neq And Or
 %token LP RP LB RB
@@ -27,6 +28,7 @@
 %nonassoc Eq Neq Gret Less
 %left Add Sub
 %left Mul Div Mod
+%right Cons
 %nonassoc Unary Not
 
 %%
@@ -64,6 +66,7 @@ term:
     | lhr = term Neq   rhr = term { K6ast.Neq(lhr, rhr) }
     | lhr = term And   rhr = term { K6ast.And(lhr, rhr) }
     | lhr = term Or    rhr = term { K6ast.Or(lhr, rhr) }
+    | lhr = term Cons  rhr = term { K6ast.Cons(lhr, rhr) }
     | lhr = term Comma rhr = term
         {
             match lhr with
@@ -90,6 +93,7 @@ exp_open:
     | lhr = term Neq   rhr = exp_open { K6ast.Neq(lhr, rhr) }
     | lhr = term And   rhr = exp_open { K6ast.And(lhr, rhr) }
     | lhr = term Or    rhr = exp_open { K6ast.Or(lhr, rhr) }
+    | lhr = term Cons  rhr = exp_open { K6ast.Cons(lhr, rhr) }
     | lhr = term Comma rhr = exp_open
         {
             match lhr with
@@ -115,6 +119,7 @@ exp_open_without_match:
     | lhr = term Neq   rhr = exp_open_without_match { K6ast.Neq(lhr, rhr) }
     | lhr = term And   rhr = exp_open_without_match { K6ast.And(lhr, rhr) }
     | lhr = term Or    rhr = exp_open_without_match { K6ast.Or(lhr, rhr) }
+    | lhr = term Cons  rhr = exp_open_without_match { K6ast.Cons(lhr, rhr) }
     | lhr = term Comma rhr = exp_open_without_match
         {
             match lhr with

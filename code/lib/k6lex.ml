@@ -90,6 +90,10 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Less
+    | "::" ->
+        update lexbuf;
+        new_line lexbuf;
+        Cons
     | ";" ->
         update lexbuf;
         new_line lexbuf;

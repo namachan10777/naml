@@ -76,7 +76,6 @@ fun_apps:
         { K6ast.App (f, a) }
     | f = fun_apps a = fun_arg
         { K6ast.App (f, a) }
-
 exp_open:
     | Not e = exp_open { K6ast.Not e }
     | Sub e = exp_open { K6ast.Sub(K6ast.IntLit 0, e) }
@@ -135,12 +134,24 @@ pat:
     | id = Ident
         { K6ast.PVar id }
 
+seq:
+    | lhr = term Semicol rhr = term { K6ast.Seq (lhr, rhr) }
+    | lhr = term Semicol rhr = exp_open { K6ast.Seq (lhr, rhr) }
+    | lhr = term Semicol rhr = seq { K6ast.Seq (lhr, rhr) }
+
 exp:
     | e = term { e }
+    | e = seq { e }
     | e = exp_open { e }
+
+seq_without_match:
+    | lhr = term Semicol rhr = term { K6ast.Seq (lhr, rhr) }
+    | lhr = term Semicol rhr = exp_open_without_match { K6ast.Seq (lhr, rhr) }
+    | lhr = term Semicol rhr = seq_without_match { K6ast.Seq (lhr, rhr) }
 
 exp_without_match:
     | e = term { e }
+    | s = seq_without_match { s }
     | e = exp_open_without_match { e }
 
 stmt:

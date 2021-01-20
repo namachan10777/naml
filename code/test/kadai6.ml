@@ -197,6 +197,24 @@ let parse_app_list _ =
     let expected = Cons (App (Var "a", Var "b"), Emp) in
     assert_equal ast expected
 
+let parse_seq _ =
+    let ast = parse_repl_string "a;b;c" in
+    let expected = Seq (Var "a", Seq (Var "b", Var "c")) in
+    assert_equal ast expected
+
+let parse_let_seq _ =
+    let ast = parse_repl_string "let x = 1 in 0;x" in
+    let expected = Let ("x", IntLit 1, Seq (IntLit 0, Var "x")) in
+    assert_equal ast expected
+
+let parse_seq_match _ =
+    let ast = parse_repl_string "match x with x -> 0;0 | y -> 1;1" in
+    let expected = Match (Var "x", [
+        (PVar "x", Seq(IntLit 0, IntLit 0));
+        (PVar "y", Seq(IntLit 1, IntLit 1));
+    ])in
+    assert_equal ast expected
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -239,4 +257,7 @@ let suite =
         "parse_app2" >:: parse_app2;
         "parse_app3" >:: parse_app3;
         "parse_app_list" >:: parse_app_list;
+        "parse_seq" >:: parse_seq;
+        "parse_let_seq" >:: parse_let_seq;
+        "parse_seq_match" >:: parse_seq_match;
     ]

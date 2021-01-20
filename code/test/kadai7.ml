@@ -1,6 +1,6 @@
 open OUnit2
-open S8.K6ast
-open S8.K6top
+open S8.K7ast
+open S8.K7top
 
 (* TODO: Lexical scopeになっているか異常系の確認 *)
 
@@ -330,6 +330,30 @@ let is_static_scope _ =
     try eval_string "let f x = y in let rec y = 1 in f 0" |> ignore with
     | Failure msg -> assert_equal msg "unbound variable: y"
 
+let type_if1 _ =
+    try typecheck_string "if 1 = 1 then 1 else true" |> ignore; assert_failure "fail" with
+    | Failure msg -> assert_equal msg "type of then and typeof else are unmatched"
+
+let type_if2 _ =
+    let ty = typecheck_string "if 1 = 1 then 1 else 2" in
+    assert_equal ty TInt
+
+let type_4arith _ =
+    let ty = typecheck_string "1+1*2" in
+    assert_equal ty TInt
+
+let type_bool_ops _ =
+    let ty = typecheck_string "true && not false" in
+    assert_equal ty TBool
+
+let type_eq _ =
+    let ty = typecheck_string "1 = 1 && true = true" in
+    assert_equal ty TBool
+
+let type_invalid_4arith _ =
+    try typecheck_string "1 + true" |> ignore; assert_failure "fail" with
+    | Failure msg -> assert_equal msg "type error in Add"
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -396,4 +420,10 @@ let suite =
         "parse_letrec_fun" >:: parse_letrec_fun;
         "eval_letrec_fun" >:: eval_letrec_fun;
         "is_static_scope" >:: is_static_scope;
+        "type_if1" >:: type_if1;
+        "type_if2" >:: type_if2;
+        "type_4arith" >:: type_4arith;
+        "type_bool_ops" >:: type_bool_ops;
+        "type_eq" >:: type_eq;
+        "type_invalid_4arith" >:: type_invalid_4arith;
     ]

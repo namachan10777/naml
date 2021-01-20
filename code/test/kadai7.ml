@@ -326,6 +326,10 @@ let parse_pattern _ =
     )
     in assert_equal ast expected
 
+let is_static_scope _ =
+    try eval_string "let f x = y in let rec y = 1 in f 0" |> ignore with
+    | Failure msg -> assert_equal msg "unbound variable: y"
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -391,4 +395,5 @@ let suite =
         "parse_letrec" >:: parse_letrec;
         "parse_letrec_fun" >:: parse_letrec_fun;
         "eval_letrec_fun" >:: eval_letrec_fun;
+        "is_static_scope" >:: is_static_scope;
     ]

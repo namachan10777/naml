@@ -109,10 +109,11 @@ let rec eval env =
     end
     | Eq (lhr, rhr) -> BoolVal (eq lhr rhr)
     | Neq (lhr, rhr) -> BoolVal(not (eq lhr rhr))
-    | Let (id, def, expr) ->
-        let env = (ext env id (eval env def)) in
-        eval env expr
     | Seq (lhr, rhr) ->
         eval env lhr |> ignore;
         eval env rhr
+    | Var id -> lookup id env
+    | Let(id, def, body) ->
+        let env = ext env id (eval env def) in
+        eval env body
     | e -> failwith @@ Printf.sprintf "unsupported expression %s" @@ show_exp_t e

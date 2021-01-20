@@ -55,6 +55,10 @@ let parse_let_stmts _ =
     let ast = parse_string "let x = 1 let y = 1" in
     assert_equal ast [LetStmt("x", IntLit 1); LetStmt("y", IntLit 1)]
 
+let eval_let _ =
+    let ast = eval_string "let x = 1 in let y = 2 in let x = 3 in x + y" in
+    assert_equal ast (IntVal 5)
+
 let parse_emp_list1 _ =
     let ast = parse_repl_string "[ ]" in
     assert_equal ast Emp
@@ -232,6 +236,7 @@ let suite =
         "parse_let" >:: parse_let;
         "parse_op_let" >:: parse_op_let;
         "parse_let_let" >:: parse_let_let;
+        "eval_let" >:: eval_let;
         "parse_emp_list1" >:: parse_emp_list1;
         "parse_emp_list2" >:: parse_emp_list2;
         "parse_list_single1" >:: parse_list_single1;

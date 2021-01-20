@@ -22,4 +22,4 @@ let parse_string s =
 
 let eval_string s =
     let ast = parse_repl_string s in
-    K6ast.eval (K6ast.emptyenv ()) ast
+    K6ast.eval (K6ast.init_ctx ()) ast

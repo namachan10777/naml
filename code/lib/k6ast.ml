@@ -65,31 +65,39 @@ let rec lookup x env =
         then v
         else lookup x tl
 
-let rec eval env =
+type ctx_t = {
+    env: env_t
+}
+
+let init_ctx () = {
+    env = emptyenv ();
+}
+
+let rec eval ctx =
     let binop_int op lhr rhr =
-        let rhr = eval env rhr in
-        let lhr = eval env lhr in
+        let rhr = eval ctx rhr in
+        let lhr = eval ctx lhr in
         match (lhr, rhr) with
         | (IntVal lhr, IntVal rhr) -> IntVal (op lhr rhr)
         | _ -> failwith @@ Printf.sprintf "integer expected"
     in
     let binop_less_gret op lhr rhr =
-        let rhr = eval env rhr in
-        let lhr = eval env lhr in
+        let rhr = eval ctx rhr in
+        let lhr = eval ctx lhr in
         match (lhr, rhr) with
         | (IntVal lhr, IntVal rhr) -> BoolVal (op lhr rhr)
         | _ -> failwith @@ Printf.sprintf "integer expected"
     in
     let binop_bool op lhr rhr =
-        let rhr = eval env rhr in
-        let lhr = eval env lhr in
+        let rhr = eval ctx rhr in
+        let lhr = eval ctx lhr in
         match (lhr, rhr) with
         | (BoolVal lhr, BoolVal rhr) -> BoolVal (op lhr rhr)
         | _ -> failwith @@ Printf.sprintf "boolean expected"
     in
     let eq lhr rhr =
-        let rhr = eval env rhr in
-        let lhr = eval env lhr in
+        let rhr = eval ctx rhr in
+        let lhr = eval ctx lhr in
         match (lhr, rhr) with
         | (BoolVal lhr, BoolVal rhr) -> lhr = rhr
         | (IntVal lhr, IntVal rhr) -> lhr = rhr
@@ -100,11 +108,11 @@ let rec eval env =
     | IntLit i -> IntVal i
     | BoolLit b -> BoolVal b
     | Builtin builtin -> BuiltinVal builtin
-    | Cons(e, next) -> begin match eval env next with
-        | ListVal l -> ListVal ((eval env e) :: l)
+    | Cons(e, next) -> begin match eval ctx next with
+        | ListVal l -> ListVal ((eval ctx e) :: l)
         | _ -> failwith "list expected"
     end
-    | Tuple tp -> TupleVal (List.map (eval env) tp)
+    | Tuple tp -> TupleVal (List.map (eval ctx) tp)
     | Add(lhr, rhr) -> binop_int ( + ) lhr rhr
     | Sub(lhr, rhr) -> binop_int ( - ) lhr rhr
     | Mul(lhr, rhr) -> binop_int ( * ) lhr rhr
@@ -114,24 +122,24 @@ let rec eval env =
     | Less(lhr, rhr) -> binop_less_gret ( < ) lhr rhr
     | And(lhr, rhr) -> binop_bool ( && ) lhr rhr
     | Or(lhr, rhr) -> binop_bool ( || ) lhr rhr
-    | Not(v) -> begin match eval env v with
+    | Not(v) -> begin match eval ctx v with
         | BoolVal b -> BoolVal (not b)
         | _ -> failwith @@ Printf.sprintf "boolean expected"
     end
     | Eq (lhr, rhr) -> BoolVal (eq lhr rhr)
     | Neq (lhr, rhr) -> BoolVal(not (eq lhr rhr))
     | Seq (lhr, rhr) ->
-        eval env lhr |> ignore;
-        eval env rhr
-    | Var id -> lookup id env
-    | Fun (arg, expr) -> FunVal (arg, expr, ref env)
+        eval ctx lhr |> ignore;
+        eval ctx rhr
+    | Var id -> lookup id ctx.env
+    | Fun (arg, expr) -> FunVal (arg, expr, ref ctx.env)
     | App (f, arg) ->
-        let arg = eval env arg in
-        let f = eval env f in
+        let arg = eval ctx arg in
+        let f = eval ctx f in
         begin match f with
         | FunVal (param, expr, env) ->
             let env = ext !env param arg in
-            eval env expr
+            eval { env } expr
         | BuiltinVal "hd" -> begin match arg with
             | ListVal (h :: _) -> h
             | _ -> failwith "builtin hd: list length must be larger than 1"
@@ -143,12 +151,12 @@ let rec eval env =
         | _ -> failwith "function expected"
         end
     | Let(id, def, body) ->
-        let env = ext env id (eval env def) in
-        eval env body
+        let env = ext ctx.env id (eval ctx def) in
+        eval { env }body
     | If (cond, exp_then, exp_else) ->
-        begin match eval env cond with
-        | BoolVal true -> eval env exp_then
-        | BoolVal false -> eval env exp_else
+        begin match eval ctx cond with
+        | BoolVal true -> eval ctx exp_then
+        | BoolVal false -> eval ctx exp_else
         | _ -> failwith "if condition must be bool value"
         end
     | e -> failwith @@ Printf.sprintf "unsupported expression %s" @@ show_exp_t e

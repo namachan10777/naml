@@ -287,6 +287,16 @@ let eval_if _ =
     let value = eval_string "if 1 = 2 then 1 else let x = 2 in x" in
     assert_equal value (IntVal 2)
 
+let parse_pattern _ =
+    let ast = parse_repl_string "match 1 with 1 :: true :: [x; 1] -> 0" in
+    let expected = Match (
+        IntLit 1,
+        [
+            (PCons (PIntLit 1, PCons (PBoolLit true, PCons (PVar "x", PCons (PIntLit 1, PEmp)))), IntLit 0)
+        ]
+    )
+    in assert_equal ast expected
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -347,4 +357,5 @@ let suite =
         "eval_letfun" >:: eval_letfun;
         "parse_if" >:: parse_if;
         "eval_if" >:: eval_if;
+        "parse_pattern" >:: parse_pattern;
     ]

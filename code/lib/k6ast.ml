@@ -1,8 +1,10 @@
 type pat_t =
+    | PIntLit of int
+    | PBoolLit of bool
     | PVar of string
     | PCons of pat_t * pat_t
     | PEmp
-    | PTuple of pat_t * pat_t
+    | PTuple of pat_t list
 [@@deriving show]
 
 (* LetRecもLetと同じ形にしておく *)

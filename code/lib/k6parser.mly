@@ -154,10 +154,6 @@ match_arms:
     | p = pat Arrow e = exp_without_match VBar arms = match_arms
         { (p, e) :: arms }
 
-pat:
-    | id = Ident
-        { K6ast.PVar id }
-
 seq:
     | lhr = term Semicol rhr = term { K6ast.Seq (lhr, rhr) }
     | lhr = term Semicol rhr = exp_open { K6ast.Seq (lhr, rhr) }
@@ -187,6 +183,29 @@ stmts:
         { s :: ss }
     |
         { [] }
+
+plist_inner:
+    | e = pterm { K6ast.PCons(e, PEmp) }
+    | e = pterm Semicol { K6ast.PCons(e, PEmp) }
+    | e = pterm Semicol last = plist_inner { K6ast.PCons(e, last) }
+
+pterm:
+    | i = Int  { K6ast.PIntLit i }
+    | True  { K6ast.PBoolLit true }
+    | False  { K6ast.PBoolLit false }
+    | id = Ident { K6ast.PVar id }
+    | LB RB { K6ast.PEmp }
+    | lhr = pterm Cons rhr = pterm { K6ast.PCons (lhr, rhr) }
+    | LB inner = plist_inner RB { inner }
+    | LP p = pat RP { p }
+
+ptuple:
+    | lhr = pterm Comma rhr = pterm { [lhr; rhr] }
+    | lhr = pterm Comma rhr = ptuple { lhr :: rhr }
+
+pat:
+    | tp = ptuple { K6ast.PTuple tp }
+    | t = pterm { t }
 
 main:
     ss = stmts Eof { ss }

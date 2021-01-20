@@ -134,6 +134,18 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Fun
+    | "if" ->
+        update lexbuf;
+        new_line lexbuf;
+        If
+    | "then" ->
+        update lexbuf;
+        new_line lexbuf;
+        Then
+    | "else" ->
+        update lexbuf;
+        new_line lexbuf;
+        Else
     | "let" ->
         update lexbuf;
         new_line lexbuf;

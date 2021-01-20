@@ -274,6 +274,14 @@ let eval_letfun _ =
     let value = eval_string "let add x y = x + y in add 1 2" in
     assert_equal value (IntVal 3)
 
+let parse_if _ =
+    let ast = parse_repl_string "if 1 = 2 then 1 else let x = 2 in x" in
+    let expected = If (
+        Eq (IntLit 1, IntLit 2),
+        IntLit 1,
+        Let ("x", IntLit 2, Var "x")
+    ) in
+    assert_equal ast expected
 
 let suite =
     "Kadai6" >::: [
@@ -333,4 +341,5 @@ let suite =
         "eval_fun2" >:: eval_fun2;
         "parse_letfun" >:: parse_letfun;
         "eval_letfun" >:: eval_letfun;
+        "parse_if" >:: parse_if;
     ]

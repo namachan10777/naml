@@ -92,8 +92,13 @@ let rec eval env =
         | (lhr, rhr) -> failwith @@ Printf.sprintf "cannot compare %s and %s" (show_value_t lhr) (show_value_t rhr)
     in
     function
+    | Emp -> ListVal []
     | IntLit i -> IntVal i
     | BoolLit b -> BoolVal b
+    | Cons(e, next) -> begin match eval env next with
+        | ListVal l -> ListVal ((eval env e) :: l)
+        | _ -> failwith "list expected"
+    end
     | Add(lhr, rhr) -> binop_int ( + ) lhr rhr
     | Sub(lhr, rhr) -> binop_int ( - ) lhr rhr
     | Mul(lhr, rhr) -> binop_int ( * ) lhr rhr

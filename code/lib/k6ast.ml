@@ -112,4 +112,7 @@ let rec eval env =
     | Let (id, def, expr) ->
         let env = (ext env id (eval env def)) in
         eval env expr
+    | Seq (lhr, rhr) ->
+        eval env lhr |> ignore;
+        eval env rhr
     | e -> failwith @@ Printf.sprintf "unsupported expression %s" @@ show_exp_t e

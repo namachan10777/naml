@@ -215,6 +215,10 @@ let parse_seq_match _ =
     ])in
     assert_equal ast expected
 
+let eval_seq _ =
+    let value = eval_string "1; 2; 3" in
+    assert_equal value (IntVal 3)
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -260,4 +264,5 @@ let suite =
         "parse_seq" >:: parse_seq;
         "parse_let_seq" >:: parse_let_seq;
         "parse_seq_match" >:: parse_seq_match;
+        "eval_seq" >:: eval_seq;
     ]

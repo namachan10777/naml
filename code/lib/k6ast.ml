@@ -169,4 +169,8 @@ let rec eval ctx =
         | BoolVal false -> eval ctx exp_else
         | _ -> failwith "if condition must be bool value"
         end
+    | DebugPrint e ->
+        let value = eval ctx e in
+        print_endline (show_value_t value);
+        value
     | e -> failwith @@ Printf.sprintf "unsupported expression %s" @@ show_exp_t e

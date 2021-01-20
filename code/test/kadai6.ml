@@ -241,6 +241,11 @@ let eval_list _ =
     let value = eval_string "(1 + 2) :: (3*7) :: [9]" in
     assert_equal value (ListVal [IntVal 3; IntVal 21; IntVal 9])
 
+let parse_fun _ =
+    let ast = parse_repl_string "fun x y z -> x + y + z" in
+    let expected = Fun("x", Fun ("y", Fun ("z", Add(Add(Var "x", Var "y"), Var "z")))) in
+    assert_equal ast expected
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -292,4 +297,5 @@ let suite =
         "eval_seq" >:: eval_seq;
         "parse_cons" >:: parse_cons;
         "eval_list" >:: eval_list;
+        "parse_fun" >:: parse_fun;
     ]

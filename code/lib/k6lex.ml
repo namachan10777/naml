@@ -130,6 +130,10 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Not
+    | "fun" ->
+        update lexbuf;
+        new_line lexbuf;
+        Fun
     | "let" ->
         update lexbuf;
         new_line lexbuf;

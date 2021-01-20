@@ -10,6 +10,7 @@
 %token Eq Neq And Or
 %token LP RP LB RB
 %token Semicol Comma VBar Arrow
+%token Fun
 %token Let In
 %token Match With
 %token Builtin DebugPrint
@@ -79,6 +80,11 @@ fun_apps:
         { K6ast.App (f, a) }
     | f = fun_apps a = fun_arg
         { K6ast.App (f, a) }
+
+params:
+    | arg = Ident { [arg] }
+    | arg = Ident ps = params { arg :: ps }
+
 exp_open:
     | Not e = exp_open { K6ast.Not e }
     | Sub e = exp_open { K6ast.Sub(K6ast.IntLit 0, e) }
@@ -102,6 +108,8 @@ exp_open:
         }
     | Let id = Ident Eq def = exp In expr = exp
         { K6ast.Let (id, def, expr) }
+    | Fun ps = params Arrow expr = exp
+        { ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun(arg, exp)) expr }
     | Match e = exp With arms=match_arms
         { K6ast.Match (e, arms) }
 
@@ -128,6 +136,8 @@ exp_open_without_match:
         }
     | Let id = Ident Eq def = exp In expr = exp_without_match
         { K6ast.Let (id, def, expr) }
+    | Fun ps = params Arrow expr = exp_without_match
+        { ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun (arg, exp)) expr }
 
 match_arms:
     | p = pat Arrow e = exp

@@ -56,6 +56,12 @@ type stmt_t =
     | LetStmt of string * exp_t
 [@@deriving show]
 
+type ty_t =
+    | TInt
+    | TBool
+    | TStr
+[@@deriving show]
+
 let emptyenv () = []
 let ext env x v = (x, v) :: env
 let rec lookup x env =
@@ -174,3 +180,58 @@ let rec eval ctx =
         print_endline (show_value_t value);
         value
     | Match(_, _) -> failwith @@ Printf.sprintf "match is unsupported"
+
+let rec tcheck e =
+    let check_bin_int name lhr rhr =
+        match tcheck lhr, tcheck rhr with
+        | (TInt, TInt) -> TInt
+        | _ -> failwith @@ Printf.sprintf "type error in %s" name
+    in
+    let check_bin_cmp name lhr rhr =
+        match tcheck lhr, tcheck rhr with
+        | (TInt, TInt) -> TBool
+        | _ -> failwith @@ Printf.sprintf "type error in %s" name
+    in
+    let check_bin_bool name lhr rhr =
+        match tcheck lhr, tcheck rhr with
+        | (TBool, TBool) -> TBool
+        | _ -> failwith @@ Printf.sprintf "type error in %s" name
+    in
+    let check_bin_eq name lhr rhr =
+        match tcheck lhr, tcheck rhr with
+        | (TInt, TInt) -> TBool
+        | (TBool, TBool) -> TBool
+        | _ -> failwith @@ Printf.sprintf "type error in %s" name
+    in
+    match e with
+    | IntLit _ -> TInt
+    | BoolLit _ -> TBool
+    | StrLit _ -> TStr
+    | Add (lhr, rhr) -> check_bin_int "Add" lhr rhr
+    | Sub (lhr, rhr) -> check_bin_int "Add" lhr rhr
+    | Mul (lhr, rhr) -> check_bin_int "Add" lhr rhr
+    | Div (lhr, rhr) -> check_bin_int "Add" lhr rhr
+    | Mod (lhr, rhr) -> check_bin_int "Add" lhr rhr
+    | Eq (lhr, rhr) -> check_bin_eq "Add" lhr rhr
+    | Neq (lhr, rhr) -> check_bin_eq "Add" lhr rhr
+    | Or (lhr, rhr) -> check_bin_bool "Add" lhr rhr
+    | And (lhr, rhr) -> check_bin_bool "Add" lhr rhr
+    | Not e -> begin match tcheck e with
+        | TBool -> TBool
+        | _ -> failwith "type error in Not"
+    end
+    | Gret (lhr, rhr) -> check_bin_cmp "Add" lhr rhr
+    | Less (lhr, rhr) -> check_bin_cmp "Add" lhr rhr
+    | If _ -> failwith "unsupported"
+    | Let _ -> failwith "unsupported"
+    | LetRec _ -> failwith "unsupported"
+    | Fun _ -> failwith "unsupported"
+    | App _ -> failwith "unsupported"
+    | Emp -> failwith "unsupported"
+    | Match _ -> failwith "unsupported"
+    | Tuple _ -> failwith "unsupported"
+    | Cons _ -> failwith "unsupported"
+    | Builtin _ -> failwith "unsupported"
+    | Seq _ -> failwith "unsupported"
+    | DebugPrint _ -> failwith "unsupported"
+    | Var _ -> failwith "unsupported"

@@ -39,6 +39,13 @@ REPORT6_OUTPUTS = \
 	code/lib/k5parser.mly \
 	report/report6.pdf
 
+REPORT7_OUTPUTS = \
+	code/lib/k7ast.ml \
+	code/lib/k7lex.ml \
+	code/lib/k7top.ml \
+	code/lib/k7parser.mly \
+	report/report7.pdf
+
 DIST=dist
 
 OUTPUTS= \
@@ -47,7 +54,8 @@ OUTPUTS= \
 	$(DIST)/kadai3.tar.gz \
 	$(DIST)/kadai4.tar.gz \
 	$(DIST)/kadai5.tar.gz \
-	$(DIST)/kadai6.tar.gz
+	$(DIST)/kadai6.tar.gz \
+	$(DIST)/kadai7.tar.gz
 
 .PHONY: all
 all: $(OUTPUTS)
@@ -82,6 +90,10 @@ $(DIST)/kadai5.tar.gz: $(REPORT5_OUTPUTS)
 $(DIST)/kadai6.tar.gz: $(REPORT6_OUTPUTS)
 	mkdir -p $(DIST)
 	tar czf $@ $(REPORT6_OUTPUTS)
+
+$(DIST)/kadai7.tar.gz: $(REPORT7_OUTPUTS)
+	mkdir -p $(DIST)
+	tar czf $@ $(REPORT7_OUTPUTS)
 
 %.pdf: %.saty
 	satysfi -b $< -o $@

@@ -208,21 +208,28 @@ let rec tcheck e =
     | BoolLit _ -> TBool
     | StrLit _ -> TStr
     | Add (lhr, rhr) -> check_bin_int "Add" lhr rhr
-    | Sub (lhr, rhr) -> check_bin_int "Add" lhr rhr
-    | Mul (lhr, rhr) -> check_bin_int "Add" lhr rhr
-    | Div (lhr, rhr) -> check_bin_int "Add" lhr rhr
-    | Mod (lhr, rhr) -> check_bin_int "Add" lhr rhr
-    | Eq (lhr, rhr) -> check_bin_eq "Add" lhr rhr
-    | Neq (lhr, rhr) -> check_bin_eq "Add" lhr rhr
-    | Or (lhr, rhr) -> check_bin_bool "Add" lhr rhr
-    | And (lhr, rhr) -> check_bin_bool "Add" lhr rhr
+    | Sub (lhr, rhr) -> check_bin_int "Sub" lhr rhr
+    | Mul (lhr, rhr) -> check_bin_int "Mul" lhr rhr
+    | Div (lhr, rhr) -> check_bin_int "Div" lhr rhr
+    | Mod (lhr, rhr) -> check_bin_int "Mod" lhr rhr
+    | Eq (lhr, rhr) -> check_bin_eq "Eq" lhr rhr
+    | Neq (lhr, rhr) -> check_bin_eq "Neq" lhr rhr
+    | Or (lhr, rhr) -> check_bin_bool "Or" lhr rhr
+    | And (lhr, rhr) -> check_bin_bool "And" lhr rhr
     | Not e -> begin match tcheck e with
         | TBool -> TBool
         | _ -> failwith "type error in Not"
     end
-    | Gret (lhr, rhr) -> check_bin_cmp "Add" lhr rhr
-    | Less (lhr, rhr) -> check_bin_cmp "Add" lhr rhr
-    | If _ -> failwith "unsupported"
+    | Gret (lhr, rhr) -> check_bin_cmp "Gret" lhr rhr
+    | Less (lhr, rhr) -> check_bin_cmp "Less" lhr rhr
+    | If (cond, e_then, e_else) ->
+        begin match tcheck cond, tcheck e_then, tcheck e_else with
+        | (TBool, t_then, t_else) ->
+            if t_then = t_else
+            then t_then
+            else failwith "type of then and typeof else are unmatched"
+        | _ -> failwith "if condition only take boolean type"
+        end
     | Let _ -> failwith "unsupported"
     | LetRec _ -> failwith "unsupported"
     | Fun _ -> failwith "unsupported"

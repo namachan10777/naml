@@ -1,0 +1,55 @@
+@import: ./coins.satyh/coins-report
+@require: enumitem/enumitem
+
+document(|
+  author = {中野 将生};
+  department = {情報科};
+  faculty = {情報};
+  id = 2013553;
+  title = {関数プログラミング 7-2};
+  en = false;
+|) '<
+  +section ?* ?* ?:((7,2)) {静的束縛と動的束縛} <
+    +subsection { 型検査の動作の確認} <
+      +p{
+        `if`において`then`節の型と`else`節の型が食い違った際にエラーとなっている。
+      }
+      +code(```
+        # S8.K7top.typecheck_string "if true then 1 else 2";;
+        - : S8.K7ast.ty_t = S8.K7ast.TInt
+        # S8.K7top.typecheck_string "1+2*3";;
+        - : S8.K7ast.ty_t = S8.K7ast.TInt
+        # S8.K7top.typecheck_string "true || false";;
+        - : S8.K7ast.ty_t = S8.K7ast.TBool
+        # S8.K7top.typecheck_string "if true then 1 else true";;
+        Exception: (Failure "type of then and typeof else are unmatched")
+        Called from unknown location
+        # S8.K7top.typecheck_string "if true then false else true";;
+        - : S8.K7ast.ty_t = S8.K7ast.TBool
+      ```);
+    >
+    +subsection { 型検査の拡張 } <
+      +p{
+      }
+      +code(```
+        # S8.K7top.typecheck_string "false = 1";;
+        Exception: (Failure "type error in Eq")
+        Called from unknown location
+        # S8.K7top.typecheck_string "1 = true";;
+        Exception: (Failure "type error in Eq")
+        Called from unknown location
+        # S8.K7top.typecheck_string "1 = 1";;
+        - : S8.K7ast.ty_t = S8.K7ast.TBool
+        # S8.K7top.typecheck_string "true = false";;
+        - : S8.K7ast.ty_t = S8.K7ast.TBool
+        # S8.K7top.typecheck_string "1 > 2";;
+        - : S8.K7ast.ty_t = S8.K7ast.TBool
+        # S8.K7top.typecheck_string "1 <> 2";;
+        - : S8.K7ast.ty_t = S8.K7ast.TBool
+        # S8.K7top.typecheck_string "1 <> true";;
+        Exception: (Failure "type error in Neq")
+        Called from unknown location
+      ```);
+    >
+  >
+>

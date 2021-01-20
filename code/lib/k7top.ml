@@ -23,3 +23,7 @@ let parse_string s =
 let eval_string s =
     let ast = parse_repl_string s in
     K7ast.eval (K7ast.init_ctx ()) ast
+
+let typecheck_string s =
+    let ast = parse_repl_string s in
+    K7ast.tcheck ast

@@ -354,6 +354,10 @@ let type_invalid_4arith _ =
     try typecheck_string "1 + true" |> ignore; assert_failure "fail" with
     | Failure msg -> assert_equal msg "type error in Add"
 
+let type_let _ =
+    let ty = typecheck_string "let x = 1 + 2 in x" in
+    assert_equal ty TInt
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -426,4 +430,5 @@ let suite =
         "type_bool_ops" >:: type_bool_ops;
         "type_eq" >:: type_eq;
         "type_invalid_4arith" >:: type_invalid_4arith;
+        "type_let" >:: type_let;
     ]

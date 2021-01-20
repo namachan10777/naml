@@ -26,4 +26,4 @@ let eval_string s =
 
 let typecheck_string s =
     let ast = parse_repl_string s in
-    K7ast.tcheck ast
+    K7ast.tcheck (K7ast.emptyenv ()) ast

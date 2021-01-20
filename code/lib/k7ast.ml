@@ -181,24 +181,25 @@ let rec eval ctx =
         value
     | Match(_, _) -> failwith @@ Printf.sprintf "match is unsupported"
 
-let rec tcheck e =
+
+let rec tcheck env e =
     let check_bin_int name lhr rhr =
-        match tcheck lhr, tcheck rhr with
+        match tcheck env lhr, tcheck env rhr with
         | (TInt, TInt) -> TInt
         | _ -> failwith @@ Printf.sprintf "type error in %s" name
     in
     let check_bin_cmp name lhr rhr =
-        match tcheck lhr, tcheck rhr with
+        match tcheck env lhr, tcheck env rhr with
         | (TInt, TInt) -> TBool
         | _ -> failwith @@ Printf.sprintf "type error in %s" name
     in
     let check_bin_bool name lhr rhr =
-        match tcheck lhr, tcheck rhr with
+        match tcheck env lhr, tcheck env rhr with
         | (TBool, TBool) -> TBool
         | _ -> failwith @@ Printf.sprintf "type error in %s" name
     in
     let check_bin_eq name lhr rhr =
-        match tcheck lhr, tcheck rhr with
+        match tcheck env lhr, tcheck env rhr with
         | (TInt, TInt) -> TBool
         | (TBool, TBool) -> TBool
         | _ -> failwith @@ Printf.sprintf "type error in %s" name
@@ -207,6 +208,7 @@ let rec tcheck e =
     | IntLit _ -> TInt
     | BoolLit _ -> TBool
     | StrLit _ -> TStr
+    | Var id -> lookup id env 
     | Add (lhr, rhr) -> check_bin_int "Add" lhr rhr
     | Sub (lhr, rhr) -> check_bin_int "Sub" lhr rhr
     | Mul (lhr, rhr) -> check_bin_int "Mul" lhr rhr
@@ -216,21 +218,23 @@ let rec tcheck e =
     | Neq (lhr, rhr) -> check_bin_eq "Neq" lhr rhr
     | Or (lhr, rhr) -> check_bin_bool "Or" lhr rhr
     | And (lhr, rhr) -> check_bin_bool "And" lhr rhr
-    | Not e -> begin match tcheck e with
+    | Not e -> begin match tcheck env e with
         | TBool -> TBool
         | _ -> failwith "type error in Not"
     end
     | Gret (lhr, rhr) -> check_bin_cmp "Gret" lhr rhr
     | Less (lhr, rhr) -> check_bin_cmp "Less" lhr rhr
     | If (cond, e_then, e_else) ->
-        begin match tcheck cond, tcheck e_then, tcheck e_else with
+        begin match tcheck env cond, tcheck env e_then, tcheck env e_else with
         | (TBool, t_then, t_else) ->
             if t_then = t_else
             then t_then
             else failwith "type of then and typeof else are unmatched"
         | _ -> failwith "if condition only take boolean type"
         end
-    | Let _ -> failwith "unsupported"
+    | Let (id, def, body) ->
+        let env = ext env id (tcheck env def) in
+        tcheck env body
     | LetRec _ -> failwith "unsupported"
     | Fun _ -> failwith "unsupported"
     | App _ -> failwith "unsupported"
@@ -241,4 +245,3 @@ let rec tcheck e =
     | Builtin _ -> failwith "unsupported"
     | Seq _ -> failwith "unsupported"
     | DebugPrint _ -> failwith "unsupported"
-    | Var _ -> failwith "unsupported"

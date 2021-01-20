@@ -43,6 +43,7 @@ type value_t =
     | BoolVal of bool
     | ListVal of value_t list
     | FunVal of string * exp_t * env_t ref
+    | BuiltinVal of string
     | TupleVal of value_t list
 [@@deriving show]
 and env_t = (string * value_t) list
@@ -96,6 +97,7 @@ let rec eval env =
     | Emp -> ListVal []
     | IntLit i -> IntVal i
     | BoolLit b -> BoolVal b
+    | Builtin builtin -> BuiltinVal builtin
     | Cons(e, next) -> begin match eval env next with
         | ListVal l -> ListVal ((eval env e) :: l)
         | _ -> failwith "list expected"
@@ -128,6 +130,14 @@ let rec eval env =
         | FunVal (param, expr, env) ->
             let env = ext !env param arg in
             eval env expr
+        | BuiltinVal "hd" -> begin match arg with
+            | ListVal (h :: _) -> h
+            | _ -> failwith "builtin hd: list length must be larger than 1"
+            end
+        | BuiltinVal "tl" -> begin match arg with
+            | ListVal (_ :: tl) -> ListVal tl
+            | _ -> failwith "builtin hd: list length must be larger than 1"
+            end
         | _ -> failwith "function expected"
         end
     | Let(id, def, body) ->

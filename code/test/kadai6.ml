@@ -181,6 +181,14 @@ let parse_builtin _ =
     let expected = Builtin "hd" in
     assert_equal ast expected
 
+let eval_builtin_hd _ =
+    let value = eval_string "(builtin \"hd\") [1;2;3]" in
+    assert_equal value (IntVal 1)
+
+let eval_builtin_tl _ =
+    let value = eval_string "(builtin \"tl\") [1;2;3]" in
+    assert_equal value (ListVal [IntVal 2; IntVal 3])
+
 let parse_debugprint _ =
     let ast = parse_repl_string "debugprint 1" in
     let expected = DebugPrint (IntLit 1) in
@@ -266,6 +274,7 @@ let eval_letfun _ =
     let value = eval_string "let add x y = x + y in add 1 2" in
     assert_equal value (IntVal 3)
 
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -306,6 +315,8 @@ let suite =
         "parse_match1" >:: parse_match1;
         "parse_match2" >:: parse_match2;
         "parse_builtin" >:: parse_builtin;
+        "eval_builtin_hd" >:: eval_builtin_hd;
+        "eval_builtin_tl" >:: eval_builtin_tl;
         "parse_debugprint" >:: parse_debugprint;
         "parse_app1" >:: parse_app1;
         "parse_app2" >:: parse_app2;

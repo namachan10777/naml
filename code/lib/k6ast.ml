@@ -66,14 +66,15 @@ let rec lookup x env =
         else lookup x tl
 
 type ctx_t = {
-    env: env_t
+    env: env_t ref
 }
 
 let init_ctx () = {
-    env = emptyenv ();
+    env = ref (emptyenv ());
 }
 
 let rec eval ctx =
+    let { env } = ctx in
     let binop_int op lhr rhr =
         let rhr = eval ctx rhr in
         let lhr = eval ctx lhr in
@@ -131,15 +132,15 @@ let rec eval ctx =
     | Seq (lhr, rhr) ->
         eval ctx lhr |> ignore;
         eval ctx rhr
-    | Var id -> lookup id ctx.env
-    | Fun (arg, expr) -> FunVal (arg, expr, ref ctx.env)
+    | Var id -> lookup id !env
+    | Fun (arg, expr) -> FunVal (arg, expr, env)
     | App (f, arg) ->
         let arg = eval ctx arg in
         let f = eval ctx f in
         begin match f with
         | FunVal (param, expr, env) ->
             let env = ext !env param arg in
-            eval { env } expr
+            eval { env = ref env } expr
         | BuiltinVal "hd" -> begin match arg with
             | ListVal (h :: _) -> h
             | _ -> failwith "builtin hd: list length must be larger than 1"
@@ -151,8 +152,8 @@ let rec eval ctx =
         | _ -> failwith "function expected"
         end
     | Let(id, def, body) ->
-        let env = ext ctx.env id (eval ctx def) in
-        eval { env }body
+        let env = ext !env id (eval ctx def) in
+        eval { env = ref env }body
     | If (cond, exp_then, exp_else) ->
         begin match eval ctx cond with
         | BoolVal true -> eval ctx exp_then

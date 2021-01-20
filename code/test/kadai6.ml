@@ -246,6 +246,14 @@ let parse_fun _ =
     let expected = Fun("x", Fun ("y", Fun ("z", Add(Add(Var "x", Var "y"), Var "z")))) in
     assert_equal ast expected
 
+let eval_fun1 _ =
+    let value = eval_string "(fun x -> x + 1) 1" in
+    assert_equal value (IntVal 2)
+
+let eval_fun2 _ =
+    let value = eval_string "(fun x y -> x + y) 1 2" in
+    assert_equal value (IntVal 3)
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -298,4 +306,6 @@ let suite =
         "parse_cons" >:: parse_cons;
         "eval_list" >:: eval_list;
         "parse_fun" >:: parse_fun;
+        "eval_fun1" >:: eval_fun1;
+        "eval_fun2" >:: eval_fun2;
     ]

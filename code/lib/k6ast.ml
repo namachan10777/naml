@@ -120,6 +120,16 @@ let rec eval env =
         eval env lhr |> ignore;
         eval env rhr
     | Var id -> lookup id env
+    | Fun (arg, expr) -> FunVal (arg, expr, ref env)
+    | App (f, arg) ->
+        let arg = eval env arg in
+        let f = eval env f in
+        begin match f with
+        | FunVal (param, expr, env) ->
+            let env = ext !env param arg in
+            eval env expr
+        | _ -> failwith "function expected"
+        end
     | Let(id, def, body) ->
         let env = ext env id (eval env def) in
         eval env body

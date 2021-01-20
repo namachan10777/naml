@@ -173,4 +173,4 @@ let rec eval ctx =
         let value = eval ctx e in
         print_endline (show_value_t value);
         value
-    | e -> failwith @@ Printf.sprintf "unsupported expression %s" @@ show_exp_t e
+    | Match(_, _) -> failwith @@ Printf.sprintf "match is unsupported"

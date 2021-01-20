@@ -108,6 +108,8 @@ exp_open:
         }
     | Let id = Ident Eq def = exp In expr = exp
         { K6ast.Let (id, def, expr) }
+    | Let id = Ident ps = params Eq def = exp In expr = exp
+        { K6ast.Let (id, ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun(arg, exp)) def, expr) }
     | Fun ps = params Arrow expr = exp
         { ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun(arg, exp)) expr }
     | Match e = exp With arms=match_arms
@@ -136,6 +138,8 @@ exp_open_without_match:
         }
     | Let id = Ident Eq def = exp In expr = exp_without_match
         { K6ast.Let (id, def, expr) }
+    | Let id = Ident ps = params Eq def = exp In expr = exp_without_match
+        { K6ast.Let (id, ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun(arg, exp)) def, expr) }
     | Fun ps = params Arrow expr = exp_without_match
         { ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun (arg, exp)) expr }
 

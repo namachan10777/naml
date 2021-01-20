@@ -254,6 +254,18 @@ let eval_fun2 _ =
     let value = eval_string "(fun x y -> x + y) 1 2" in
     assert_equal value (IntVal 3)
 
+let parse_letfun _ =
+    let ast = parse_repl_string "let add x y = x + y in add 1 2" in
+    let expected = Let (
+        "add",
+        Fun ("x", Fun ("y", Add (Var "x", Var "y"))),
+        App (App (Var "add", IntLit 1), IntLit 2)
+    ) in assert_equal ast expected
+
+let eval_letfun _ =
+    let value = eval_string "let add x y = x + y in add 1 2" in
+    assert_equal value (IntVal 3)
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -308,4 +320,6 @@ let suite =
         "parse_fun" >:: parse_fun;
         "eval_fun1" >:: eval_fun1;
         "eval_fun2" >:: eval_fun2;
+        "parse_letfun" >:: parse_letfun;
+        "eval_letfun" >:: eval_letfun;
     ]

@@ -283,6 +283,10 @@ let parse_if _ =
     ) in
     assert_equal ast expected
 
+let eval_if _ =
+    let value = eval_string "if 1 = 2 then 1 else let x = 2 in x" in
+    assert_equal value (IntVal 2)
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -342,4 +346,5 @@ let suite =
         "parse_letfun" >:: parse_letfun;
         "eval_letfun" >:: eval_letfun;
         "parse_if" >:: parse_if;
+        "eval_if" >:: eval_if;
     ]

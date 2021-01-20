@@ -143,4 +143,10 @@ let rec eval env =
     | Let(id, def, body) ->
         let env = ext env id (eval env def) in
         eval env body
+    | If (cond, exp_then, exp_else) ->
+        begin match eval env cond with
+        | BoolVal true -> eval env exp_then
+        | BoolVal false -> eval env exp_else
+        | _ -> failwith "if condition must be bool value"
+        end
     | e -> failwith @@ Printf.sprintf "unsupported expression %s" @@ show_exp_t e

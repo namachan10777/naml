@@ -103,6 +103,11 @@ let parse_tuple_list2 _ =
     let ast = parse_repl_string "[1,2;3,4]" in
     assert_equal ast (Cons (Tuple [IntLit 1; IntLit 2], Cons (Tuple [IntLit 3; IntLit 4], Emp)))
 
+let eval_tuple _ =
+    let value = eval_string "let x = 1 in x, 1+1, let y = 3 in y, 4" in
+    let expected = TupleVal [IntVal 1; IntVal 2; TupleVal [IntVal 3; IntVal 4]] in
+    assert_equal value expected
+
 let parse_4arith _ =
     let ast = parse_repl_string "3*(200+300)/4-5" in
     let expected = Sub (
@@ -261,6 +266,7 @@ let suite =
         "parse_tuple3" >:: parse_tuple3;
         "parse_tuple_list1" >:: parse_tuple_list1;
         "parse_tuple_list2" >:: parse_tuple_list2;
+        "eval_tuple" >:: eval_tuple;
         "parse_cmp_and" >:: parse_cmp_and;
         "parse_bool_op" >:: parse_bool_op;
         "parse_4arith" >:: parse_4arith;

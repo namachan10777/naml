@@ -43,6 +43,7 @@ type value_t =
     | BoolVal of bool
     | ListVal of value_t list
     | FunVal of string * exp_t * env_t ref
+    | TupleVal of value_t list
 [@@deriving show]
 and env_t = (string * value_t) list
 [@@deriving show]
@@ -99,6 +100,7 @@ let rec eval env =
         | ListVal l -> ListVal ((eval env e) :: l)
         | _ -> failwith "list expected"
     end
+    | Tuple tp -> TupleVal (List.map (eval env) tp)
     | Add(lhr, rhr) -> binop_int ( + ) lhr rhr
     | Sub(lhr, rhr) -> binop_int ( - ) lhr rhr
     | Mul(lhr, rhr) -> binop_int ( * ) lhr rhr

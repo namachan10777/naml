@@ -223,6 +223,10 @@ let eval_seq _ =
     let value = eval_string "1; 2; 3" in
     assert_equal value (IntVal 3)
 
+let eval_let_seq _ =
+    let value = eval_string "let x = 1 in 0; let y = x in y" in 
+    assert_equal value (IntVal 1)
+
 let suite =
     "Kadai6" >::: [
         "parse_str" >:: parse_str;
@@ -258,6 +262,7 @@ let suite =
         "eval_or" >:: eval_or;
         "eval_not" >:: eval_not;
         "eval_eq" >:: eval_eq;
+        "eval_let_seq" >:: eval_let_seq;
         "parse_match1" >:: parse_match1;
         "parse_match2" >:: parse_match2;
         "parse_builtin" >:: parse_builtin;

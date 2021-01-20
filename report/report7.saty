@@ -52,4 +52,33 @@ document(|
       ```);
     >
   >
+  +section {変数の型付けを含む型検査} <
+    +p{
+      `if x then x else 100`は`x`がどのような型であれ型エラーとなる。
+    }
+    +code(```
+      # tcheck [("x", TInt); ("y", TInt)] @@ parse_repl_string "if true then x else 100";;
+      - : ty_t = TInt
+      # tcheck [("x", TBool); ("y", TInt)] @@ parse_repl_string "if true then x else 100";;
+      Exception: (Failure "type of then and typeof else are unmatched")
+      Called from unknown location
+      # tcheck [("z", TInt); ("y", TInt)] @@ parse_repl_string "if true then x else 100";;
+      Exception: (Failure "unbound variable: x")
+      Called from unknown location
+      Called from unknown location
+      # tcheck [("x", TInt)] @@ parse_repl_string "if x then x else 100";;
+      Exception: (Failure "if condition only take boolean type")
+      Called from unknown location
+      # tcheck [("x", TBool)] @@ parse_repl_string "if x then x else 100";;
+      Exception: (Failure "type of then and typeof else are unmatched")
+      Called from unknown location
+    ```);
+    +p{
+      また`let`を用いて型環境を拡張できるようにした。
+    }
+    +code(```
+      # typecheck_string "let x = true in let y = 1 in if x then y else 100";;
+      - : S8.K7ast.ty_t = S8.K7ast.TInt
+    ```);
+  >
 >

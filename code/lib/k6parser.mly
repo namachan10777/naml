@@ -12,7 +12,7 @@
 %token Semicol Comma VBar Arrow
 %token Fun
 %token If Then Else
-%token Let In
+%token Let In Rec
 %token Match With
 %token Builtin DebugPrint
 %token Not
@@ -111,6 +111,10 @@ exp_open:
         { K6ast.Let (id, def, expr) }
     | Let id = Ident ps = params Eq def = exp In expr = exp
         { K6ast.Let (id, ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun(arg, exp)) def, expr) }
+    | Let Rec id = Ident Eq def = exp In expr = exp
+        { K6ast.LetRec (id, def, expr) }
+    | Let Rec id = Ident ps = params Eq def = exp In expr = exp
+        { K6ast.LetRec (id, ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun(arg, exp)) def, expr) }
     | If cond = exp Then exp_then = exp Else exp_else = exp
         { K6ast.If (cond, exp_then, exp_else) }
     | Fun ps = params Arrow expr = exp
@@ -143,6 +147,10 @@ exp_open_without_match:
         { K6ast.Let (id, def, expr) }
     | Let id = Ident ps = params Eq def = exp In expr = exp_without_match
         { K6ast.Let (id, ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun(arg, exp)) def, expr) }
+    | Let Rec id = Ident Eq def = exp In expr = exp_without_match
+        { K6ast.LetRec (id, def, expr) }
+    | Let Rec id = Ident ps = params Eq def = exp In expr = exp_without_match
+        { K6ast.LetRec (id, ps |> List.rev |> List.fold_left (fun exp arg -> K6ast.Fun(arg, exp)) def, expr) }
     | If cond = exp Then exp_then = exp Else exp_else = exp_without_match
         { K6ast.If (cond, exp_then, exp_else) }
     | Fun ps = params Arrow expr = exp_without_match

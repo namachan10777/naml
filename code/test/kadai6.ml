@@ -274,6 +274,26 @@ let eval_letfun _ =
     let value = eval_string "let add x y = x + y in add 1 2" in
     assert_equal value (IntVal 3)
 
+let parse_letrec _ =
+    let ast = parse_repl_string "let rec x = [1;x] in x" in
+    assert_equal ast (LetRec ("x", Cons (IntLit 1, Cons (Var "x", Emp)), Var "x"))
+
+let parse_letrec_fun _ =
+    let ast = parse_repl_string "let rec fact n = if n = 1 then 1 else n * fact (n-1) in fact 5" in
+    let expected = LetRec (
+        "fact",
+        Fun ("n",
+            If (
+                Eq (Var "n", IntLit 1),
+                IntLit 1,
+                Mul (Var "n", App (Var "fact", Sub (Var "n", IntLit 1)))
+            )
+        ),
+        App (Var "fact", IntLit 5)
+    )
+    in assert_equal ast expected
+
+
 let parse_if _ =
     let ast = parse_repl_string "if 1 = 2 then 1 else let x = 2 in x" in
     let expected = If (
@@ -358,4 +378,6 @@ let suite =
         "parse_if" >:: parse_if;
         "eval_if" >:: eval_if;
         "parse_pattern" >:: parse_pattern;
+        "parse_letrec" >:: parse_letrec;
+        "parse_letrec_fun" >:: parse_letrec_fun;
     ]

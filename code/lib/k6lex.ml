@@ -150,6 +150,10 @@ let rec lex lexbuf =
         update lexbuf;
         new_line lexbuf;
         Let
+    | "rec" ->
+        update lexbuf;
+        new_line lexbuf;
+        Rec
     | "=" ->
         update lexbuf;
         new_line lexbuf;

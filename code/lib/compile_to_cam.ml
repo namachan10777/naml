@@ -4,6 +4,7 @@ let compile ast =
     let rec f = function
     | IntLit (i) -> [Cam.Ldi i]
     | BoolLit (b) -> [Cam.Ldb b]
+    | StrLit s -> [Cam.Lds s]
     | Add (lhr, rhr)  -> binop Cam.Add  lhr rhr
     | Mul (lhr, rhr)  -> binop Cam.Mul  lhr rhr
     | Div (lhr, rhr)  -> binop Cam.Div  lhr rhr
@@ -37,7 +38,6 @@ let compile ast =
     | Emp -> failwith "emp is unsupported"
     | Cons _ -> failwith "cons is unsupported"
     | Var _ -> failwith "var is unsupported"
-    | StrLit _ -> failwith "strlit is unsupported"
     | Let _ -> failwith "let is unsupported"
     | LetRec _ -> failwith "let rec is unsupported"
     | Fun _ -> failwith "fun is unsupported"

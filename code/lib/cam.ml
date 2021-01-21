@@ -3,6 +3,8 @@ type cam_inst_t =
     | Ldi of int
     (* Ldb(n)は、真理値bをスタックに積む *)
     | Ldb of bool
+    (* Ldb(n)は、文字列sをスタックに積む *)
+    | Lds of string
     (* Access(i)は環境i+1番目の値をスタックに積む *)
     | Access of int
     (* Clousure(c)は関数本体のコードがCで
@@ -49,6 +51,7 @@ and code_t = cam_inst_t list
 type value_t =
     | Int of int
     | Bool of bool
+    | Str of string
     | ClosureVal of code_t * value_t list
 [@@deriving show]
 
@@ -75,6 +78,7 @@ let exec insts =
         | [] -> List.hd stack
         | Ldi(n) :: rest -> exec env ((Int n) :: stack) rest
         | Ldb(b) :: rest -> exec env ((Bool b) :: stack) rest
+        | Lds(s) :: rest -> exec env ((Str s) :: stack) rest
         | Access(addr) :: rest -> exec env ((List.nth env addr) :: stack) rest
         | Closure(c) :: rest -> exec env ((ClosureVal (c, env)) :: stack) rest
         | Apply :: rest -> begin match stack with

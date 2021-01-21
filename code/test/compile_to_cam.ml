@@ -74,6 +74,23 @@ let test_fun _ =
     ] in
     assert_equal (compile [] ast) insts
 
+let test_letrec _ =
+    let ast = parse_repl_string "let rec f x = f x in f 0" in
+    let insts = [
+        Closure [
+            Access 0;
+            Access 1;
+            Apply;
+            Return;
+        ];
+        Let;
+        Ldi 0;
+        Access 0;
+        Apply;
+        EndLet;
+    ] in
+    assert_equal (compile [] ast) insts
+
 let suite =
     "Compile_to_cam" >::: [
         "test_add" >:: test_add;
@@ -83,4 +100,5 @@ let suite =
         "test_seq" >:: test_seq;
         "test_let" >:: test_let;
         "test_fun" >:: test_fun;
+        "test_letrec" >:: test_letrec;
     ]

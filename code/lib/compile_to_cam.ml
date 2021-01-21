@@ -42,13 +42,15 @@ let compile ast =
     | Var id ->
         [Cam.Access (position id venv)]
     | Fun (arg, body) ->
-        [Cam.Closure ((f (arg :: "" :: venv) body) @ [Cam.Return])]
+        [Cam.Closure ((f (arg :: venv) body) @ [Cam.Return])]
+    | LetRec (id, def, expr) ->
+        (f (id :: venv) def) @ [Cam.Let] @ (f (id ::venv) expr) @ [Cam.EndLet]
     | Seq (lhr, rhr) -> (f venv lhr) @ (f venv rhr)
+    | App (g, arg) ->
+        (f venv arg) @ (f venv g) @ [Cam.Apply]
     | Match _ -> failwith "match is unsupported"
     | Emp -> failwith "emp is unsupported"
     | Cons _ -> failwith "cons is unsupported"
-    | LetRec _ -> failwith "let rec is unsupported"
-    | App _ -> failwith "app is unsupported"
     | Tuple _ -> failwith "tuple is unsupported"
     | Builtin _ -> failwith "builtin is unsupported"
     | DebugPrint _ -> failwith "debugprint is unsupported"

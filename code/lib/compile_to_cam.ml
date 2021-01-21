@@ -41,7 +41,8 @@ let compile ast =
         (f venv def) @ [Cam.Let] @ (f (id :: venv) expr) @ [Cam.EndLet]
     | Var id ->
         [Cam.Access (position id venv)]
-    | Fun _ -> failwith "fun is unsupported"
+    | Fun (arg, body) ->
+        [Cam.Closure ((f (arg :: "" :: venv) body) @ [Cam.Return])]
     | Seq (lhr, rhr) -> (f venv lhr) @ (f venv rhr)
     | Match _ -> failwith "match is unsupported"
     | Emp -> failwith "emp is unsupported"

@@ -64,6 +64,16 @@ let test_let _ =
     ] in
     assert_equal (compile [] ast) insts
 
+let test_fun _ =
+    let ast = parse_repl_string "fun x -> x" in
+    let insts = [
+        Closure [
+            Access 0;
+            Return;
+        ];
+    ] in
+    assert_equal (compile [] ast) insts
+
 let suite =
     "Compile_to_cam" >::: [
         "test_add" >:: test_add;
@@ -72,4 +82,5 @@ let suite =
         "test_if" >:: test_if;
         "test_seq" >:: test_seq;
         "test_let" >:: test_let;
+        "test_fun" >:: test_fun;
     ]

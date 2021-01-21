@@ -7,11 +7,13 @@ let compile ast =
     | Add (lhr, rhr)  -> binop Cam.Add  lhr rhr
     | Mul (lhr, rhr)  -> binop Cam.Mul  lhr rhr
     | Div (lhr, rhr)  -> binop Cam.Div  lhr rhr
+    | Mod (lhr, rhr)  -> binop Cam.Mod  lhr rhr
     | Sub (lhr, rhr)  -> binop Cam.Sub  lhr rhr
     | Gret (lhr, rhr) -> binop Cam.Gret lhr rhr
     | Less (lhr, rhr) -> binop Cam.Less lhr rhr
     | Eq (lhr, rhr)   -> binop Cam.Eq   lhr rhr
     | Neq (lhr, rhr)  -> binop Cam.Neq  lhr rhr
+    | Not e -> (f e) @ [Cam.Not]
     | Or (lhr, rhr)   ->
         (f lhr) @ [Cam.Test (
             [Ldb true],
@@ -32,8 +34,6 @@ let compile ast =
     | LetRec _ -> failwith "let rec is unsupported"
     | Fun _ -> failwith "fun is unsupported"
     | App _ -> failwith "app is unsupported"
-    | Not _ -> failwith "not is unsupported"
-    | Mod _ -> failwith "mod is unsupported"
     | Tuple _ -> failwith "tuple is unsupported"
     | Builtin _ -> failwith "builtin is unsupported"
     | Seq _ -> failwith "seq is unsupported"

@@ -31,7 +31,17 @@ type cam_inst_t =
     | Test of code_t * code_t
     (* ここは分かって *)
     | Add
+    | Sub
+    | Mul
+    | Div
+    | Mod
+    | Gret
+    | Less
+    | And
+    | Or
     | Eq
+    | Neq
+    | Not
 [@@deriving show]
 and code_t = cam_inst_t list
 [@@deriving show]
@@ -48,7 +58,20 @@ type env_t = value_t list
 [@@deriving show]
 
 let exec insts =
-    let rec exec env stack = function
+    let rec exec env stack =
+        let binop_int_int op rest = function
+            | Int lhr :: Int rhr :: stack -> exec env (Int (op lhr rhr) :: stack) rest
+            | _ -> failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+        in
+        let binop_bool_bool op rest = function
+            | Bool lhr :: Bool rhr :: stack -> exec env (Bool (op lhr rhr) :: stack) rest
+            | _ -> failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+        in
+        let binop_int_bool op rest = function
+            | Int lhr :: Int rhr :: stack -> exec env (Bool (op lhr rhr) :: stack) rest
+            | _ -> failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+        in
+        function
         | [] -> List.hd stack
         | Ldi(n) :: rest -> exec env ((Int n) :: stack) rest
         | Ldb(b) :: rest -> exec env ((Bool b) :: stack) rest
@@ -75,11 +98,25 @@ let exec insts =
             | Bool false :: stack -> exec env stack (c2 @ rest)
             | _ -> failwith "cannot test"
         end
-        | Add :: rest -> begin match stack with
-            | Int lhr :: Int rhr :: stack -> exec env (Int (lhr + rhr) :: stack) rest
-            | _ -> failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+        | Add :: rest -> binop_int_int ( + ) rest stack
+        | Sub :: rest -> binop_int_int ( - ) rest stack
+        | Mul :: rest -> binop_int_int ( * ) rest stack
+        | Div :: rest -> binop_int_int ( / ) rest stack
+        | Mod :: rest -> binop_int_int ( mod ) rest stack
+        | Gret :: rest -> binop_int_bool ( > ) rest stack
+        | Less :: rest -> binop_int_bool ( < ) rest stack
+        | And :: rest -> binop_bool_bool ( && ) rest stack
+        | Or :: rest -> binop_bool_bool ( || ) rest stack
+        | Not :: rest -> begin match stack with
+            | Bool b :: stack -> exec env (Bool (not b) :: stack) rest
+            | _ -> failwith "cannot not"
         end
         | Eq :: rest -> begin match stack with
+            | Int lhr :: Int rhr :: stack -> exec env (Bool (lhr = rhr) :: stack) rest
+            | Bool lhr :: Bool rhr :: stack -> exec env (Bool (lhr = rhr) :: stack) rest
+            | _ -> failwith "cannot add"
+        end
+        | Neq :: rest -> begin match stack with
             | Int lhr :: Int rhr :: stack -> exec env (Bool (lhr = rhr) :: stack) rest
             | Bool lhr :: Bool rhr :: stack -> exec env (Bool (lhr = rhr) :: stack) rest
             | _ -> failwith "cannot add"

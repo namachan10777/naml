@@ -32,9 +32,23 @@ let test_compares _ =
     ] in
     assert_equal (compile ast) (insts)
 
+let test_if _ =
+    let ast = parse_repl_string "if 1 = 1 then 1 else 2" in
+    let insts = [
+        Ldi 1;
+        Ldi 1;
+        Eq;
+        Test (
+            [Ldi 1],
+            [Ldi 2]
+        );
+    ] in
+    assert_equal (compile ast) insts
+
 let suite =
     "Compile_to_cam" >::: [
         "test_add" >:: test_add;
         "test_4arith" >:: test_4arith;
         "test_compares" >:: test_compares;
+        "test_if" >:: test_if;
     ]

@@ -24,12 +24,18 @@ let compile ast =
             f rhr,
             [Ldb false]
         )]
+    | If (cond, then_e, else_e) ->
+        (f cond) @ [
+            Test (
+                f then_e,
+                f else_e
+            )
+        ]
     | Match _ -> failwith "match is unsupported"
     | Emp -> failwith "emp is unsupported"
     | Cons _ -> failwith "cons is unsupported"
     | Var _ -> failwith "var is unsupported"
     | StrLit _ -> failwith "strlit is unsupported"
-    | If _ -> failwith "if is unsupported"
     | Let _ -> failwith "let is unsupported"
     | LetRec _ -> failwith "let rec is unsupported"
     | Fun _ -> failwith "fun is unsupported"

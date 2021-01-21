@@ -38,6 +38,25 @@ let test _ =
     ] in
     assert_equal (exec insts) (Int 1)
 
+let sum_to_10 _ =
+    let insts = [
+        Closure [
+            Ldi 1;
+            Access 0;
+            Eq;
+            Test (
+                [Ldi 1],
+                [Ldi (-1); Access 0; Add; Access 1; Apply; Access 0; Add]
+            );
+            Return
+        ];
+        Let;
+        Ldi 10;
+        Access 0;
+        Apply;
+        EndLet
+    ] in assert_equal (exec insts) (Int (1+2+3+4+5+6+7+8+9+10))
+
 
 let suite =
     "Cam" >::: [
@@ -46,4 +65,5 @@ let suite =
         "bool" >:: bool;
         "closure_apply" >:: closure_apply;
         "test" >:: test;
+        "sum_to_10" >:: sum_to_10;
     ]

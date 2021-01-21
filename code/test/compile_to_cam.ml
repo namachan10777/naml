@@ -91,6 +91,16 @@ let test_letrec _ =
     ] in
     assert_equal (compile [] ast) insts
 
+let run_fact _ =
+    let ast = parse_repl_string "let rec fact n = if n = 1 then 1 else n * fact (n-1) in fact 5" in
+    let insts = compile [] ast in
+    assert_equal (exec insts) (Int 120)
+
+let run_fib _ =
+    let ast = parse_repl_string "let rec fib n = if n = 1 || n = 0 then 1 else (fib (n-1)) + fib (n-2) in fib 5" in
+    let insts = compile [] ast in
+    assert_equal (exec insts) (Int 8)
+
 let suite =
     "Compile_to_cam" >::: [
         "test_add" >:: test_add;
@@ -101,4 +111,6 @@ let suite =
         "test_let" >:: test_let;
         "test_fun" >:: test_fun;
         "test_letrec" >:: test_letrec;
+        "run_fact" >:: run_fact;
+        "run_fib" >:: run_fib;
     ]

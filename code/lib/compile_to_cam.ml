@@ -22,7 +22,22 @@ let compile ast =
             f rhr,
             [Ldb false]
         )]
-    | _ -> failwith "unsupported expr"
+    | Match _ -> failwith "match is unsupported"
+    | Emp -> failwith "emp is unsupported"
+    | Cons _ -> failwith "cons is unsupported"
+    | Var _ -> failwith "var is unsupported"
+    | StrLit _ -> failwith "strlit is unsupported"
+    | If _ -> failwith "if is unsupported"
+    | Let _ -> failwith "let is unsupported"
+    | LetRec _ -> failwith "let rec is unsupported"
+    | Fun _ -> failwith "fun is unsupported"
+    | App _ -> failwith "app is unsupported"
+    | Not _ -> failwith "not is unsupported"
+    | Mod _ -> failwith "mod is unsupported"
+    | Tuple _ -> failwith "tuple is unsupported"
+    | Builtin _ -> failwith "builtin is unsupported"
+    | Seq _ -> failwith "seq is unsupported"
+    | DebugPrint _ -> failwith "debugprint is unsupported"
     and binop op lhr rhr =
         (f rhr) @ (f lhr) @ [op]
     in f ast

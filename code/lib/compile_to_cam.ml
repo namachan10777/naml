@@ -4,15 +4,25 @@ let compile ast =
     let rec f = function
     | IntLit (i) -> [Cam.Ldi i]
     | BoolLit (b) -> [Cam.Ldb b]
-    | Add (lhr, rhr)  -> Cam.Add  :: (f lhr) @ (f rhr)
-    | Mul (lhr, rhr)  -> Cam.Mul  :: (f lhr) @ (f rhr)
-    | Div (lhr, rhr)  -> Cam.Div  :: (f lhr) @ (f rhr)
-    | Sub (lhr, rhr)  -> Cam.Sub  :: (f lhr) @ (f rhr)
-    | And (lhr, rhr)  -> Cam.And  :: (f lhr) @ (f rhr)
-    | Or (lhr, rhr)   -> Cam.Or   :: (f lhr) @ (f rhr)
-    | Gret (lhr, rhr) -> Cam.Gret :: (f lhr) @ (f rhr)
-    | Less (lhr, rhr) -> Cam.Less :: (f lhr) @ (f rhr)
-    | Eq (lhr, rhr)   -> Cam.Eq   :: (f lhr) @ (f rhr)
-    | Neq (lhr, rhr)  -> Cam.Neq  :: (f lhr) @ (f rhr)
+    | Add (lhr, rhr)  -> binop Cam.Add  lhr rhr
+    | Mul (lhr, rhr)  -> binop Cam.Mul  lhr rhr
+    | Div (lhr, rhr)  -> binop Cam.Div  lhr rhr
+    | Sub (lhr, rhr)  -> binop Cam.Sub  lhr rhr
+    | Gret (lhr, rhr) -> binop Cam.Gret lhr rhr
+    | Less (lhr, rhr) -> binop Cam.Less lhr rhr
+    | Eq (lhr, rhr)   -> binop Cam.Eq   lhr rhr
+    | Neq (lhr, rhr)  -> binop Cam.Neq  lhr rhr
+    | Or (lhr, rhr)   ->
+        (f lhr) @ [Cam.Test (
+            [Ldb true],
+            f rhr
+        )]
+    | And (lhr, rhr)  ->
+        (f lhr) @ [Cam.Test (
+            f rhr,
+            [Ldb false]
+        )]
     | _ -> failwith "unsupported expr"
-    in f ast |> List.rev
+    and binop op lhr rhr =
+        (f rhr) @ (f lhr) @ [op]
+    in f ast

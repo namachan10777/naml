@@ -14,8 +14,22 @@ let test_4arith _ =
     assert_equal (compile ast) (insts)
 
 let test_compares _ =
-    let ast = parse_repl_string "1 > 2 && 2 = 3 || true" in
-    let insts = [Ldb true; Ldi 3; Ldi 2; Eq; Ldi 2; Ldi 1; Gret; And; Or] in
+    let ast = parse_repl_string "true || 1 > 2 && 2 = 3" in
+    let insts = [
+        Ldb true;
+        Test (
+            [Ldb true],
+            [
+                Ldi 2;
+                Ldi 1;
+                Gret;
+                Test (
+                    [Ldi 3; Ldi 2; Eq],
+                    [Ldb false]
+                );
+            ]
+        );
+    ] in
     assert_equal (compile ast) (insts)
 
 let suite =

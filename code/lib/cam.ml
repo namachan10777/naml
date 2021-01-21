@@ -48,12 +48,7 @@ type env_t = value_t list
 [@@deriving show]
 
 let exec insts =
-    Printf.printf "-----------------------------\n";
-    let rec exec env stack insts =
-        Printf.printf "inst %s\n" @@ show_code_t insts;
-        Printf.printf "stack %s\n" @@ show_stack_t stack;
-        Printf.printf "env %s\n" @@ show_env_t env;
-        match insts with 
+    let rec exec env stack = function
         | [] -> List.hd stack
         | Ldi(n) :: rest -> exec env ((Int n) :: stack) rest
         | Ldb(b) :: rest -> exec env ((Bool b) :: stack) rest

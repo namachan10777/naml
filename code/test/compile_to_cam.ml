@@ -45,10 +45,20 @@ let test_if _ =
     ] in
     assert_equal (compile ast) insts
 
+let test_seq _ =
+    let ast = parse_repl_string "1; 2; 3" in
+    let insts = [
+        Ldi 1;
+        Ldi 2;
+        Ldi 3;
+    ] in
+    assert_equal (compile ast) insts
+
 let suite =
     "Compile_to_cam" >::: [
         "test_add" >:: test_add;
         "test_4arith" >:: test_4arith;
         "test_compares" >:: test_compares;
         "test_if" >:: test_if;
+        "test_seq" >:: test_seq;
     ]

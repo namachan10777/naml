@@ -31,6 +31,8 @@ let compile ast =
                 f else_e
             )
         ]
+    | Seq (lhr, rhr) ->
+        (f lhr) @ (f rhr)
     | Match _ -> failwith "match is unsupported"
     | Emp -> failwith "emp is unsupported"
     | Cons _ -> failwith "cons is unsupported"
@@ -42,7 +44,6 @@ let compile ast =
     | App _ -> failwith "app is unsupported"
     | Tuple _ -> failwith "tuple is unsupported"
     | Builtin _ -> failwith "builtin is unsupported"
-    | Seq _ -> failwith "seq is unsupported"
     | DebugPrint _ -> failwith "debugprint is unsupported"
     and binop op lhr rhr =
         (f rhr) @ (f lhr) @ [op]

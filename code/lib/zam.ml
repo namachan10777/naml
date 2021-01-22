@@ -75,6 +75,10 @@ let rec exec zam =
         | (astack, rstack) -> failwith @@ Printf.sprintf "cannot execute return %s, %s" (show_stack_t astack) (show_stack_t rstack)
     end
     | PushMark :: code -> exec { zam with code = code; astack = Eps :: zam.astack }
-    | Test _ :: _ -> failwith "test is unsupported"
+    | Test (c1, c2) :: code -> begin match List.hd zam.astack with
+        | Bool true -> exec { zam with code = c1 @ code; astack = List.tl zam.astack }
+        | Bool false -> exec { zam with code = c2 @ code; astack = List.tl zam.astack }
+        | _ -> failwith "test needs boolean value as condition"
+    end
     | And :: _ -> failwith "and is unsupported"
     | Eq :: _ -> failwith "eq is unsupported"

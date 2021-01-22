@@ -48,6 +48,18 @@ let test_clos_and_app _ =
     } in
     assert_equal (exec zam) (Int 42)
 
+let test_test _ =
+    let zam = { emp_zam with
+        code = [
+            Ldb true;
+            Test (
+                [Ldi 42],
+                [Ldi 2]
+            )
+        ]
+    } in
+    assert_equal (exec zam) (Int 42)
+
 let suite =
     "Zam" >::: [
         "finish" >:: test_finish;
@@ -57,5 +69,6 @@ let suite =
         "test_lds" >:: test_lds;
         "test_access" >:: test_access;
         "test_let" >:: test_let;
+        "test_test" >:: test_test;
         "test_app" >:: test_clos_and_app;
     ]

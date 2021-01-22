@@ -1,0 +1,42 @@
+@import: ./coins.satyh/coins-report
+@require: enumitem/enumitem
+
+document(|
+  author = {中野 将生};
+  department = {情報科};
+  faculty = {情報};
+  id = 2013553;
+  title = {関数プログラミング 8-2,8-3};
+  en = false;
+|) '<
+  +section ?* ?* ?:((8,2)) {カテゴリカル抽象機械} <
+    +p{
+      命令列の実行結果はテストコードから借用する。
+      ここでは演算子は四則演算に加えて`mod`、`&&`、`||`、`<>`、`>`、`<`、`not`を実装した。
+    }
+    +code(```
+    let test_sum_to_10 _ =
+        let insts = [
+            Closure [
+                Ldi 1;
+                Access 0;
+                Eq;
+                Test (
+                    [Ldi 1],
+                    [Ldi (-1); Access 0; Add; Access 1; Apply; Access 0; Add]
+                );
+                Return
+            ];
+            Let;
+            Ldi 10;
+            Access 0;
+            Apply;
+            EndLet
+        ] in assert_equal (exec insts) (Int (1+2+3+4+5+6+7+8+9+10))
+    ```);
+  >
+  +section {ミニOCamlからCAMへのコンパイル} <
+    +code(```
+    ```);
+  >
+>

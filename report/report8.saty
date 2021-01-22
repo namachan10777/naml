@@ -36,7 +36,10 @@ document(|
     ```);
   >
   +section {ミニOCamlからCAMへのコンパイル} <
-    +code(```
-    ```);
+    +p{
+      テストコードを同梱した。
+      `code/test/compile_to_cam.ml`がそれである。
+      フィボナッチ数列と階乗が正しく動く事を確認した。
+    }
   >
 >

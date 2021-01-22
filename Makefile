@@ -49,6 +49,7 @@ REPORT7_OUTPUTS = \
 REPORT8_OUTPUTS = \
 	code/lib/cam.ml \
 	code/lib/compile_to_cam.ml \
+	code/test/compile_to_cam.ml \
 	report/report8.pdf
 
 DIST=dist

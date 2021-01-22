@@ -6,7 +6,7 @@ document(|
   department = {情報科};
   faculty = {情報};
   id = 2013553;
-  title = {関数プログラミング 7-2};
+  title = {関数プログラミング 7-2,7-3};
   en = false;
 |) '<
   +section ?* ?* ?:((7,2)) {静的束縛と動的束縛} <

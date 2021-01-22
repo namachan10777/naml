@@ -55,6 +55,11 @@ let rec exec zam =
             exec { code = code'; astack = astack; env = c :: env'; rstack = ClosVal(code, zam.env) :: zam.rstack }
         | _ -> failwith "cannot execute app"
     end
+    | TailApp :: _ -> begin match zam.astack with
+        | ClosVal (code', env') as c :: astack ->
+            exec { zam with code = code'; astack = astack; env = c :: env' }
+        | _ -> failwith "cannot execute app"
+    end
     | Grab :: code -> begin match (zam.astack, zam.rstack) with
         | (Eps :: astack, ClosVal(code', env') :: rstack) ->
             exec { code = code'; env = env'; astack = ClosVal(code, zam.env) :: astack; rstack = rstack }
@@ -73,4 +78,3 @@ let rec exec zam =
     | Test _ :: _ -> failwith "test is unsupported"
     | And :: _ -> failwith "and is unsupported"
     | Eq :: _ -> failwith "eq is unsupported"
-    | TailApp :: _ -> failwith "tailapp is unsupported"

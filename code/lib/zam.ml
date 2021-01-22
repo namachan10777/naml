@@ -43,8 +43,8 @@ let rec exec zam =
     | Lds s :: code -> exec { zam with code = code; astack = Str s :: zam.astack }
     | Access addr :: code -> exec { zam with code = code; astack = (List.nth zam.env addr) :: zam.astack }
     | EndLet :: code -> exec { zam with code = code; env = List.tl zam.env }
+    | Let :: code -> exec { zam with code = code; env = (List.hd zam.astack) :: zam.env; astack = List.tl zam.astack }
     | Closure _ :: _ -> failwith "closure is unsupported"
-    | Let :: _ -> failwith "let is unsupported"
     | Test _ :: _ -> failwith "test is unsupported"
     | And :: _ -> failwith "and is unsupported"
     | Eq :: _ -> failwith "eq is unsupported"

@@ -1,6 +1,7 @@
 type inst_t =
     | Ldi of int
     | Ldb of bool
+    | Lds of string
     | Access of int
     | Closure of code_t
     | Let
@@ -31,14 +32,15 @@ type zam_t ={
     rstack: stack_t;
 }
 
-let exec zam =
+let rec exec zam =
     match zam.code with
     | [] -> begin match zam with
         | { code = []; rstack = []; astack = [v]; env = [] } -> v
         | _ -> failwith "invalid state"
     end
-    | Ldi _ :: _ -> failwith "ldi is unsupported"
-    | Ldb _ :: _ -> failwith "ldb is unsupported" 
+    | Ldi i :: code -> exec { zam with code = code; astack = Int i :: zam.astack }
+    | Ldb b :: code -> exec { zam with code = code; astack = Bool b :: zam.astack }
+    | Lds s :: code -> exec { zam with code = code; astack = Str s :: zam.astack }
     | Access _ :: _ -> failwith "access is unsupported"
     | Closure _ :: _ -> failwith "closure is unsupported"
     | Let :: _ -> failwith "let is unsupported"

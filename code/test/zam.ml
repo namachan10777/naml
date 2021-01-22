@@ -36,6 +36,18 @@ let test_let _ =
     let zam = { emp_zam with code = [Ldi 42; Let; Access 0; EndLet]; } in
     assert_equal (exec zam) (Int 42)
 
+(* (fun x -> x) 42 *)
+let test_clos_and_app _ =
+    let zam = { emp_zam with
+        code = [
+            PushMark;
+            Ldi 42;
+            Closure [Grab; Access 0; Return];
+            App;
+        ]
+    } in
+    assert_equal (exec zam) (Int 42)
+
 let suite =
     "Zam" >::: [
         "finish" >:: test_finish;
@@ -45,4 +57,5 @@ let suite =
         "test_lds" >:: test_lds;
         "test_access" >:: test_access;
         "test_let" >:: test_let;
+        "test_app" >:: test_clos_and_app;
     ]

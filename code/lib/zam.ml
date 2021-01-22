@@ -7,8 +7,17 @@ type inst_t =
     | Let
     | EndLet
     | Test of code_t * code_t
+    | Add
+    | Sub
+    | Mul
+    | Div
+    | Mod
+    | Gret
+    | Less
     | And
+    | Or
     | Eq
+    | Neq
     | App
     | TailApp
     | PushMark
@@ -37,6 +46,21 @@ type zam_t ={
 [@@deriving show]
 
 let rec exec zam =
+    let bin_i_i op = match zam.astack with
+        | Int lhr :: Int rhr :: astack ->
+            exec { zam with code = List.tl zam.code; astack = Int (op lhr rhr) :: astack }
+        | _ -> failwith "cannot execute op: int -> int -> int"
+    in
+    let bin_i_b op = match zam.astack with
+        | Int lhr :: Int rhr :: astack ->
+            exec { zam with code = List.tl zam.code;  astack = Bool (op lhr rhr) :: astack }
+        | _ -> failwith "cannot execute op: int -> int -> bool"
+    in
+    let bin_b_b op = match zam.astack with
+        | Bool lhr :: Bool rhr :: astack ->
+            exec { zam with code = List.tl zam.code;  astack = Bool (op lhr rhr) :: astack }
+        | _ -> failwith "cannot execute op: bool -> bool -> bool"
+    in
     match zam.code with
     | [] -> begin match zam with
         | { code = []; rstack = []; astack = [v]; env = [] } -> v
@@ -80,5 +104,30 @@ let rec exec zam =
         | Bool false -> exec { zam with code = c2 @ code; astack = List.tl zam.astack }
         | _ -> failwith "test needs boolean value as condition"
     end
-    | And :: _ -> failwith "and is unsupported"
-    | Eq :: _ -> failwith "eq is unsupported"
+    | And :: _ -> bin_b_b ( && )
+    | Or :: _ -> bin_b_b ( || )
+    | Add :: _ -> bin_i_i ( + )
+    | Sub :: _ -> bin_i_i ( - )
+    | Mul :: _ -> bin_i_i ( * )
+    | Div :: _ -> bin_i_i ( / )
+    | Mod :: _ -> bin_i_i ( mod )
+    | Gret :: _ -> bin_i_b ( > )
+    | Less :: _ -> bin_i_b ( < )
+    | Eq :: code -> begin match zam.astack with
+        | Bool lhr :: Bool rhr :: astack ->
+            exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
+        | Int lhr :: Int rhr :: astack ->
+            exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
+        | Str lhr :: Str rhr :: astack ->
+            exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
+        | _ -> failwith "cannot execute op: bool -> bool -> bool"
+    end
+    | Neq :: code -> begin match zam.astack with
+        | Bool lhr :: Bool rhr :: astack ->
+            exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
+        | Int lhr :: Int rhr :: astack ->
+            exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
+        | Str lhr :: Str rhr :: astack ->
+            exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
+        | _ -> failwith "cannot execute op: bool -> bool -> bool"
+    end

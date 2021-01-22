@@ -28,6 +28,10 @@ let test_lds _ =
     let zam = { emp_zam with code = [Lds "hoge"] } in
     assert_equal (exec zam) (Str "hoge")
 
+let test_access _ =
+    let zam = { emp_zam with code = [Access 1; EndLet; EndLet]; env = [Int 42; Str "hoge"] } in
+    assert_equal (exec zam) (Str "hoge")
+
 let suite =
     "Zam" >::: [
         "finish" >:: test_finish;
@@ -35,4 +39,5 @@ let suite =
         "test_ldi" >:: test_ldi;
         "test_ldb" >:: test_ldb;
         "test_lds" >:: test_lds;
+        "test_access" >:: test_access;
     ]

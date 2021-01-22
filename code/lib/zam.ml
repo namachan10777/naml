@@ -41,10 +41,10 @@ let rec exec zam =
     | Ldi i :: code -> exec { zam with code = code; astack = Int i :: zam.astack }
     | Ldb b :: code -> exec { zam with code = code; astack = Bool b :: zam.astack }
     | Lds s :: code -> exec { zam with code = code; astack = Str s :: zam.astack }
-    | Access _ :: _ -> failwith "access is unsupported"
+    | Access addr :: code -> exec { zam with code = code; astack = (List.nth zam.env addr) :: zam.astack }
+    | EndLet :: code -> exec { zam with code = code; env = List.tl zam.env }
     | Closure _ :: _ -> failwith "closure is unsupported"
     | Let :: _ -> failwith "let is unsupported"
-    | EndLet :: _ -> failwith "endlet is unsupported"
     | Test _ :: _ -> failwith "test is unsupported"
     | And :: _ -> failwith "and is unsupported"
     | Eq :: _ -> failwith "eq is unsupported"

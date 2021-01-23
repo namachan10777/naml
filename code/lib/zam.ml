@@ -45,7 +45,6 @@ type zam_t ={
 [@@deriving show]
 
 let rec exec zam =
-    print_endline @@ show_zam_t zam;
     let bin_i_i op = match zam.astack with
         | Int lhr :: Int rhr :: astack ->
             exec { zam with code = List.tl zam.code; astack = Int (op lhr rhr) :: astack }
@@ -70,28 +69,27 @@ let rec exec zam =
     | Closure code' :: code ->
         exec { zam with code = code; astack = ClosVal (code', zam.env) :: zam.astack; }
     | App :: code -> begin match zam.astack with
-        | ClosVal (code', env') as c :: astack ->
-            exec { code = code'; astack = astack; env = c :: env'; rstack = ClosVal(code, zam.env) :: zam.rstack }
+        | ClosVal (code', env') as c :: v :: astack ->
+            exec { code = code'; astack = astack; env = v :: c :: env'; rstack = ClosVal(code, zam.env) :: zam.rstack }
         | _ -> failwith "cannot execute app"
     end
     | TailApp :: _ -> begin match zam.astack with
-        | ClosVal (code', env') as c :: astack ->
-            exec { zam with code = code'; astack = astack; env = c :: env' }
+        | ClosVal (code', env') as c :: v :: astack ->
+            exec { zam with code = code'; astack = astack; env = v :: c :: env' }
         | _ -> failwith "cannot execute app"
     end
     | Grab :: code -> begin match (zam.astack, zam.rstack) with
-        | (v :: Eps :: astack, _) ->
-            exec { zam with code = code; astack = astack; env = v :: zam.env }
+        | (Eps :: _, _) ->
+            failwith "detect eps"
         | (v :: astack, _) ->
             exec { zam with code = code; astack = astack; env = v :: zam.env }
         | _ -> failwith "cannot execute grab"
     end
     | Return :: _ -> begin match (zam.astack, zam.rstack) with
-        | (v :: astack, ClosVal(code', env') :: rstack) ->
+        | (v :: Eps :: astack, ClosVal(code', env') :: rstack) ->
             exec { code = code'; env = env'; astack = v :: astack; rstack = rstack }
-        | (astack, rstack) ->
-            print_endline ("astack " ^ show_stack_t astack);
-            prerr_endline ("rstack " ^ show_stack_t rstack);
+        | (a, _) ->
+            Printf.printf "\n%s\n" @@ show_stack_t a;
             failwith @@ Printf.sprintf "cannot execute return"
     end
     | PushMark :: code -> exec { zam with code = code; astack = Eps :: zam.astack }

@@ -80,16 +80,15 @@ let test_sum _ =
     } in
     assert_equal (exec zam) (Int 6)
 
-let test_2args _ =
+let test_2args_curried _ =
     let zam = { emp_zam with
         code = [
             PushMark;
             Ldi 1;
+            PushMark;
             Ldi 2;
             Closure [
-                Grab;
                 Closure [
-                    Grab;
                     Access 0;
                     Access 2;
                     Add;
@@ -103,6 +102,45 @@ let test_2args _ =
     } in
     assert_equal (exec zam) (Int 3)
 
+let test_2args_uncurried _ =
+    let zam = { emp_zam with
+        code = [
+            PushMark;
+            Ldi 1;
+            Ldi 2;
+            Closure [
+                Grab;
+                Access 0;
+                Access 1;
+                Add;
+                Return;
+            ];
+            App;
+        ]
+    } in
+    assert_equal (exec zam) (Int 3)
+
+let test_partial_app_uncurried _ =
+    let zam = { emp_zam with
+        code = [
+            PushMark;
+            Ldi 2;
+            PushMark;
+            Ldi 1;
+            Closure [
+                Grab;
+                Access 0;
+                Access 1;
+                Add;
+                Return;
+            ];
+            App;
+            App;
+        ]
+    } in
+    assert_equal (exec zam) (Int 3)
+
+
 let suite =
     "Zam" >::: [
         (*"finish" >:: test_finish;
@@ -115,5 +153,7 @@ let suite =
         "test_test" >:: test_test;
         "test_app" >:: test_clos_and_app;
         "test_sum" >:: test_sum;*)
-        "test_2args" >:: test_2args;
+        "test_2args_curried" >:: test_2args_curried;
+        "test_2args_uncurried" >:: test_2args_uncurried;
+        (*"test_partial_app_uncurried" >:: test_partial_app_uncurried;*)
     ]

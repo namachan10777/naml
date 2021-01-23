@@ -28,8 +28,10 @@ let compile ast =
         (f venv def) @ [Zam.Let] @ (f (id :: venv) expr) @ [Zam.EndLet]
     | If _ -> failwith "if is unsupported"
     | LetRec _ -> failwith "letrec is unsupported"
-    | Fun _ -> failwith "fun is unsupported"
-    | App _ -> failwith "app is unsupported"
+    | Fun (arg, body) ->
+        [Zam.Closure ((f (arg :: "" :: venv) body) @ [Zam.Return])]
+    | App (g, arg) ->
+        Zam.PushMark :: (f venv arg) @ (f venv g) @ [Zam.App]
     | Not _ -> failwith "not is unsupported"
     | Match _ -> failwith "match is unsupported"
     | Tuple _ -> failwith "tuple is unsupported"

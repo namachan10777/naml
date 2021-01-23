@@ -42,7 +42,7 @@ let test_clos_and_app _ =
         code = [
             PushMark;
             Ldi 42;
-            Closure [Grab; Access 0; Return];
+            Closure [Access 0; Return];
             App;
         ]
     } in

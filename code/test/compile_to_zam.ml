@@ -45,6 +45,14 @@ let run_let _ =
     let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "let x = 1 in let y = x + 2 in y + 3" in
     assert_equal (exec zam) (Int 6)
 
+let run_fun _ =
+    let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "(fun x y z -> x * 100 + y * 10 + z) 1 2 3" in
+    assert_equal (exec zam) (Int 123)
+
+let run_partial_app _ =
+    let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "let f = (fun x y z -> x * 100 + y * 10 + z) 1 2 in f 3" in
+    assert_equal (exec zam) (Int 123)
+
 let suite =
     "Compile_to_zam" >::: [
         "compile_ldi" >:: compile_ldi;
@@ -57,4 +65,6 @@ let suite =
         "run_bool" >:: run_bool;
         "run_seq" >:: run_seq;
         "run_let" >:: run_let;
+        "run_fun" >:: run_fun;
+        "run_partial_app" >:: run_partial_app;
     ]

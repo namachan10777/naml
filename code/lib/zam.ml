@@ -69,13 +69,13 @@ let rec exec zam =
     | Closure code' :: code ->
         exec { zam with code = code; astack = ClosVal (code', zam.env) :: zam.astack; }
     | App :: code -> begin match zam.astack with
-        | ClosVal (code', env') as c :: astack ->
-            exec { code = code'; astack = astack; env = c :: env'; rstack = ClosVal(code, zam.env) :: zam.rstack }
+        | ClosVal (code', env') as c :: v :: astack ->
+            exec { code = code'; astack = astack; env = v :: c :: env'; rstack = ClosVal(code, zam.env) :: zam.rstack }
         | _ -> failwith "cannot execute app"
     end
     | TailApp :: _ -> begin match zam.astack with
-        | ClosVal (code', env') as c :: astack ->
-            exec { zam with code = code'; astack = astack; env = c :: env' }
+        | ClosVal (code', env') as c :: v :: astack ->
+            exec { zam with code = code'; astack = astack; env = v :: c :: env' }
         | _ -> failwith "cannot execute app"
     end
     | Grab :: code -> begin match (zam.astack, zam.rstack) with

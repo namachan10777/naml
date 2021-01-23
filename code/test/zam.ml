@@ -42,7 +42,7 @@ let test_clos_and_app _ =
         code = [
             PushMark;
             Ldi 42;
-            Closure [Access 0; Return];
+            Closure [Grab; Access 0; Return];
             App;
         ]
     } in
@@ -60,10 +60,53 @@ let test_test _ =
     } in
     assert_equal (exec zam) (Int 42)
 
+let test_sum _ =
+    let zam = { emp_zam with
+        code = [
+            PushMark;
+            Ldi 3;
+            Closure [
+                Grab;
+                Ldi 0;
+                Access 0;
+                Eq;
+                Test (
+                    [Ldi 0; Return],
+                    [PushMark; Ldi 1; Access 0; Sub; Access 1; App; Access 0; Add; Return]
+                );
+            ];
+            App;
+        ]
+    } in
+    assert_equal (exec zam) (Int 6)
+
+let test_2args _ =
+    let zam = { emp_zam with
+        code = [
+            PushMark;
+            Ldi 1;
+            Ldi 2;
+            Closure [
+                Grab;
+                Closure [
+                    Grab;
+                    Access 0;
+                    Access 2;
+                    Add;
+                    Return;
+                ];
+                Return;
+            ];
+            App;
+            App;
+        ]
+    } in
+    assert_equal (exec zam) (Int 3)
+
 let suite =
     "Zam" >::: [
-        "finish" >:: test_finish;
-        "finish2" >:: test_finish2;
+        (*"finish" >:: test_finish;
+        (*"finish2" >:: test_finish2;*)
         "test_ldi" >:: test_ldi;
         "test_ldb" >:: test_ldb;
         "test_lds" >:: test_lds;
@@ -71,4 +114,6 @@ let suite =
         "test_let" >:: test_let;
         "test_test" >:: test_test;
         "test_app" >:: test_clos_and_app;
+        "test_sum" >:: test_sum;*)
+        "test_2args" >:: test_2args;
     ]

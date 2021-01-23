@@ -24,10 +24,13 @@ let compile ast =
     | Mod (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Mod]
     | Seq (lhr, rhr) -> (f venv lhr) @ [Zam.Drop] @ (f venv rhr)
     | Var id -> [Zam.Access (lookup id venv)]
+    | If (cond, t, e) ->
+        (f venv cond) @ [Zam.Test (f venv t, f venv e)]
     | Let (id, def, expr) ->
         (f venv def) @ [Zam.Let] @ (f (id :: venv) expr) @ [Zam.EndLet]
-    | If _ -> failwith "if is unsupported"
-    | LetRec _ -> failwith "letrec is unsupported"
+    | LetRec (id, Fun(arg, body), expr) ->
+            [Zam.Closure (f (arg :: id :: venv) body)] @ [Zam.Let] @ (f (id :: venv) expr) @ [Zam.EndLet]
+    | LetRec _ -> failwith "let rec must be take function"
     | Fun (arg, body) ->
         [Zam.Closure ((f (arg :: "" :: venv) body) @ [Zam.Return])]
     | App (g, arg) ->

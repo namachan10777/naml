@@ -45,6 +45,7 @@ type zam_t ={
 [@@deriving show]
 
 let rec exec zam =
+    print_endline @@ show_zam_t zam;
     let bin_i_i op = match zam.astack with
         | Int lhr :: Int rhr :: astack ->
             exec { zam with code = List.tl zam.code; astack = Int (op lhr rhr) :: astack }
@@ -58,7 +59,7 @@ let rec exec zam =
     match zam.code with
     | [] -> begin match zam with
         | { code = []; rstack = []; astack = [v]; env = [] } -> v
-        | _ -> failwith "invalid state"
+        | _ -> failwith @@ Printf.sprintf "invalid state %s" @@ show_zam_t zam
     end
     | Ldi i :: code -> exec { zam with code = code; astack = Int i :: zam.astack }
     | Ldb b :: code -> exec { zam with code = code; astack = Bool b :: zam.astack }
@@ -69,27 +70,29 @@ let rec exec zam =
     | Closure code' :: code ->
         exec { zam with code = code; astack = ClosVal (code', zam.env) :: zam.astack; }
     | App :: code -> begin match zam.astack with
-        | ClosVal (code', env') as c :: v :: astack ->
-            exec { code = code'; astack = astack; env = v :: c :: env'; rstack = ClosVal(code, zam.env) :: zam.rstack }
+        | ClosVal (code', env') as c :: astack ->
+            exec { code = code'; astack = astack; env = c :: env'; rstack = ClosVal(code, zam.env) :: zam.rstack }
         | _ -> failwith "cannot execute app"
     end
     | TailApp :: _ -> begin match zam.astack with
-        | ClosVal (code', env') as c :: v :: astack ->
-            exec { zam with code = code'; astack = astack; env = v :: c :: env' }
+        | ClosVal (code', env') as c :: astack ->
+            exec { zam with code = code'; astack = astack; env = c :: env' }
         | _ -> failwith "cannot execute app"
     end
     | Grab :: code -> begin match (zam.astack, zam.rstack) with
-        | (Eps :: astack, ClosVal(code', env') :: rstack) ->
-            exec { code = code'; env = env'; astack = ClosVal(code, zam.env) :: astack; rstack = rstack }
+        | (v :: Eps :: astack, _) ->
+            exec { zam with code = code; astack = astack; env = v :: zam.env }
         | (v :: astack, _) ->
-            exec { zam with code = code; astack = astack; env = v :: ClosVal(code, zam.env) :: zam.env } | _ -> failwith "cannot execute grab"
+            exec { zam with code = code; astack = astack; env = v :: zam.env }
+        | _ -> failwith "cannot execute grab"
     end
     | Return :: _ -> begin match (zam.astack, zam.rstack) with
-        | (v :: Eps :: astack, ClosVal(code', env') :: rstack) ->
+        | (v :: astack, ClosVal(code', env') :: rstack) ->
             exec { code = code'; env = env'; astack = v :: astack; rstack = rstack }
-        | (ClosVal(code', env') as c :: v :: astack, _) ->
-            exec { zam with code = code'; env = v :: c :: env'; astack = astack }
-        | (astack, rstack) -> failwith @@ Printf.sprintf "cannot execute return %s, %s" (show_stack_t astack) (show_stack_t rstack)
+        | (astack, rstack) ->
+            print_endline ("astack " ^ show_stack_t astack);
+            prerr_endline ("rstack " ^ show_stack_t rstack);
+            failwith @@ Printf.sprintf "cannot execute return"
     end
     | PushMark :: code -> exec { zam with code = code; astack = Eps :: zam.astack }
     | Test (c1, c2) :: code -> begin match List.hd zam.astack with
@@ -111,7 +114,7 @@ let rec exec zam =
             exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
         | Str lhr :: Str rhr :: astack ->
             exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
-        | _ -> failwith "cannot execute op: bool -> bool -> bool"
+        | _ -> failwith "cannot execute op: a -> a -> bool"
     end
     | Neq :: code -> begin match zam.astack with
         | Bool lhr :: Bool rhr :: astack ->
@@ -120,6 +123,6 @@ let rec exec zam =
             exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
         | Str lhr :: Str rhr :: astack ->
             exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
-        | _ -> failwith "cannot execute op: bool -> bool -> bool"
+        | _ -> failwith "cannot execute op: a -> a -> bool"
     end
     | Drop :: code -> exec { zam with code = code; astack = List.tl zam.astack }

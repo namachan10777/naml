@@ -53,9 +53,13 @@ let run_partial_app _ =
     let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "let f = (fun x y z -> x * 100 + y * 10 + z) 1 2 in f 3" in
     assert_equal (exec zam) (Int 123)
 
+let run_fact _ =
+    let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "let rec fact n = if n = 1 then 1 else n * fact (n-1) in fact 5" in
+    assert_equal (exec zam) (Int 120)
+
 let suite =
     "Compile_to_zam" >::: [
-        "compile_ldi" >:: compile_ldi;
+        (*"compile_ldi" >:: compile_ldi;
         "compile_ldb" >:: compile_ldb;
         "compile_lds" >:: compile_lds;
         "run_ldi" >:: run_ldi;
@@ -67,4 +71,5 @@ let suite =
         "run_let" >:: run_let;
         "run_fun" >:: run_fun;
         "run_partial_app" >:: run_partial_app;
+        "run_fact" >:: run_fact;*)
     ]

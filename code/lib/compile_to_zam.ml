@@ -1,5 +1,9 @@
 open K7ast
 
+let rec lookup x = function
+    | y :: rest -> if x = y then 0 else 1 + lookup x rest
+    | [] -> failwith @@ x ^ " is not found"
+
 let compile ast =
     let rec f venv = function
     | IntLit i -> [Zam.Ldi i]
@@ -19,9 +23,10 @@ let compile ast =
     | Div (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Div]
     | Mod (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Mod]
     | Seq (lhr, rhr) -> (f venv lhr) @ [Zam.Drop] @ (f venv rhr)
-    | Var _ -> failwith "var is unsupported"
+    | Var id -> [Zam.Access (lookup id venv)]
+    | Let (id, def, expr) ->
+        (f venv def) @ [Zam.Let] @ (f (id :: venv) expr) @ [Zam.EndLet]
     | If _ -> failwith "if is unsupported"
-    | Let _ -> failwith "let is unsupported"
     | LetRec _ -> failwith "letrec is unsupported"
     | Fun _ -> failwith "fun is unsupported"
     | App _ -> failwith "app is unsupported"

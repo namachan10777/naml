@@ -41,6 +41,10 @@ let run_seq _ =
     let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "1;2;3" in
     assert_equal (exec zam) (Int 3)
 
+let run_let _ =
+    let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "let x = 1 in let y = x + 2 in y + 3" in
+    assert_equal (exec zam) (Int 6)
+
 let suite =
     "Compile_to_zam" >::: [
         "compile_ldi" >:: compile_ldi;
@@ -52,4 +56,5 @@ let suite =
         "run_4arith" >:: run_4arith;
         "run_bool" >:: run_bool;
         "run_seq" >:: run_seq;
+        "run_let" >:: run_let;
     ]

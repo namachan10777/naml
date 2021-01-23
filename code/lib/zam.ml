@@ -58,7 +58,7 @@ let rec exec zam =
     match zam.code with
     | [] -> begin match zam with
         | { code = []; rstack = []; astack = [v]; env = [] } -> v
-        | _ -> failwith @@ Printf.sprintf "invalid state %s" @@ show_zam_t zam
+        | _ -> failwith "invalid state"
     end
     | Ldi i :: code -> exec { zam with code = code; astack = Int i :: zam.astack }
     | Ldb b :: code -> exec { zam with code = code; astack = Bool b :: zam.astack }
@@ -79,18 +79,17 @@ let rec exec zam =
         | _ -> failwith "cannot execute app"
     end
     | Grab :: code -> begin match (zam.astack, zam.rstack) with
-        | (Eps :: _, _) ->
-            failwith "detect eps"
+        | (Eps :: astack, ClosVal(code', env') :: rstack) ->
+            exec { code = code'; astack = ClosVal(code, zam.env) :: astack; env = env'; rstack = rstack}
         | (v :: astack, _) ->
-            exec { zam with code = code; astack = astack; env = v :: zam.env }
+            exec { zam with code = code; astack = astack; env = v :: Eps :: zam.env }
         | _ -> failwith "cannot execute grab"
     end
     | Return :: _ -> begin match (zam.astack, zam.rstack) with
         | (v :: Eps :: astack, ClosVal(code', env') :: rstack) ->
             exec { code = code'; env = env'; astack = v :: astack; rstack = rstack }
-        | (a, _) ->
-            Printf.printf "\n%s\n" @@ show_stack_t a;
-            failwith @@ Printf.sprintf "cannot execute return"
+        | (_, _) ->
+            failwith "cannot execute return"
     end
     | PushMark :: code -> exec { zam with code = code; astack = Eps :: zam.astack }
     | Test (c1, c2) :: code -> begin match List.hd zam.astack with

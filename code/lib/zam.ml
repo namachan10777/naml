@@ -21,6 +21,7 @@ type inst_t =
     | PushMark
     | Grab
     | Return
+    | Drop
 [@@deriving show]
 and code_t = inst_t list
 [@@deriving show]
@@ -121,3 +122,4 @@ let rec exec zam =
             exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
         | _ -> failwith "cannot execute op: bool -> bool -> bool"
     end
+    | Drop :: code -> exec { zam with code = code; astack = List.tl zam.astack }

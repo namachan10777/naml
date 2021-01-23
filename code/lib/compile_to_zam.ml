@@ -18,7 +18,7 @@ let compile ast =
     | Mul (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Mul]
     | Div (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Div]
     | Mod (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Mod]
-    | Emp -> failwith "emp is unsupported"
+    | Seq (lhr, rhr) -> (f venv lhr) @ [Zam.Drop] @ (f venv rhr)
     | Var _ -> failwith "var is unsupported"
     | If _ -> failwith "if is unsupported"
     | Let _ -> failwith "let is unsupported"
@@ -30,6 +30,6 @@ let compile ast =
     | Tuple _ -> failwith "tuple is unsupported"
     | Cons _ -> failwith "cons is unsupported"
     | Builtin _ -> failwith "builtin is unsupported"
-    | Seq _ -> failwith "seq is unsupported"
     | DebugPrint _ -> failwith "debugprint is unsupported"
+    | Emp -> failwith "emp is unsupported"
     in { Zam.code = (f [] ast); Zam.astack = []; Zam.rstack = []; Zam.env = [] }

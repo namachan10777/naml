@@ -88,8 +88,7 @@ let rec exec zam =
         | (Eps :: astack, ClosVal(code', env') :: rstack) ->
             exec { code = code'; env = env'; astack = ClosVal(code, zam.env) :: astack; rstack = rstack }
         | (v :: astack, _) ->
-            exec { zam with code = code; astack = astack; env = v :: ClosVal(code, zam.env) :: zam.env }
-        | _ -> failwith "cannot execute grab"
+            exec { zam with code = code; astack = astack; env = v :: ClosVal(code, zam.env) :: zam.env } | _ -> failwith "cannot execute grab"
     end
     | Return :: _ -> begin match (zam.astack, zam.rstack) with
         | (v :: Eps :: astack, ClosVal(code', env') :: rstack) ->

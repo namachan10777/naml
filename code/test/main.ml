@@ -8,3 +8,4 @@ let () =
     run_test_tt_main Cam.suite;
     run_test_tt_main Compile_to_cam.suite;
     run_test_tt_main Zam.suite;
+    run_test_tt_main Compile_to_zam.suite;

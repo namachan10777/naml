@@ -14,8 +14,6 @@ type inst_t =
     | Mod
     | Gret
     | Less
-    | And
-    | Or
     | Eq
     | Neq
     | App
@@ -55,11 +53,6 @@ let rec exec zam =
         | Int lhr :: Int rhr :: astack ->
             exec { zam with code = List.tl zam.code;  astack = Bool (op lhr rhr) :: astack }
         | _ -> failwith "cannot execute op: int -> int -> bool"
-    in
-    let bin_b_b op = match zam.astack with
-        | Bool lhr :: Bool rhr :: astack ->
-            exec { zam with code = List.tl zam.code;  astack = Bool (op lhr rhr) :: astack }
-        | _ -> failwith "cannot execute op: bool -> bool -> bool"
     in
     match zam.code with
     | [] -> begin match zam with
@@ -103,8 +96,6 @@ let rec exec zam =
         | Bool false -> exec { zam with code = c2 @ code; astack = List.tl zam.astack }
         | _ -> failwith "test needs boolean value as condition"
     end
-    | And :: _ -> bin_b_b ( && )
-    | Or :: _ -> bin_b_b ( || )
     | Add :: _ -> bin_i_i ( + )
     | Sub :: _ -> bin_i_i ( - )
     | Mul :: _ -> bin_i_i ( * )

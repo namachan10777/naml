@@ -1,10 +1,23 @@
 open K7ast
 
 let compile ast =
-    let f _ = function
+    let rec f venv = function
     | IntLit i -> [Zam.Ldi i]
     | BoolLit b -> [Zam.Ldb b]
     | StrLit s -> [Zam.Lds s]
+    | And (lhr, rhr)  ->
+        (f venv lhr) @ [Zam.Test (f venv rhr, [Zam.Ldb false])]
+    | Or (lhr, rhr)   ->
+        (f venv lhr) @ [Zam.Test ([Zam.Ldb true], f venv rhr)]
+    | Gret (lhr, rhr) -> (f venv rhr) @ (f venv lhr) @ [Zam.Gret]
+    | Less (lhr, rhr) -> (f venv rhr) @ (f venv lhr) @ [Zam.Less]
+    | Eq (lhr, rhr)   -> (f venv rhr) @ (f venv lhr) @ [Zam.Eq]
+    | Neq (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Neq]
+    | Add (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Add]
+    | Sub (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Sub]
+    | Mul (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Mul]
+    | Div (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Div]
+    | Mod (lhr, rhr)  -> (f venv rhr) @ (f venv lhr) @ [Zam.Mod]
     | Emp -> failwith "emp is unsupported"
     | Var _ -> failwith "var is unsupported"
     | If _ -> failwith "if is unsupported"
@@ -12,17 +25,6 @@ let compile ast =
     | LetRec _ -> failwith "letrec is unsupported"
     | Fun _ -> failwith "fun is unsupported"
     | App _ -> failwith "app is unsupported"
-    | Eq _ -> failwith "eq is unsupported"
-    | Neq _ -> failwith "neq is unsupported"
-    | Gret _ -> failwith "gret is unsupported"
-    | Less _ -> failwith "less is unsupported"
-    | Or _ -> failwith "or is unsupported"
-    | And _ -> failwith "and is unsupported"
-    | Add _ -> failwith "add is unsupported"
-    | Sub _ -> failwith "sub is unsupported"
-    | Mul _ -> failwith "mul is unsupported"
-    | Div _ -> failwith "div is unsupported"
-    | Mod _ -> failwith "mod is unsupported"
     | Not _ -> failwith "not is unsupported"
     | Match _ -> failwith "match is unsupported"
     | Tuple _ -> failwith "tuple is unsupported"

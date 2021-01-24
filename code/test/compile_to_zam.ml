@@ -61,6 +61,10 @@ let run_sum _ =
     let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "let rec sum n = if n = 0 then 0 else n + sum (n-1) in sum 3"
     in assert_equal (exec zam) (Int 6)
 
+let run_fib _ =
+    let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "let rec fib n = if n = 1 || n = 0 then 1 else (fib (n-1)) + fib (n-2) in fib 5" in
+    assert_equal (exec zam) (Int 8)
+
 let suite =
     "Compile_to_zam" >::: [
         "compile_ldi" >:: compile_ldi;
@@ -77,4 +81,5 @@ let suite =
         "run_partial_app" >:: run_partial_app;
         "run_fact" >:: run_fact;
         "run_sum" >:: run_sum;
+        "run_fib" >:: run_fib;
     ]

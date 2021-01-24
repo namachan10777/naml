@@ -17,6 +17,7 @@ type inst_t =
     | Eq
     | Neq
     | App
+    | Not
     | TailApp
     | PushMark
     | Grab
@@ -120,6 +121,11 @@ let rec exec zam =
             exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
         | Str lhr :: Str rhr :: astack ->
             exec { zam with code = code;  astack = Bool (lhr = rhr) :: astack }
+        | _ -> failwith "cannot execute op: a -> a -> bool"
+    end
+    | Not :: code -> begin match zam.astack with
+        | Bool b :: astack ->
+            exec { zam with code = code;  astack = Bool (not b) :: astack }
         | _ -> failwith "cannot execute op: a -> a -> bool"
     end
     | Drop :: code -> exec { zam with code = code; astack = List.tl zam.astack }

@@ -35,7 +35,8 @@ let compile ast =
         [Zam.Closure ((f (arg :: "" :: venv) body) @ [Zam.Return])]
     | App (g, arg) ->
         Zam.PushMark :: (f venv arg) @ (f venv g) @ [Zam.App]
-    | Not _ -> failwith "not is unsupported"
+    | Not e ->
+        (f venv e) @ [Zam.Not]
     | Match _ -> failwith "match is unsupported"
     | Tuple _ -> failwith "tuple is unsupported"
     | Cons _ -> failwith "cons is unsupported"

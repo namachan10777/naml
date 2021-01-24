@@ -57,9 +57,13 @@ let run_fact _ =
     let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "let rec fact n = if n = 1 then 1 else n * fact (n-1) in fact 5" in
     assert_equal (exec zam) (Int 120)
 
+let run_sum _ =
+    let zam = S8.Compile_to_zam.compile @@ S8.K7top.parse_repl_string "let rec sum n = if n = 0 then 0 else n + sum (n-1) in sum 3"
+    in assert_equal (exec zam) (Int 6)
+
 let suite =
     "Compile_to_zam" >::: [
-        (*"compile_ldi" >:: compile_ldi;
+        "compile_ldi" >:: compile_ldi;
         "compile_ldb" >:: compile_ldb;
         "compile_lds" >:: compile_lds;
         "run_ldi" >:: run_ldi;
@@ -71,5 +75,6 @@ let suite =
         "run_let" >:: run_let;
         "run_fun" >:: run_fun;
         "run_partial_app" >:: run_partial_app;
-        "run_fact" >:: run_fact;*)
+        "run_fact" >:: run_fact;
+        "run_sum" >:: run_sum;
     ]

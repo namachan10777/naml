@@ -29,7 +29,7 @@ let compile ast =
     | Let (id, def, expr) ->
         (f venv def) @ [Zam.Let] @ (f (id :: venv) expr) @ [Zam.EndLet]
     | LetRec (id, Fun(arg, body), expr) ->
-            [Zam.Closure (f (arg :: id :: venv) body)] @ [Zam.Let] @ (f (id :: venv) expr) @ [Zam.EndLet]
+            [Zam.Closure (f (arg :: id :: venv) body @ [Zam.Return])] @ [Zam.Let] @ (f (id :: venv) expr) @ [Zam.EndLet]
     | LetRec _ -> failwith "let rec must be take function"
     | Fun (arg, body) ->
         [Zam.Closure ((f (arg :: "" :: venv) body) @ [Zam.Return])]

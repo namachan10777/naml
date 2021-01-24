@@ -63,18 +63,22 @@ let test_test _ =
 let test_sum _ =
     let zam = { emp_zam with
         code = [
-            PushMark;
-            Ldi 3;
             Closure [
                 Ldi 0;
                 Access 0;
                 Eq;
                 Test (
-                    [Ldi 0; Return],
-                    [PushMark; Ldi 1; Access 0; Sub; Access 1; App; Access 0; Add; Return]
+                    [Ldi 0],
+                    [PushMark; Ldi 1; Access 0; Sub; Access 1; App; Access 0; Add]
                 );
+                Return;
             ];
+            Let;
+            PushMark;
+            Ldi 3;
+            Access 0;
             App;
+            EndLet;
         ]
     } in
     assert_equal (exec zam) (Int 6)

@@ -10,6 +10,7 @@ clean:
 	rm -f *.o
 	rm -f *_test
 	rm -f compiler1st
+	rm -f *.pp.ml
 
 .PHONY: test
 test: lex_test

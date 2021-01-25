@@ -56,6 +56,22 @@ let opt pat s =
         | (before, None) -> before
     in f None 
 
+let match_strlit s i =
+    let rec f i =
+        if i >= String.length s
+        then None
+        else if (i+1 < String.length s) && s.[i] = '\\' && s.[i+1] = '\"'
+        then f (i+2)
+        else if s.[i] = '"'
+        then Some(i+1)
+        else f (i+1)
+    in
+    if i+1 >= String.length s
+    then None
+    else if s.[i] = '"'
+    then f (i+1)
+    else None
+
 let match_space = opt match_space_char
 let match_alph = opt match_alph_char
 let match_num = opt match_num_char
@@ -83,3 +99,9 @@ let () =
     Test.assert_eq "match_str \"hoge\" \"hog\"" (match_str "hoge" "hog" 0) None;
     Test.assert_eq "match_str \"hoge\" \"hogu\"" (match_str "hoge" "hogu" 0) None;
     Test.assert_eq "match_str \"hoge\" \" hoge\"" (match_str "hoge" " hoge" 1) (Some 5);
+    Test.assert_eq "match_strlit \"\"hoge\"" (match_strlit "\"hoge\"" 0) (Some 6);
+    Test.assert_eq "match_strlit \"\"ho\\\\ge\"" (match_strlit "\"ho\\\\ge\"" 0) (Some 8);
+    Test.assert_eq "match_strlit \"\"ho\\\"ge\"" (match_strlit "\"ho\\\"ge\"" 0) (Some 8);
+    Test.assert_eq "match_strlit \"\"hoge\"" (match_strlit "\"hoge" 0) None; 
+    Test.assert_eq "match_strlit \"hoge\"\"" (match_strlit "hoge\"" 0) None; 
+    Test.assert_eq "match_strlit \"\"\"\"" (match_strlit "\"\"" 0) (Some 2); 

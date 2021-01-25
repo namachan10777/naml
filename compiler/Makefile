@@ -19,7 +19,10 @@ test: lex_test
 test.cmx: test.ml Makefile
 	ocamlopt  $< -c
 
-parser.cmx: parser.ml Makefile
+ast.cmx: ast.ml
+	ocamlopt $< -c
+
+parser.cmx: parser.ml ast.cmx Makefile
 	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
 lex.cmx: lex.ml parser.cmx test.cmx

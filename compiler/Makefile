@@ -1,5 +1,5 @@
 .PHONY: all
-all: compiler1st
+all: test compiler1st
 
 .PHONY: clean
 clean:
@@ -8,10 +8,18 @@ clean:
 	rm -f *.cmi
 	rm -f *.cmt
 	rm -f *.o
+	rm -f *_test
 	rm -f compiler1st
+
+.PHONY: test
+test: lex_test
+	./lex_test
 
 test.cmx: test.ml
 	ocamlopt $< -c
+
+lex_test: lex.ml test.cmx
+	ocamlopt -o $@ test.cmx lex.ml
 
 compiler1st: main.ml Makefile
 	ocamlopt $< -o $@

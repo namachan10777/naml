@@ -4,3 +4,4 @@
 *.cmx
 !.merlin
 compiler1st
+*_test

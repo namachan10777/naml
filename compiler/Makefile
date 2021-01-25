@@ -22,7 +22,7 @@ test.cmx: test.ml Makefile
 parser.cmx: parser.ml Makefile
 	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
-lex.cmx: lex.ml
+lex.cmx: lex.ml parser.cmx test.cmx
 	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
 lex_test: lex.cmx test.cmx parser.cmx

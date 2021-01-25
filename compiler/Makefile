@@ -10,5 +10,8 @@ clean:
 	rm -f *.o
 	rm -f compiler1st
 
+test.cmx: test.ml
+	ocamlopt $< -c
+
 compiler1st: main.ml Makefile
 	ocamlopt $< -o $@

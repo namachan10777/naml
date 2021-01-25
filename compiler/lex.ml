@@ -35,6 +35,15 @@ let match_num_char s i =
         then Some(i+1)
         else None
 
+let match_hexnum_char s i =
+    if i >= String.length s
+    then None
+    else
+        let code = Char.code s.[i] in
+        if (code >= 0x30 && code <= 0x39) || (code >= 0x41 && code <= 0x46) || (code >= 0x61 && code <= 0x66)
+        then Some(i+1)
+        else None
+
 let match_char c s i =
     if i >= String.length s
     then None
@@ -73,9 +82,15 @@ let match_strlit s i =
     then f (i+1)
     else None
 
+let chain pat1 pat2 s i =
+    match pat1 s i with
+    | Some i -> pat2 s i
+    | None -> None
+
 let match_space = opt match_space_char
 let match_alph = opt match_alph_char
-let match_num = opt match_num_char
+let match_int = opt match_num_char
+let match_hexint = chain (match_str "0x") (opt match_hexnum_char)
 
 let update_pos s (fname, line, col, _) i =
     (fname, line, col, i)
@@ -94,6 +109,12 @@ let rec lex s pos =
             Parser.Str (String.sub inner 1 ((String.length inner) - 2)) :: lex s (update_pos s pos i)
         | None -> match match_space s i with
         | Some i -> lex s (update_pos s pos i)
+        | None -> match match_hexint s i with
+        | Some i ->
+            Parser.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
+        | None -> match match_int s i with
+        | Some i ->
+            Parser.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
         | None -> raise (LexException pos)
 
 
@@ -112,8 +133,10 @@ let () =
     Test.assert_eq "match_space \"hoo\"" (match_space "hoo" 0) None;
     Test.assert_eq "match_alph \"abc \"" (match_alph "abc " 0) (Some 3);
     Test.assert_eq "match_alph \" abc\"" (match_alph " abc" 0) None;
-    Test.assert_eq "match_alph \"123a\"" (match_num "123a" 0) (Some 3);
-    Test.assert_eq "match_alph \"a123\"" (match_num "a123" 0) None;
+    Test.assert_eq "match_int \"123a\"" (match_int "123a" 0) (Some 3);
+    Test.assert_eq "match_int \"a123\"" (match_int "a123" 0) None;
+    Test.assert_eq "match_hexint \"0x123g\"" (match_hexint "0x123g" 0) (Some 5);
+    Test.assert_eq "match_hexint \"a0x123\"" (match_hexint "a0x123" 0) None;
     Test.assert_eq "match_char '.' \".a\"" (match_char '.' ".a" 0) (Some 1);
     Test.assert_eq "match_char '.' \"a.\"" (match_char '.' "a." 0) None;
     Test.assert_eq "match_str \"hoge\" \"hoge\"" (match_str "hoge" "hoge" 0) (Some 4);
@@ -127,3 +150,4 @@ let () =
     Test.assert_eq "match_strlit \"hoge\"\"" (match_strlit "hoge\"" 0) None; 
     Test.assert_eq "match_strlit \"\"\"\"" (match_strlit "\"\"" 0) (Some 2); 
     Test.assert_eq "lex strlit and space" (lex " \"hoge\" \"foo\"" (initial_pos "test.ml"))  [Parser.Str "hoge"; Parser.Str "foo"];
+    Test.assert_eq "lex int and space" (lex "123 0xff" (initial_pos "test.ml"))  [Parser.Int 123; Parser.Int 255];

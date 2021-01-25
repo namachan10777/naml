@@ -88,7 +88,7 @@ let chain pat1 pat2 s i =
     | None -> None
 
 let match_space = opt match_space_char
-let match_alph = opt match_alph_char
+let match_ident = opt match_alph_char
 let match_int = opt match_num_char
 let match_hexint = chain (match_str "0x") (opt match_hexnum_char)
 
@@ -115,6 +115,9 @@ let rec lex s pos =
         | None -> match match_int s i with
         | Some i ->
             Parser.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
+        | None -> match match_ident s i with
+        | Some i ->
+            Parser.Ident (take i) :: lex s (update_pos s pos i)
         | None -> raise (LexException pos)
 
 
@@ -131,8 +134,8 @@ let () =
     Test.assert_eq "match_space \" \\n\\r\\thoge\" from 2 ends normal char" (match_space " \n\r\thoge" 2) (Some 4);
     Test.assert_eq "match_space \" \\n\\r\\thoge\" ends normal char" (match_space " \n\r\thoge" 0) (Some 4);
     Test.assert_eq "match_space \"hoo\"" (match_space "hoo" 0) None;
-    Test.assert_eq "match_alph \"abc \"" (match_alph "abc " 0) (Some 3);
-    Test.assert_eq "match_alph \" abc\"" (match_alph " abc" 0) None;
+    Test.assert_eq "match_ident \"abc \"" (match_ident "abc " 0) (Some 3);
+    Test.assert_eq "match_ident \" abc\"" (match_ident " abc" 0) None;
     Test.assert_eq "match_int \"123a\"" (match_int "123a" 0) (Some 3);
     Test.assert_eq "match_int \"a123\"" (match_int "a123" 0) None;
     Test.assert_eq "match_hexint \"0x123g\"" (match_hexint "0x123g" 0) (Some 5);
@@ -151,3 +154,4 @@ let () =
     Test.assert_eq "match_strlit \"\"\"\"" (match_strlit "\"\"" 0) (Some 2); 
     Test.assert_eq "lex strlit and space" (lex " \"hoge\" \"foo\"" (initial_pos "test.ml"))  [Parser.Str "hoge"; Parser.Str "foo"];
     Test.assert_eq "lex int and space" (lex "123 0xff" (initial_pos "test.ml"))  [Parser.Int 123; Parser.Int 255];
+    Test.assert_eq "lex ident and space" (lex "aaa bbb" (initial_pos "test.ml"))  [Parser.Ident "aaa"; Parser.Ident "bbb"];

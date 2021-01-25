@@ -3,3 +3,4 @@
 *.cmi
 *.cmx
 !.merlin
+compiler1st

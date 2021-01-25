@@ -34,6 +34,14 @@ let match_num_char s i =
         then Some(i+1)
         else None
 
+let match_char c s i =
+    if i >= String.length s
+    then None
+    else
+        if c = s.[i]
+        then Some(i+1)
+        else None
+
 let opt pat s =
     let rec f acc i = match (acc, pat s i) with
         | (_, Some res) -> f (Some res) (i+1)
@@ -61,3 +69,5 @@ let () =
     Test.assert_eq "match_alph \" abc\"" (match_alph " abc" 0) None;
     Test.assert_eq "match_alph \"123a\"" (match_num "123a" 0) (Some 3);
     Test.assert_eq "match_alph \"a123\"" (match_num "a123" 0) None;
+    Test.assert_eq "match_char '.' \".a\"" (match_char '.' ".a" 0) (Some 1);
+    Test.assert_eq "match_char '.' \"a.\"" (match_char '.' "a." 0) None;

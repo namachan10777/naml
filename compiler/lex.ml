@@ -42,6 +42,14 @@ let match_char c s i =
         then Some(i+1)
         else None
 
+let match_str pat s i =
+    if (i + String.length pat) > String.length s
+    then None
+    else
+        if  pat  = String.sub s i (String.length pat)
+        then Some(i+String.length pat)
+        else None
+
 let opt pat s =
     let rec f acc i = match (acc, pat s i) with
         | (_, Some res) -> f (Some res) (i+1)
@@ -71,3 +79,7 @@ let () =
     Test.assert_eq "match_alph \"a123\"" (match_num "a123" 0) None;
     Test.assert_eq "match_char '.' \".a\"" (match_char '.' ".a" 0) (Some 1);
     Test.assert_eq "match_char '.' \"a.\"" (match_char '.' "a." 0) None;
+    Test.assert_eq "match_str \"hoge\" \"hoge\"" (match_str "hoge" "hoge" 0) (Some 4);
+    Test.assert_eq "match_str \"hoge\" \"hog\"" (match_str "hoge" "hog" 0) None;
+    Test.assert_eq "match_str \"hoge\" \"hogu\"" (match_str "hoge" "hogu" 0) None;
+    Test.assert_eq "match_str \"hoge\" \" hoge\"" (match_str "hoge" " hoge" 1) (Some 5);

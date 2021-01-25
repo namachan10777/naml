@@ -35,4 +35,9 @@ type token_t =
     | With
     | Builtin
     | Not
+    | Ref
     | Eof
+[@@deriving show]
+
+type input_t = token_t list
+[@@deriving show]

@@ -15,14 +15,17 @@ clean:
 test: lex_test
 	./lex_test
 
-test.cmx: test.ml
-	ocamlopt $< -c
+test.cmx: test.ml Makefile
+	ocamlopt  $< -c
 
-parser.cmx: parser.ml
-	ocamlopt $< -c
+parser.cmx: parser.ml Makefile
+	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
-lex_test: lex.ml test.cmx parser.cmx
-	ocamlopt -o $@ test.cmx lex.ml
+lex.cmx: lex.ml
+	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+
+lex_test: lex.cmx test.cmx parser.cmx
+	ocamlfind ocamlopt -package ppx_deriving.show test.cmx parser.cmx $< -o $@
 
 compiler1st: main.ml Makefile
 	ocamlopt $< -o $@

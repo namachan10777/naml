@@ -13,8 +13,9 @@ clean:
 	rm -f *.pp.ml
 
 .PHONY: test
-test: lex_test
+test: lex_test parser_test
 	./lex_test
+	./parser_test
 
 test.cmx: test.ml Makefile
 	ocamlopt  $< -c
@@ -30,6 +31,9 @@ lex.cmx: lex.ml parser.cmx test.cmx
 
 lex_test: lex.cmx test.cmx parser.cmx
 	ocamlfind ocamlopt -package ppx_deriving.show test.cmx parser.cmx $< -o $@
+
+parser_test: parser.cmx
+	ocamlfind ocamlopt -package ppx_deriving.show test.cmx $< -o $@
 
 compiler1st: main.ml Makefile
 	ocamlopt $< -o $@

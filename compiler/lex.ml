@@ -25,8 +25,25 @@ let match_alph_char s i =
         then Some(i+1)
         else None
 
+let match_num_char s i =
+    if i >= String.length s
+    then None
+    else
+        let code = Char.code s.[i] in
+        if code >= 0x30 && code <= 0x39
+        then Some(i+1)
+        else None
+
+let opt pat s =
+    let rec f acc i = match (acc, pat s i) with
+        | (_, Some res) -> f (Some res) (i+1)
+        | (before, None) -> before
+    in f None 
+
 let match_space = opt match_space_char
 let match_alph = opt match_alph_char
+let match_num = opt match_num_char
+
 let () =
     Test.assert_eq "count_newline 0 11" (count_newline "foo\nbar\nhoge" 0 11) 2;
     Test.assert_eq "count_newline 0 3" (count_newline "foo\nbar\nhoge" 0 3) 0;
@@ -42,3 +59,5 @@ let () =
     Test.assert_eq "match_space \"hoo\"" (match_space "hoo" 0) None;
     Test.assert_eq "match_alph \"abc \"" (match_alph "abc " 0) (Some 3);
     Test.assert_eq "match_alph \" abc\"" (match_alph " abc" 0) None;
+    Test.assert_eq "match_alph \"123a\"" (match_num "123a" 0) (Some 3);
+    Test.assert_eq "match_alph \"a123\"" (match_num "a123" 0) None;

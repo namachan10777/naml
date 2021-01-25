@@ -1,4 +1,5 @@
 type pos_t = string * int * int * int
+let initial_pos fname = (fname, 1, 1, 0)
 
 let count_newline s =
     let rec cnt acc i_begin i_end =
@@ -76,6 +77,26 @@ let match_space = opt match_space_char
 let match_alph = opt match_alph_char
 let match_num = opt match_num_char
 
+let update_pos s (fname, line, col, _) i =
+    (fname, line, col, i)
+
+exception LexException of pos_t
+
+let rec lex s pos =
+    let (_, _, _, i) = pos in
+    let take e = String.sub s i (e-i) in
+    if i = String.length s
+    then []
+    else
+        match match_strlit s i with
+        | Some i ->
+            let inner = take i in
+            Parser.Str (String.sub inner 1 ((String.length inner) - 2)) :: lex s (update_pos s pos i)
+        | None -> match match_space s i with
+        | Some i -> lex s (update_pos s pos i)
+        | None -> raise (LexException pos)
+
+
 let () =
     Test.assert_eq "count_newline 0 11" (count_newline "foo\nbar\nhoge" 0 11) 2;
     Test.assert_eq "count_newline 0 3" (count_newline "foo\nbar\nhoge" 0 3) 0;
@@ -105,3 +126,4 @@ let () =
     Test.assert_eq "match_strlit \"\"hoge\"" (match_strlit "\"hoge" 0) None; 
     Test.assert_eq "match_strlit \"hoge\"\"" (match_strlit "hoge\"" 0) None; 
     Test.assert_eq "match_strlit \"\"\"\"" (match_strlit "\"\"" 0) (Some 2); 
+    Test.assert_eq "lex strlit and space" (lex " \"hoge\" \"foo\"" (initial_pos "test.ml"))  [Parser.Str "hoge"; Parser.Str "foo"];

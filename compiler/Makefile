@@ -18,7 +18,10 @@ test: lex_test
 test.cmx: test.ml
 	ocamlopt $< -c
 
-lex_test: lex.ml test.cmx
+parser.cmx: parser.ml
+	ocamlopt $< -c
+
+lex_test: lex.ml test.cmx parser.cmx
 	ocamlopt -o $@ test.cmx lex.ml
 
 compiler1st: main.ml Makefile

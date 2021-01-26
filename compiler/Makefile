@@ -18,15 +18,15 @@ test: lex_test parser_test
 	./parser_test
 
 test.cmx: test.ml
-	ocamlopt  $< -c
-
-ast.cmx: ast.ml
-	ocamlopt $< -c
-
-parser.cmx: parser.ml ast.ml
 	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
-lex.cmx: lex.ml parser.ml test.ml
+ast.cmx: ast.ml
+	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+
+parser.cmx: parser.ml ast.cmx
+	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+
+lex.cmx: lex.ml parser.cmx test.cmx
 	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
 lex_test.cmx: lex_test.ml parser.cmx test.cmx
@@ -35,7 +35,7 @@ lex_test.cmx: lex_test.ml parser.cmx test.cmx
 lex_test: test.cmx lex.cmx ast.cmx lex_test.cmx 
 	ocamlfind ocamlopt -package ppx_deriving.show $^ -o $@
 
-parser_test.cmx: parser_test.ml parser.ml ast.ml
+parser_test.cmx: parser_test.ml parser.cmx ast.cmx
 	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
 parser.cmx: parser.ml ast.cmx

@@ -43,8 +43,9 @@ type input_t = token_t list
 [@@deriving show]
 
 type parsed_t = Ast.t * token_t list
+[@@deriving show]
 
-exception SyntaxError
+exception SyntaxError of string
 
 let rec split_with f = function
     | hd :: tl ->
@@ -61,14 +62,20 @@ let is_add_or_sub = function
     | Sub -> true
     | _ -> false
 
-let rec parse input =
-    match (split_with is_add_or_sub @@ List.rev input, input) with
-    | (Some ([Int rhr], lhr), _) ->
-        Ast.Add (parse (List.rev lhr), Ast.Int rhr)
-    | (None, [Int i]) ->
-        Ast.Int i
-    | _ -> raise SyntaxError
+let dbg ast = print_endline @@ show_parsed_t ast
+let dbg_i ast = print_endline @@ show_input_t ast
 
-let () =
-    Test.assert_eq "parse_add" (parse [Int 0; Add; Int 1; Add; Int 2])
-    (Ast.Add (Ast.Add(Ast.Int 0, Ast.Int 1), Ast.Int 2));
+let rec parse_expr input = match parse_term input with
+    | (lhr, Add :: rhr) -> begin match parse_expr rhr with
+        | (Ast.Add (rhrl, rhrr), remain) -> (Ast.Add(Ast.Add (lhr, rhrl), rhrr), remain)
+        | (Ast.Sub (rhrl, rhrr), remain) -> (Ast.Add(Ast.Sub (lhr, rhrl), rhrr), remain)
+        | (rhr, remain) -> (Ast.Add (lhr, rhr), remain)
+    end
+    | x -> x
+and parse_term = function
+    | Int i :: remain -> (Ast.Int i, remain)
+    | x -> (dbg_i x); raise @@ SyntaxError "term"
+
+let parse input = match parse_expr input with
+    | (ast, [Eof]) -> ast
+    | x -> (dbg x); raise @@ SyntaxError "top"

@@ -17,23 +17,32 @@ test: lex_test parser_test
 	./lex_test
 	./parser_test
 
-test.cmx: test.ml Makefile
+test.cmx: test.ml
 	ocamlopt  $< -c
 
 ast.cmx: ast.ml
 	ocamlopt $< -c
 
-parser.cmx: parser.ml ast.cmx Makefile
+parser.cmx: parser.ml ast.ml
 	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
-lex.cmx: lex.ml parser.cmx test.cmx
+lex.cmx: lex.ml parser.ml test.ml
 	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
-lex_test: lex.cmx test.cmx parser.cmx
-	ocamlfind ocamlopt -package ppx_deriving.show test.cmx parser.cmx $< -o $@
+lex_test.cmx: lex_test.ml parser.cmx test.cmx
+	ocamlfind ocamlopt -package ppx_deriving.show $< -c
 
-parser_test: parser.cmx
-	ocamlfind ocamlopt -package ppx_deriving.show test.cmx $< -o $@
+lex_test: test.cmx lex.cmx ast.cmx lex_test.cmx 
+	ocamlfind ocamlopt -package ppx_deriving.show $^ -o $@
+
+parser_test.cmx: parser_test.ml parser.ml ast.ml
+	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+
+parser.cmx: parser.ml ast.cmx
+	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+
+parser_test: lex.cmx test.cmx ast.cmx parser.cmx parser_test.cmx 
+	ocamlfind ocamlopt -package ppx_deriving.show $^ -o $@
 
 compiler1st: main.ml Makefile
 	ocamlopt $< -o $@

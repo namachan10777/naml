@@ -19,7 +19,7 @@ RUN opam repository add satysfi-external https://github.com/gfngfn/satysfi-exter
 RUN opam install -y opam-depext && \
 	opam depext satysfi satysfi-dist satyrographos && \
 	opam install -y satysfi satysfi-dist satyrographos \
-					dune ppx_deriving sedlex menhir core oUnit
+					dune ppx_deriving sedlex menhir core oUnit ocamlfind
 
 RUN opam install -y \
 	satysfi-bibyfi satysfi-easytable satysfi-enumitem satysfi-base satysfi-uline satysfi-class-slydifi \

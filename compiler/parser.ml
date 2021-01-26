@@ -68,31 +68,32 @@ let dbg_i ast = print_endline @@ show_input_t ast
 let rec parse_expr input = match parse_mul input with
     | (lhr, Add :: rhr) -> begin match parse_expr rhr with
         | (Ast.Add (rhrl, rhrr), remain) -> (Ast.Add (Ast.Add (lhr, rhrl), rhrr), remain)
-        | (Ast.Sub (rhrl, rhrr), remain) -> (Ast.Add (Ast.Sub (lhr, rhrl), rhrr), remain)
+        | (Ast.Sub (rhrl, rhrr), remain) -> (Ast.Sub (Ast.Add (lhr, rhrl), rhrr), remain)
         | (rhr, remain) -> (Ast.Add (lhr, rhr), remain)
     end
     | (lhr, Sub :: rhr) -> begin match parse_expr rhr with
-        | (Ast.Add (rhrl, rhrr), remain) -> (Ast.Sub (Ast.Add (lhr, rhrl), rhrr), remain)
+        | (Ast.Add (rhrl, rhrr), remain) -> (Ast.Add (Ast.Sub (lhr, rhrl), rhrr), remain)
         | (Ast.Sub (rhrl, rhrr), remain) -> (Ast.Sub (Ast.Sub (lhr, rhrl), rhrr), remain)
         | (rhr, remain) -> (Ast.Sub (lhr, rhr), remain)
     end
     | x -> x
 and parse_mul input = match parse_term input with
-    | (lhr, Mul :: rhr) -> begin match parse_expr rhr with
+    | (lhr, Mul :: rhr) ->
+        begin match parse_mul rhr with
         | (Ast.Mul (rhrl, rhrr), remain) -> (Ast.Mul (Ast.Mul (lhr, rhrl), rhrr), remain)
-        | (Ast.Div (rhrl, rhrr), remain) -> (Ast.Mul (Ast.Div (lhr, rhrl), rhrr), remain)
-        | (Ast.Mod (rhrl, rhrr), remain) -> (Ast.Mul (Ast.Mod (lhr, rhrl), rhrr), remain)
+        | (Ast.Div (rhrl, rhrr), remain) -> (Ast.Div (Ast.Mul (lhr, rhrl), rhrr), remain)
+        | (Ast.Mod (rhrl, rhrr), remain) -> (Ast.Mod (Ast.Mul (lhr, rhrl), rhrr), remain)
         | (rhr, remain) -> (Ast.Mul (lhr, rhr), remain)
     end
-    | (lhr, Div :: rhr) -> begin match parse_expr rhr with
-        | (Ast.Mul (rhrl, rhrr), remain) -> (Ast.Div (Ast.Mul (lhr, rhrl), rhrr), remain)
+    | (lhr, Div :: rhr) -> begin match parse_mul rhr with
+        | (Ast.Mul (rhrl, rhrr), remain) -> (Ast.Mul (Ast.Div (lhr, rhrl), rhrr), remain)
         | (Ast.Div (rhrl, rhrr), remain) -> (Ast.Div (Ast.Div (lhr, rhrl), rhrr), remain)
-        | (Ast.Mod (rhrl, rhrr), remain) -> (Ast.Div (Ast.Mod (lhr, rhrl), rhrr), remain)
+        | (Ast.Mod (rhrl, rhrr), remain) -> (Ast.Mod (Ast.Div (lhr, rhrl), rhrr), remain)
         | (rhr, remain) -> (Ast.Div (lhr, rhr), remain)
     end
-    | (lhr, Mod :: rhr) -> begin match parse_expr rhr with
-        | (Ast.Mul (rhrl, rhrr), remain) -> (Ast.Mod (Ast.Mul (lhr, rhrl), rhrr), remain)
-        | (Ast.Div (rhrl, rhrr), remain) -> (Ast.Mod (Ast.Div (lhr, rhrl), rhrr), remain)
+    | (lhr, Mod :: rhr) -> begin match parse_mul rhr with
+        | (Ast.Mul (rhrl, rhrr), remain) -> (Ast.Mul (Ast.Mod (lhr, rhrl), rhrr), remain)
+        | (Ast.Div (rhrl, rhrr), remain) -> (Ast.Div (Ast.Mod (lhr, rhrl), rhrr), remain)
         | (Ast.Mod (rhrl, rhrr), remain) -> (Ast.Mod (Ast.Mod (lhr, rhrl), rhrr), remain)
         | (rhr, remain) -> (Ast.Mod (lhr, rhr), remain)
     end
@@ -102,8 +103,12 @@ and parse_term = function
     | Sub :: remain ->
         let (exp, remain) = parse_term remain in
         (Ast.Neg exp ,remain)
+    | LP :: remain -> begin match parse_expr remain with
+        | (inner, RP :: remain) -> (Ast.Paren inner, remain)
+        | _ -> raise @@ SyntaxError "paren is not balanced"
+    end
     | x -> (dbg_i x); raise @@ SyntaxError "term"
 
 let parse input = match parse_expr input with
-    | (ast, [Eof]) -> ast
+    | (ast, [Eof]) -> Ast.remove_paren ast
     | x -> (dbg x); raise @@ SyntaxError "top"

@@ -5,4 +5,5 @@ type t =
     | Mul of t * t
     | Div of t * t
     | Mod of t * t
+    | Neg of t
 [@@deriving show]

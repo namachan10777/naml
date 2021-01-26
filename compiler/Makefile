@@ -1,3 +1,5 @@
+OCAMLOPT=ocamlfind ocamlopt -package ppx_deriving.show
+
 .PHONY: all
 all: test compiler1st
 
@@ -18,31 +20,31 @@ test: lex_test parser_test
 	./parser_test
 
 test.cmx: test.ml
-	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+	$(OCAMLOPT) $< -c
 
 ast.cmx: ast.ml
-	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+	$(OCAMLOPT) $< -c
 
 parser.cmx: parser.ml ast.cmx
-	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+	$(OCAMLOPT) $< -c
 
 lex.cmx: lex.ml parser.cmx test.cmx
-	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+	$(OCAMLOPT) $< -c
 
 lex_test.cmx: lex_test.ml parser.cmx test.cmx
-	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+	$(OCAMLOPT) $< -c
 
 lex_test: test.cmx lex.cmx ast.cmx lex_test.cmx 
-	ocamlfind ocamlopt -package ppx_deriving.show $^ -o $@
+	$(OCAMLOPT) $^ -o $@
 
 parser_test.cmx: parser_test.ml parser.cmx ast.cmx
-	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+	$(OCAMLOPT) $< -c
 
 parser.cmx: parser.ml ast.cmx
-	ocamlfind ocamlopt -package ppx_deriving.show $< -c
+	$(OCAMLOPT) $< -c
 
 parser_test: lex.cmx test.cmx ast.cmx parser.cmx parser_test.cmx 
-	ocamlfind ocamlopt -package ppx_deriving.show $^ -o $@
+	$(OCAMLOPT) $^ -o $@
 
 compiler1st: main.ml Makefile
 	ocamlopt $< -o $@

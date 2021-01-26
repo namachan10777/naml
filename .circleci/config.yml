@@ -16,6 +16,11 @@ jobs:
       - run:
           name: test code
           command: cd code && eval $(opam env) && dune runtest
+
+      - run:
+          name: test compiler
+          command: make test -C compiler
+
       - run:
           name: build document
           command: eval $(opam env) && make all

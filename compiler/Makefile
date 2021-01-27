@@ -22,7 +22,7 @@ test: lex_test parser_test
 test.cmx: test.ml
 	$(OCAMLOPT) $< -c
 
-ast.cmx: ast.ml
+ast.cmx: ast.ml parser.cmx
 	$(OCAMLOPT) $< -c
 
 parser.cmx: parser.ml ast.cmx

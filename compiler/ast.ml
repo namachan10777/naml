@@ -1,3 +1,12 @@
+type pat_t =
+    | PEmp
+    | PCons of pat_t * pat_t
+    | PInt of int
+    | PBool of bool
+    | PVar of string
+    | PTuple of pat_t list
+[@@deriving show]
+
 type t =
     | Emp
     | Int of int
@@ -7,9 +16,19 @@ type t =
     | If of t * t * t
     | Let of string * t * t
     | Fun of string list * t
+    | Match of t * (pat_t * t) list
     | App of t * t
 [@@deriving show]
 
+
+let rec of_parser_pat_t = function
+    | Parser.PEmp -> PEmp
+    | Parser.PCons (lhr, rhr) -> PCons (of_parser_pat_t lhr, of_parser_pat_t rhr)
+    | Parser.PInt i -> PInt i
+    | Parser.PBool b -> PBool b
+    | Parser.PVar id -> PVar id
+    | Parser.PTuple tp -> PTuple (List.map of_parser_pat_t tp)
+    | Parser.PParen p -> of_parser_pat_t p
 
 let rec of_parser_t = function
     | Parser.Int i -> Int i
@@ -38,5 +57,7 @@ let rec of_parser_t = function
     | Parser.Fun (params, expr) -> Fun (params, of_parser_t expr)
     | Parser.App (f, arg) -> App (of_parser_t f, of_parser_t arg)
     | Parser.Paren e -> of_parser_t e
+    | Parser.Match (target, arms) ->
+        Match (of_parser_t target, List.map (fun (pat, expr) -> (of_parser_pat_t pat, of_parser_t expr)) arms)
 and op id lhr rhr = App (App (Var id, of_parser_t lhr), of_parser_t rhr)
 

@@ -86,3 +86,7 @@ let () =
     (Parser.Match (Parser.Var "x", [
         (Parser.PTuple [Parser.PVar "x"; Parser.PVar "y"], Parser.Var "x");
     ]));
+    test "pattern_cons" "match x with x :: [] -> x"
+    (Parser.Match (Parser.Var "x", [
+        (Parser.PCons (Parser.PVar "x", Parser.PEmp), Parser.Var "x")
+    ]));

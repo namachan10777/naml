@@ -188,7 +188,7 @@ and parse_add input = match parse_mul input with
         | (rhr, remain) -> (Sub (lhr, rhr), remain)
     end
     | x -> x
-and parse_mul input = match parse_term input with
+and parse_mul input = match parse_app input with
     | (lhr, Lex.Mul :: rhr) when succ_lets rhr ->
         let (rhr, remain ) = parse_expr rhr in (Mul (lhr, rhr), remain)
     | (lhr, Lex.Mul :: rhr) -> begin match parse_mul rhr with
@@ -214,6 +214,23 @@ and parse_mul input = match parse_term input with
         | (rhr, remain) -> (Mod (lhr, rhr), remain)
     end
     | x -> x
+and parse_app input =
+    let nexts_term = function
+        | Lex.Ident _ :: _ -> true
+        | Lex.Int _ :: _ -> true
+        | Lex.True :: _ -> true
+        | Lex.False :: _ -> true
+        | Lex.LP :: _ -> true
+        | Lex.LB :: _ -> true
+        | _ -> false
+    in
+    match parse_term input with
+    | (f, remain) when nexts_term remain ->
+        begin match parse_app remain with
+        | (App (arg1, arg2), remain) -> App (App (f, arg1), arg2), remain
+        | (arg, remain) -> App (f, arg), remain
+        end
+    | x -> x
 and parse_term = function
     | Lex.Ident id :: remain -> (Var id, remain)
     | Lex.Int i :: remain -> (Int i, remain)
@@ -223,13 +240,13 @@ and parse_term = function
         let (exp, remain) = parse_expr remain in
         (Neg exp ,remain)
     | Lex.Sub :: remain ->
-        let (exp, remain) = parse_term remain in
+        let (exp, remain) = parse_app remain in
         (Neg exp ,remain)
     | Lex.Not :: remain when succ_lets remain ->
         let (exp, remain) = parse_expr remain in
         (Not exp ,remain)
     | Lex.Not :: remain ->
-        let (exp, remain) = parse_term remain in
+        let (exp, remain) = parse_app remain in
         (Not exp ,remain)
     | Lex.LB :: Lex.RB :: remain -> (Emp, remain)
     | Lex.LB :: remain -> begin match parse_list_elem remain with

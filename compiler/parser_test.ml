@@ -105,3 +105,9 @@ let () =
         (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Emp]));
     test "parse_pattern_list5" "match [] with 1 :: [2;3] -> []"
         (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Emp]));
+    test "app1" "1 + f 2"
+        (Parser.Add (Parser.Int 1, Parser.App (Parser.Var "f", Parser.Int 2)));
+    test "app2" "- f 2"
+        (Parser.Neg (Parser.App (Parser.Var "f", Parser.Int 2)));
+    test "app3" "f 1 + 2"
+        (Parser.Add (Parser.App (Parser.Var "f", Parser.Int 1), Parser.Int 2));

@@ -78,7 +78,7 @@ let succ_lets = function
     | _ -> false
 
 let rec take_params = function
-    | Lex.Ident id :: remain ->
+    | Lex.LIdent id :: remain ->
         let (params, remain) = take_params remain in
         (id :: params, remain)
     | remain -> ([], remain)
@@ -104,7 +104,7 @@ and parse_pat_cons input = match parse_pat_term input with
         (PCons (pat, rhr), remain)
     | p -> p
 and parse_pat_term = function
-    | Lex.Ident id :: remain -> (PVar id, remain)
+    | Lex.LIdent id :: remain -> (PVar id, remain)
     | Lex.Int i :: remain -> (PInt i, remain)
     | Lex.True :: remain -> (PBool true, remain)
     | Lex.False :: remain -> (PBool false, remain)
@@ -373,7 +373,8 @@ and parse_unary = function
     | input -> parse_app input
 and parse_app input =
     let nexts_term = function
-        | Lex.Ident _ :: _ -> true
+        | Lex.LIdent _ :: _ -> true
+        | Lex.UIdent _ :: _ -> true
         | Lex.Int _ :: _ -> true
         | Lex.True :: _ -> true
         | Lex.False :: _ -> true
@@ -404,9 +405,10 @@ and parse_array_access input = match parse_term input with
     end
     | x -> x
 and parse_term = function
-    | Lex.Ident _ :: _ as remain ->
+    | Lex.UIdent _ :: _ as remain ->
         let (id, remain) = parse_ident remain in
         (Var id, remain)
+    | Lex.LIdent id :: remain -> (Var [id], remain)
     | Lex.Int i :: remain -> (Int i, remain)
     | Lex.True :: remain -> (Bool true, remain)
     | Lex.False :: remain -> (Bool false, remain)
@@ -422,10 +424,10 @@ and parse_term = function
     end
     | x -> (dbg_i x); raise @@ SyntaxError "term"
 and parse_ident = function
-    | Lex.Ident id :: Lex.Dot :: (Lex.Ident _ :: _ as remain) ->
+    | Lex.UIdent id :: Lex.Dot :: remain ->
         let (last, remain) = parse_ident remain in
         (id :: last, remain)
-    | Lex.Ident id :: remain -> ([id], remain)
+    | Lex.LIdent id :: remain -> ([id], remain)
     | _ -> raise @@ SyntaxError "ident"
 and parse_list_elem input = match parse_tuple input with
     | (lhr, Lex.Semicol :: Lex.RB :: remain) ->

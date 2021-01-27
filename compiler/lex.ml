@@ -4,7 +4,8 @@ let initial_pos fname = (fname, 1, 1, 0)
 type t =
     | Str of string
     | Int of int
-    | Ident of string
+    | UIdent of string
+    | LIdent of string
     | Dot
     | True
     | False
@@ -74,6 +75,33 @@ let match_alph_char s i =
         then Some(i+1)
         else None
 
+let match_alph_lower_char s i =
+    if i >= String.length s
+    then None
+    else
+        let code = Char.code s.[i] in
+        if code >= 0x41 && code <= 0x5a
+        then Some(i+1)
+        else None
+
+let match_alph_upper_char s i =
+    if i >= String.length s
+    then None
+    else
+        let code = Char.code s.[i] in
+        if code >= 61 && code <= 0x7a
+        then Some(i+1)
+        else None
+ 
+let match_alph_lower_char s i =
+    if i >= String.length s
+    then None
+    else
+        let code = Char.code s.[i] in
+        if code >= 0x41 && code <= 0x5a
+        then Some(i+1)
+        else None
+
 let match_num_char s i =
     if i >= String.length s
     then None
@@ -114,6 +142,16 @@ let opt pat s =
         | (before, None) -> before
     in f None 
 
+let star pat s i =
+    let rec f acc i = match (acc, pat s i) with
+        | (_, Some res) -> f (Some res) (i+1)
+        | (before, None) -> before
+    in f (Some i) i
+
+let comb_or pat1 pat2 s i = match pat1 s i with
+    | Some(i) -> Some(i)
+    | None -> pat2 s i
+
 let match_strlit s i =
     let rec f i =
         if i >= String.length s
@@ -137,6 +175,8 @@ let chain pat1 pat2 s i =
 
 let match_space = opt match_space_char
 let match_ident = opt match_alph_char
+let match_lower_ident = chain (match_alph_lower_char) @@ opt (comb_or (comb_or (match_str "_") match_num_char) match_alph_char)
+let match_upper_ident = chain (match_alph_upper_char) @@ opt (comb_or (comb_or (match_str "_") match_num_char) match_alph_char)
 let match_int = opt match_num_char
 let match_hexint = chain (match_str "0x") (opt match_hexnum_char)
 
@@ -213,7 +253,9 @@ let rec lex s pos =
         | Some i -> Comma :: lex s (update_pos s pos i)
         | None -> match match_str "|" s i with
         | Some i -> VBar :: lex s (update_pos s pos i)
-        | None -> match match_ident s i with
+        | None -> match match_upper_ident s i with
+        | Some i -> UIdent (take i) :: lex s (update_pos s pos i)
+        | None -> match match_lower_ident s i with
         | Some i -> begin match take i with
             | "as" -> As :: lex s (update_pos s pos i)
             | "true" -> True :: lex s (update_pos s pos i)
@@ -232,6 +274,6 @@ let rec lex s pos =
             | "mod" -> Mod :: lex s (update_pos s pos i)
             | "not" -> Not :: lex s (update_pos s pos i)
             | "ref" -> Ref :: lex s (update_pos s pos i)
-            | ident -> Ident ident :: lex s (update_pos s pos i)
+            | ident -> LIdent ident :: lex s (update_pos s pos i)
         end
         | None -> raise (LexException pos)

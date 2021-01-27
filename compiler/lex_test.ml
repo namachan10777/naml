@@ -88,7 +88,6 @@ let chain pat1 pat2 s i =
     | None -> None
 
 let match_space = opt match_space_char
-let match_ident = opt match_alph_char
 let match_int = opt match_num_char
 let match_hexint = chain (match_str "0x") (opt match_hexnum_char)
 
@@ -153,7 +152,7 @@ let rec lex s pos =
         | Some i -> Lex.VBar :: lex s (update_pos s pos i)
         | None -> match match_str "->" s i with
         | Some i -> Lex.Arrow :: lex s (update_pos s pos i)
-        | None -> match match_ident s i with
+        | None -> match match_lower_ident s i with
         | Some i -> begin match take i with
             | "if" -> Lex.If :: lex s (update_pos s pos i)
             | "then" -> Lex.Then :: lex s (update_pos s pos i)
@@ -168,7 +167,7 @@ let rec lex s pos =
             | "mod" -> Lex.Mod :: lex s (update_pos s pos i)
             | "not" -> Lex.Not :: lex s (update_pos s pos i)
             | "ref" -> Lex.Ref :: lex s (update_pos s pos i)
-            | ident -> Lex.Ident ident :: lex s (update_pos s pos i)
+            | ident -> Lex.LIdent ident :: lex s (update_pos s pos i)
         end
         | None -> raise (LexException pos)
 
@@ -186,6 +185,8 @@ let () =
     Test.assert_eq "match_space \" \\n\\r\\thoge\" from 2 ends normal char" (match_space " \n\r\thoge" 2) (Some 4);
     Test.assert_eq "match_space \" \\n\\r\\thoge\" ends normal char" (match_space " \n\r\thoge" 0) (Some 4);
     Test.assert_eq "match_space \"hoo\"" (match_space "hoo" 0) None;
+    Test.assert_eq "match_ident \"abc \"" (match_ident "abc " 0) (Some 3);
+    Test.assert_eq "match_ident \" abc\"" (match_ident " abc" 0) None;
     Test.assert_eq "match_ident \"abc \"" (match_ident "abc " 0) (Some 3);
     Test.assert_eq "match_ident \" abc\"" (match_ident " abc" 0) None;
     Test.assert_eq "match_int \"123a\"" (match_int "123a" 0) (Some 3);
@@ -206,22 +207,22 @@ let () =
     Test.assert_eq "match_strlit \"\"\"\"" (match_strlit "\"\"" 0) (Some 2); 
     Test.assert_eq "lex strlit and space" (lex " \"hoge\" \"foo\"" (initial_pos "test.ml"))  [Lex.Str "hoge"; Lex.Str "foo"; Lex.Eof];
     Test.assert_eq "lex int and space" (lex "123 0xff" (initial_pos "test.ml"))  [Lex.Int 123; Lex.Int 255; Lex.Eof];
-    Test.assert_eq "lex ident and space" (lex "aaa bbb" (initial_pos "test.ml"))  [Lex.Ident "aaa"; Lex.Ident "bbb"; Lex.Eof];
+    Test.assert_eq "lex ident and space" (lex "aaa bbb" (initial_pos "test.ml"))  [Lex.LIdent "aaa"; Lex.LIdent "bbb"; Lex.Eof];
     Test.assert_eq "lex fib" (lex "let rec fib n = if n = 1 || n = 0 then 1 else (fib (n-1)) + fib (n-2) in fib 5"  (initial_pos "test.ml"))
         [
-            Lex.Let; Lex.Rec; Lex.Ident "fib"; Lex.Ident "n"; Lex.Eq;
+            Lex.Let; Lex.Rec; Lex.LIdent "fib"; Lex.LIdent "n"; Lex.Eq;
             Lex.If;
-            Lex.Ident "n"; Lex.Eq; Lex.Int 1;
+            Lex.LIdent "n"; Lex.Eq; Lex.Int 1;
             Lex.Or;
-            Lex.Ident "n"; Lex.Eq; Lex.Int 0;
+            Lex.LIdent "n"; Lex.Eq; Lex.Int 0;
             Lex.Then;
             Lex.Int 1;
             Lex.Else;
-            Lex.LP; Lex.Ident "fib"; Lex.LP; Lex.Ident "n"; Lex.Sub; Lex.Int 1; Lex.RP; Lex.RP;
+            Lex.LP; Lex.LIdent "fib"; Lex.LP; Lex.LIdent "n"; Lex.Sub; Lex.Int 1; Lex.RP; Lex.RP;
             Lex.Add;
-            Lex.Ident "fib"; Lex.LP; Lex.Ident "n"; Lex.Sub; Lex.Int 2; Lex.RP;
+            Lex.LIdent "fib"; Lex.LP; Lex.LIdent "n"; Lex.Sub; Lex.Int 2; Lex.RP;
             Lex.In;
-            Lex.Ident "fib";
+            Lex.LIdent "fib";
             Lex.Int 5;
             Lex.Eof;
         ];

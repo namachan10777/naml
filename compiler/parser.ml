@@ -95,11 +95,19 @@ let rec parse_expr = function
         | _ -> raise @@ SyntaxError "match"
     end
     | others -> parse_seq others
-and parse_seq input = match parse_pipeline input with
+and parse_seq input = match parse_tuple input with
     | (lhr, Lex.Semicol :: rhr) when succ_lets rhr ->
-        let (rhr, remain ) = parse_pipeline rhr in (Seq (lhr, rhr), remain)
+        let (rhr, remain ) = parse_tuple rhr in (Seq (lhr, rhr), remain)
     | (lhr, Lex.Semicol :: rhr) ->
         let (rhr, remain) = parse_seq rhr in (Seq (lhr, rhr), remain)
+    | x -> x
+and parse_tuple input = match parse_pipeline input with
+    | (lhr, Lex.Comma :: rhr) when succ_lets rhr ->
+        let (rhr, remain) = parse_expr rhr in (Tuple [lhr; rhr], remain)
+    | (lhr, Lex.Comma :: rhr) -> begin match parse_tuple rhr with
+        | (Tuple rhr, remain) -> (Tuple (lhr :: rhr), remain)
+        | (rhr, remain) -> (Tuple [lhr; rhr], remain)
+    end
     | x -> x
 and parse_pipeline input = match parse_atat input with
     | (lhr, Lex.Pipeline :: rhr) when succ_lets rhr ->

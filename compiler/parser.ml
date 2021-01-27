@@ -9,11 +9,11 @@ type pat_t =
     | As of pat_t list
 [@@deriving show]
 
-type t =
-    | Emp
+type t = | Emp
     | Int of int
     | Bool of bool
-    | Var of string
+    | Var of string list
+    | Index of t * t
     | Assign of t * t
     | ArrayAssign of t * t
     | Add of t * t
@@ -214,7 +214,7 @@ and unfold_fun args expr =
         | PVar id -> (inner, id :: params)
         | pat ->
             let tmpname = gen_fresh () in
-            (Match (Var tmpname, [pat, Bool true, inner]), tmpname :: params))
+            (Match (Var [tmpname], [pat, Bool true, inner]), tmpname :: params))
         (expr, [])
         (List.rev args)
     in
@@ -324,7 +324,7 @@ and parse_add input = match parse_mul input with
         | (rhr, remain) -> (Sub (lhr, rhr), remain)
     end
     | x -> x
-and parse_mul input = match parse_app input with
+and parse_mul input = match parse_unary input with
     | (lhr, Lex.Mul :: rhr) when succ_lets rhr ->
         let (rhr, remain ) = parse_expr rhr in (Mul (lhr, rhr), remain)
     | (lhr, Lex.Mul :: rhr) -> begin match parse_mul rhr with
@@ -350,6 +350,26 @@ and parse_mul input = match parse_app input with
         | (rhr, remain) -> (Mod (lhr, rhr), remain)
     end
     | x -> x
+and parse_unary = function
+    | Lex.Sub :: remain when succ_lets remain ->
+        let (exp, remain) = parse_expr remain in
+        (Neg exp ,remain)
+    | Lex.Sub :: remain ->
+        let (exp, remain) = parse_unary remain in
+        (Neg exp ,remain)
+    | Lex.Not :: remain when succ_lets remain ->
+        let (exp, remain) = parse_expr remain in
+        (Not exp ,remain)
+    | Lex.Not :: remain ->
+        let (exp, remain) = parse_unary remain in
+        (Not exp ,remain)
+    | Lex.Ref :: remain when succ_lets remain ->
+        let (exp, remain) = parse_expr remain in
+        (Ref exp ,remain)
+    | Lex.Ref :: remain ->
+        let (exp, remain) = parse_unary remain in
+        (Ref exp ,remain)
+    | input -> parse_app input
 and parse_app input =
     let nexts_term = function
         | Lex.Ident _ :: _ -> true
@@ -377,28 +397,12 @@ and parse_app input =
     in
     let (tree, remain) = internal input in (reverse tree, remain)
 and parse_term = function
-    | Lex.Ident id :: remain -> (Var id, remain)
+    | Lex.Ident _ :: _ as remain ->
+        let (id, remain) = parse_ident remain in
+        (Var id, remain)
     | Lex.Int i :: remain -> (Int i, remain)
     | Lex.True :: remain -> (Bool true, remain)
     | Lex.False :: remain -> (Bool false, remain)
-    | Lex.Sub :: remain when succ_lets remain ->
-        let (exp, remain) = parse_expr remain in
-        (Neg exp ,remain)
-    | Lex.Sub :: remain ->
-        let (exp, remain) = parse_app remain in
-        (Neg exp ,remain)
-    | Lex.Not :: remain when succ_lets remain ->
-        let (exp, remain) = parse_expr remain in
-        (Not exp ,remain)
-    | Lex.Not :: remain ->
-        let (exp, remain) = parse_app remain in
-        (Not exp ,remain)
-    | Lex.Ref :: remain when succ_lets remain ->
-        let (exp, remain) = parse_expr remain in
-        (Ref exp ,remain)
-    | Lex.Ref :: remain ->
-        let (exp, remain) = parse_app remain in
-        (Ref exp ,remain)
     | Lex.LB :: Lex.RB :: remain -> (Emp, remain)
     | Lex.LB :: remain -> begin match parse_list_elem remain with
             | (inner, Lex.RB :: remain) -> (inner, remain)
@@ -409,6 +413,12 @@ and parse_term = function
         | x -> raise @@ SyntaxError (Printf.sprintf "paren is not balanced %s " @@ show_parsed_t x)
     end
     | x -> (dbg_i x); raise @@ SyntaxError "term"
+and parse_ident = function
+    | Lex.Ident id :: Lex.Dot :: (Lex.Ident _ :: _ as remain) ->
+        let (last, remain) = parse_ident remain in
+        (id :: last, remain)
+    | Lex.Ident id :: remain -> ([id], remain)
+    | _ -> raise @@ SyntaxError "ident"
 and parse_list_elem input = match parse_tuple input with
     | (lhr, Lex.Semicol :: Lex.RB :: remain) ->
         (Cons (lhr, Emp), Lex.RB :: remain)

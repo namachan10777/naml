@@ -5,6 +5,7 @@ type t =
     | Str of string
     | Int of int
     | Ident of string
+    | Dot
     | True
     | False
     | Add
@@ -164,6 +165,8 @@ let rec lex s pos =
             Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
 
         (* 愚直すぎ (末尾再帰の最適化を狙っています。許して) *)
+        | None -> match match_str "." s i with
+        | Some i -> Dot :: lex s (update_pos s pos i)
         | None -> match match_str "::" s i with
         | Some i -> Cons :: lex s (update_pos s pos i)
         | None -> match match_str "->" s i with

@@ -12,7 +12,7 @@ type t =
     | Emp
     | Int of int
     | Bool of bool
-    | Var of string
+    | Var of string list
     | Tuple of t list
     | If of t * t * t
     | Let of string * t * t
@@ -52,9 +52,9 @@ let rec of_parser_t = function
     | Parser.Cons (lhr, rhr) -> op "::" lhr rhr
     | Parser.Gret (lhr, rhr) -> op ">" lhr rhr
     | Parser.Less (lhr, rhr) -> op "<" lhr rhr
-    | Parser.Neg e -> App (Var "<unary>", of_parser_t e)
-    | Parser.Not e -> App (Var "<not>", of_parser_t e)
-    | Parser.Ref e -> App (Var "<ref>", of_parser_t e)
+    | Parser.Neg e -> App (Var ["<unary>"], of_parser_t e)
+    | Parser.Not e -> App (Var ["<not>"], of_parser_t e)
+    | Parser.Ref e -> App (Var ["<ref>"], of_parser_t e)
     | Parser.Assign (lhr, rhr) -> op ":=" lhr rhr
     | Parser.ArrayAssign (lhr, rhr) -> ArrayAssign (of_parser_t lhr, of_parser_t rhr)
     | Parser.Pipeline (arg, f) -> App(of_parser_t f, of_parser_t arg)
@@ -67,5 +67,5 @@ let rec of_parser_t = function
     | Parser.Paren e -> of_parser_t e
     | Parser.Match (target, arms) ->
         Match (of_parser_t target, List.map (fun (pat, when_e, expr) -> (of_parser_pat_t pat, of_parser_t when_e, of_parser_t expr)) arms)
-and op id lhr rhr = App (App (Var id, of_parser_t lhr), of_parser_t rhr)
+and op id lhr rhr = App (App (Var [id], of_parser_t lhr), of_parser_t rhr)
 

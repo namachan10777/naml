@@ -48,14 +48,74 @@ let () =
     (P.Let ("x", P.Let ("y", P.Int 1, P.Var "y"), P.Let ("z", P.Var "x", P.Var "z")));
     test "letfun" "let add x y = x + y in add"
     (P.Let ("add", P.Fun (["x"; "y"], P.Add (P.Var "x", P.Var "y")), P.Var "add"));
+    Parser.count := 0;
+    test "letfun_pat" "let add (x, y) (z, w) = x + y in add"
+    (P.Let ("add",
+        P.Fun (["<anonymous2>"; "<anonymous1>"],
+            P.Match (P.Var "<anonymous2>", [
+                (
+                    P.PParen(P.PTuple ([P.PVar "x"; P.PVar "y"])),
+                    P.Bool true,
+                    P.Match (P.Var "<anonymous1>", [
+                        (
+                            P.PParen(P.PTuple ([P.PVar "z"; P.PVar "w"])),
+                            P.Bool true,
+                            P.Add (P.Var "x", P.Var "y"))
+                    ])
+                )
+            ])
+        )
+    , P.Var "add"));
     test "letrecfun" "let rec add x y = x + y in add"
     (P.LetRec ("add", P.Fun (["x"; "y"], P.Add (P.Var "x", P.Var "y")), P.Var "add"));
+    Parser.count := 0;
+    test "letrecfun_pat" "let rec add (x, y) (z, w) = x + y in add"
+    (P.LetRec ("add",
+        P.Fun (["<anonymous2>"; "<anonymous1>"],
+            P.Match (P.Var "<anonymous2>", [
+                (
+                    P.PParen(P.PTuple ([P.PVar "x"; P.PVar "y"])),
+                    P.Bool true,
+                    P.Match (P.Var "<anonymous1>", [
+                        (
+                            P.PParen(P.PTuple ([P.PVar "z"; P.PVar "w"])),
+                            P.Bool true,
+                            P.Add (P.Var "x", P.Var "y"))
+                    ])
+                )
+            ])
+        )
+    , P.Var "add"));
     test "fun" "fun x y z -> x + y + z"
     (P.Fun (["x"; "y"; "z"], P.Add (P.Add (P.Var "x", P.Var "y"), P.Var "z")));
     test "fun" "(fun x y z -> x + y + z) 1"
     (P.App (
         P.Paren (P.Fun (["x"; "y"; "z"], P.Add (P.Add (P.Var "x", P.Var "y"), P.Var "z"))),
     P.Int 1));
+    Parser.count := 0;
+    test "fun pat" "fun x, y -> x + y"
+    (P.Fun (["<anonymous1>"], P.Match (
+        P.Var "<anonymous1>",
+        [
+            P.PTuple [P.PVar "x"; P.PVar "y"],
+            P.Bool true,
+            P.Add (P.Var "x", P.Var "y")
+        ]
+    )));
+    Parser.count := 0;
+    test "fun pat" "fun (x, y) (z, w) -> 0"
+    (P.Fun (["<anonymous2>"; "<anonymous1>"], P.Match (
+        P.Var "<anonymous2>",
+        [
+            P.PParen (P.PTuple [P.PVar "x"; P.PVar "y"]),
+            P.Bool true,
+            P.Match (P.Var "<anonymous1>", [
+                P.PParen (P.PTuple [P.PVar "z"; P.PVar "w"]),
+                P.Bool true,
+                P.Int 0
+            ])
+        ]
+    )));
     test "cons" "1 + 2 :: 3 :: [] = []"
     (P.Eq (
         P.Cons (P.Add (P.Int 1, P.Int 2), P.Cons (P.Int 3, P.Emp)),

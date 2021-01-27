@@ -232,11 +232,25 @@ and parse_term = function
         let (exp, remain) = parse_term remain in
         (Not exp ,remain)
     | Lex.LB :: Lex.RB :: remain -> (Emp, remain)
+    | Lex.LB :: remain -> begin match parse_list_elem remain with
+            | (inner, Lex.RB :: remain) -> (inner, remain)
+            | x -> raise @@ SyntaxError (Printf.sprintf "paren is not balanced %s " @@ show_parsed_t x)
+        end
     | Lex.LP :: remain -> begin match parse_expr remain with
-        | (inner, RP :: remain) -> (Paren inner, remain)
+        | (inner, Lex.RP :: remain) -> (Paren inner, remain)
         | x -> raise @@ SyntaxError (Printf.sprintf "paren is not balanced %s " @@ show_parsed_t x)
     end
     | x -> (dbg_i x); raise @@ SyntaxError "term"
+and parse_list_elem input = match parse_tuple input with
+    | (lhr, Lex.Semicol :: Lex.RB :: remain) ->
+        (Cons (lhr, Emp), Lex.RB :: remain)
+    | (lhr, Lex.Semicol :: rhr) when succ_lets rhr ->
+        let (rhr, remain ) = parse_tuple rhr in (Cons (lhr, Cons(rhr, Emp)), remain)
+    | (lhr, Lex.Semicol :: rhr) -> begin match parse_list_elem rhr with
+        | (Cons _ as rhr, remain) -> (Cons (lhr, rhr), remain)
+        | (rhr, remain) -> (Cons (lhr, rhr), remain)
+    end
+    | (x, remain) -> (Cons(x, Emp), remain)
 and parse_arms arm = match parse_pat arm with
     | (pat, Lex.Arrow :: expr) -> begin match parse_expr expr with
         | (expr, Lex.VBar :: remain) ->

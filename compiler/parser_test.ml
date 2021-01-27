@@ -90,3 +90,8 @@ let () =
     (Parser.Match (Parser.Var "x", [
         (Parser.PCons (Parser.PVar "x", Parser.PEmp), Parser.Var "x")
     ]));
+    test "parse_list1" "[1]" (Parser.Cons (Parser.Int 1, Parser.Emp));
+    test "parse_list2" "[1;]" (Parser.Cons (Parser.Int 1, Parser.Emp));
+    test "parse_list3" "[1;2;3]" (Parser.Cons (Parser.Int 1, Parser.Cons (Parser.Int 2, Parser.Cons (Parser.Int 3, Parser.Emp))));
+    test "parse_list4" "[1;2;3;]" (Parser.Cons (Parser.Int 1, Parser.Cons (Parser.Int 2, Parser.Cons (Parser.Int 3, Parser.Emp))));
+    test "parse_list5" "1 :: [2;3]" (Parser.Cons (Parser.Int 1, Parser.Cons (Parser.Int 2, Parser.Cons (Parser.Int 3, Parser.Emp))));

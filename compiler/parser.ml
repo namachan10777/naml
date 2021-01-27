@@ -6,6 +6,8 @@ type pat_t =
     | PCons of pat_t * pat_t
     | PTuple of pat_t list
     | PParen of pat_t
+    | PCtor of string list
+    | PCtorApp of string list * pat_t
     | As of pat_t list
 [@@deriving show]
 
@@ -105,6 +107,13 @@ and parse_pat_cons input = match parse_pat_term input with
     | p -> p
 and parse_pat_term = function
     | Lex.LIdent id :: remain -> (PVar id, remain)
+    | Lex.UIdent _ :: _ as remain -> begin match parse_pat_ctor remain with
+        | (id, Lex.Cons :: remain) -> (PCtor id, Lex.Cons :: remain)
+        | (id, Lex.Comma :: remain) -> (PCtor id, Lex.Comma :: remain)
+        | (id, remain) ->
+            let (arg, remain) = parse_pat_term remain in
+            (PCtorApp (id, arg), remain)
+    end
     | Lex.Int i :: remain -> (PInt i, remain)
     | Lex.True :: remain -> (PBool true, remain)
     | Lex.False :: remain -> (PBool false, remain)
@@ -119,6 +128,12 @@ and parse_pat_term = function
         | _ -> raise @@ SyntaxError "paren is not balanced in pattern"
     end
     | x -> raise @@ SyntaxError (Printf.sprintf "pattern term %s" @@ show_input_t x)
+and parse_pat_ctor = function
+    | Lex.UIdent id :: Lex.Dot :: remain ->
+        let (last, remain) = parse_pat_ctor remain in
+        (id :: last, remain)
+    | Lex.UIdent id :: remain -> ([id], remain)
+    | _ -> raise @@ SyntaxError "ident"
 and parse_pat_list_elem input = match parse_pat input with
     | (lhr, Lex.Semicol :: Lex.RB :: remain) ->
         (PCons (lhr, PEmp), Lex.RB :: remain)
@@ -428,6 +443,7 @@ and parse_ident = function
         let (last, remain) = parse_ident remain in
         (id :: last, remain)
     | Lex.LIdent id :: remain -> ([id], remain)
+    | Lex.UIdent id :: remain -> ([id], remain)
     | _ -> raise @@ SyntaxError "ident"
 and parse_list_elem input = match parse_tuple input with
     | (lhr, Lex.Semicol :: Lex.RB :: remain) ->

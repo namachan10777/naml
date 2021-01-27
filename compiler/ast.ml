@@ -6,6 +6,8 @@ type pat_t =
     | PVar of string
     | PTuple of pat_t list
     | As of pat_t list
+    | PCtorApp of string list * pat_t
+    | PCtor of string list
 [@@deriving show]
 
 type t =
@@ -32,6 +34,8 @@ let rec of_parser_pat_t = function
     | Parser.PVar id -> PVar id
     | Parser.PTuple tp -> PTuple (List.map of_parser_pat_t tp)
     | Parser.PParen p -> of_parser_pat_t p
+    | Parser.PCtor id -> PCtor id
+    | Parser.PCtorApp (id, p) -> PCtorApp (id, of_parser_pat_t p)
     | Parser.As ps -> As (List.map of_parser_pat_t ps)
 
 let rec of_parser_t = function

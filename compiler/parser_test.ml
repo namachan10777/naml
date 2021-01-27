@@ -193,6 +193,8 @@ let () =
         (P.Match (P.Emp, [P.PCons (P.PInt 1, P.PCons (P.PInt 2, P.PCons (P.PInt 3, P.PEmp))), P.Bool true, P.Emp]));
     test "parse_as" "match [] with 1, 2 as x -> []"
         (P.Match (P.Emp, [P.As [P.PTuple [P.PInt 1; P.PInt 2]; P.PVar "x"], P.Bool true, P.Emp]));
+    test "parse_as" "match [] with X 1 :: [] -> []"
+        (P.Match (P.Emp, [P.PCons (P.PCtorApp (["X"], P.PInt 1), P.PEmp), P.Bool true, P.Emp]));
     test "let x, y = z in x" "let x, y = z in x"
         (P.Match (P.Var ["z"], [P.PTuple [P.PVar "x"; P.PVar "y"], P.Bool true, P.Var ["x"]]));
     test "app1" "1 + f 2"
@@ -205,6 +207,8 @@ let () =
         (P.App (P.App (P.Var ["f"], P.Int 1), P.Int 2));
     test "app5" "f 1 2 3"
         (P.App (P.App (P.App (P.Var ["f"], P.Int 1), P.Int 2), P.Int 3));
+    test "ctor" "Leaf (1, 2)"
+        (P.App (P.Var ["Leaf"], P.Paren (P.Tuple [P.Int 1; P.Int 2])));
     test "if" "if f x then 1 else let x = 1 in x"
         (P.If (P.App (P.Var ["f"], P.Var ["x"]), P.Int 1, P.Let ("x", P.Int 1, P.Var ["x"])));
     test "if_nested" "if if x then true else false then true else if y then true else false"

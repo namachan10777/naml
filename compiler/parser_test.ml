@@ -35,3 +35,5 @@ let () =
     (Ast.Add (Ast.Let ("x", Ast.Int 1, Ast.Var "x"), Ast.Int 1));
     Test.assert_eq "let complex" (Parser.parse @@ Lex.lex"let x = let y = 1 in y in let z = x in z" @@ Lex.initial_pos "test.ml")
     (Ast.Let ("x", Ast.Let ("y", Ast.Int 1, Ast.Var "y"), Ast.Let ("z", Ast.Var "x", Ast.Var "z")));
+    Test.assert_eq "fun" (Parser.parse @@ Lex.lex "fun x y z -> x + y + z" @@ Lex.initial_pos "test.ml")
+    (Ast.Fun (["x"; "y"; "z"], Ast.Add (Ast.Add (Ast.Var "x", Ast.Var "y"), Ast.Var "z")));

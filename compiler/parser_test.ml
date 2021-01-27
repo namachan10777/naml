@@ -26,4 +26,12 @@ let () =
     (Ast.Or (
         Ast.And (Ast.Bool true, Ast.Bool false),
         Ast.And (Ast.Eq (Ast.Int 1, Ast.Int 2), Ast.Bool false)
-    ))
+    ));
+    Test.assert_eq "let simple" (Parser.parse @@ Lex.lex "let x = 1 in x" @@ Lex.initial_pos "test.ml")
+    (Ast.Let ("x", Ast.Int 1, Ast.Var "x"));
+    Test.assert_eq "let add left" (Parser.parse @@ Lex.lex "1 + let x = 1 in x" @@ Lex.initial_pos "test.ml")
+    (Ast.Add (Ast.Int 1, Ast.Let ("x", Ast.Int 1, Ast.Var "x")));
+    Test.assert_eq "let add right" (Parser.parse @@ Lex.lex"(let x = 1 in x) + 1" @@ Lex.initial_pos "test.ml")
+    (Ast.Add (Ast.Let ("x", Ast.Int 1, Ast.Var "x"), Ast.Int 1));
+    Test.assert_eq "let complex" (Parser.parse @@ Lex.lex"let x = let y = 1 in y in let z = x in z" @@ Lex.initial_pos "test.ml")
+    (Ast.Let ("x", Ast.Let ("y", Ast.Int 1, Ast.Var "y"), Ast.Let ("z", Ast.Var "x", Ast.Var "z")));

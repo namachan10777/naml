@@ -15,6 +15,8 @@ type t =
     | And of t * t
     | Gret of t * t
     | Less of t * t
+    | Let of string * t * t
+    | Fun of string list * t
     | Paren of t
 [@@deriving show]
 
@@ -36,3 +38,5 @@ let rec remove_paren = function
     | And (lhr, rhr) -> And (remove_paren lhr, remove_paren rhr)
     | Gret (lhr, rhr) -> Gret (remove_paren lhr, remove_paren rhr)
     | Less (lhr, rhr) -> Less (remove_paren lhr, remove_paren rhr)
+    | Let (id, def, expr) -> Let (id, remove_paren def, remove_paren expr)
+    | Fun (args, expr) -> Fun (args, remove_paren expr)

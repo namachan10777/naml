@@ -28,7 +28,7 @@ ast.cmx: ast.ml
 parser.cmx: parser.ml ast.cmx
 	$(OCAMLOPT) $< -c
 
-lex.cmx: lex.ml parser.cmx test.cmx
+lex.cmx: lex.ml test.cmx
 	$(OCAMLOPT) $< -c
 
 lex_test.cmx: lex_test.ml parser.cmx test.cmx
@@ -40,7 +40,7 @@ lex_test: test.cmx lex.cmx ast.cmx lex_test.cmx
 parser_test.cmx: parser_test.ml parser.cmx ast.cmx lex.cmx
 	$(OCAMLOPT) $< -c
 
-parser.cmx: parser.ml ast.cmx
+parser.cmx: parser.ml ast.cmx lex.cmx
 	$(OCAMLOPT) $< -c
 
 parser_test: lex.cmx test.cmx ast.cmx parser.cmx parser_test.cmx 

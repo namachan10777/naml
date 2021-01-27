@@ -1,6 +1,49 @@
 type pos_t = string * int * int * int
 let initial_pos fname = (fname, 1, 1, 0)
 
+type t =
+    | Str of string
+    | Int of int
+    | Ident of string
+    | True
+    | False
+    | Add
+    | Sub
+    | Mul
+    | Div
+    | Mod
+    | Cons
+    | Gret
+    | Less
+    | Eq
+    | Neq
+    | And
+    | Or
+    | Pipeline
+    | AtAt
+    | LP
+    | RP
+    | LB
+    | RB
+    | Semicol
+    | Comma
+    | VBar
+    | Arrow
+    | Fun
+    | If
+    | Then
+    | Else
+    | Let
+    | In
+    | Rec
+    | Match
+    | With
+    | Builtin
+    | Not
+    | Ref
+    | Eof
+[@@deriving show]
+
 let count_newline s =
     let rec cnt acc i_begin i_end =
         if i_begin == i_end
@@ -101,81 +144,81 @@ let rec lex s pos =
     let (_, _, _, i) = pos in
     let take e = String.sub s i (e-i) in
     if i = String.length s
-    then [Parser.Eof]
+    then [Eof]
     else
         match match_strlit s i with
         | Some i ->
             let inner = take i in
-            Parser.Str (String.sub inner 1 ((String.length inner) - 2)) :: lex s (update_pos s pos i)
+            Str (String.sub inner 1 ((String.length inner) - 2)) :: lex s (update_pos s pos i)
         | None -> match match_space s i with
         | Some i -> lex s (update_pos s pos i)
         | None -> match match_hexint s i with
         | Some i ->
-            Parser.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
+            Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
         | None -> match match_int s i with
         | Some i ->
-            Parser.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
+            Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
 
         (* 愚直すぎ (末尾再帰の最適化を狙っています。許して) *)
         | None -> match match_str "::" s i with
-        | Some i -> Parser.Cons :: lex s (update_pos s pos i)
+        | Some i -> Cons :: lex s (update_pos s pos i)
         | None -> match match_str "->" s i with
-        | Some i -> Parser.Arrow :: lex s (update_pos s pos i)
+        | Some i -> Arrow :: lex s (update_pos s pos i)
         | None -> match match_str "+" s i with
-        | Some i -> Parser.Add :: lex s (update_pos s pos i)
+        | Some i -> Add :: lex s (update_pos s pos i)
         | None -> match match_str "-" s i with
-        | Some i -> Parser.Sub :: lex s (update_pos s pos i)
+        | Some i -> Sub :: lex s (update_pos s pos i)
         | None -> match match_str "*" s i with
-        | Some i -> Parser.Mul :: lex s (update_pos s pos i)
+        | Some i -> Mul :: lex s (update_pos s pos i)
         | None -> match match_str "/" s i with
-        | Some i -> Parser.Div :: lex s (update_pos s pos i)
+        | Some i -> Div :: lex s (update_pos s pos i)
         | None -> match match_str "|>" s i with
-        | Some i -> Parser.Pipeline :: lex s (update_pos s pos i)
+        | Some i -> Pipeline :: lex s (update_pos s pos i)
         | None -> match match_str "@@" s i with
-        | Some i -> Parser.AtAt :: lex s (update_pos s pos i)
+        | Some i -> AtAt :: lex s (update_pos s pos i)
         | None -> match match_str "||" s i with
-        | Some i -> Parser.Or :: lex s (update_pos s pos i)
+        | Some i -> Or :: lex s (update_pos s pos i)
         | None -> match match_str "&&" s i with
-        | Some i -> Parser.And :: lex s (update_pos s pos i)
+        | Some i -> And :: lex s (update_pos s pos i)
         | None -> match match_str "=" s i with
-        | Some i -> Parser.Eq :: lex s (update_pos s pos i)
+        | Some i -> Eq :: lex s (update_pos s pos i)
         | None -> match match_str "<>" s i with
-        | Some i -> Parser.Neq :: lex s (update_pos s pos i)
+        | Some i -> Neq :: lex s (update_pos s pos i)
         | None -> match match_str ">" s i with
-        | Some i -> Parser.Gret :: lex s (update_pos s pos i)
+        | Some i -> Gret :: lex s (update_pos s pos i)
         | None -> match match_str "<" s i with
-        | Some i -> Parser.Less :: lex s (update_pos s pos i)
+        | Some i -> Less :: lex s (update_pos s pos i)
         | None -> match match_str "(" s i with
-        | Some i -> Parser.LP :: lex s (update_pos s pos i)
+        | Some i -> LP :: lex s (update_pos s pos i)
         | None -> match match_str ")" s i with
-        | Some i -> Parser.RP :: lex s (update_pos s pos i)
+        | Some i -> RP :: lex s (update_pos s pos i)
         | None -> match match_str "[" s i with
-        | Some i -> Parser.LB :: lex s (update_pos s pos i)
+        | Some i -> LB :: lex s (update_pos s pos i)
         | None -> match match_str "]" s i with
-        | Some i -> Parser.RB :: lex s (update_pos s pos i)
+        | Some i -> RB :: lex s (update_pos s pos i)
         | None -> match match_str ";" s i with
-        | Some i -> Parser.Semicol :: lex s (update_pos s pos i)
+        | Some i -> Semicol :: lex s (update_pos s pos i)
         | None -> match match_str "," s i with
-        | Some i -> Parser.Comma :: lex s (update_pos s pos i)
+        | Some i -> Comma :: lex s (update_pos s pos i)
         | None -> match match_str "|" s i with
-        | Some i -> Parser.VBar :: lex s (update_pos s pos i)
+        | Some i -> VBar :: lex s (update_pos s pos i)
         | None -> match match_ident s i with
         | Some i -> begin match take i with
-            | "true" -> Parser.True :: lex s (update_pos s pos i)
-            | "false" -> Parser.False :: lex s (update_pos s pos i)
-            | "if" -> Parser.If :: lex s (update_pos s pos i)
-            | "then" -> Parser.Then :: lex s (update_pos s pos i)
-            | "else" -> Parser.Else :: lex s (update_pos s pos i)
-            | "let" -> Parser.Let :: lex s (update_pos s pos i)
-            | "rec" -> Parser.Rec :: lex s (update_pos s pos i)
-            | "in" -> Parser.In :: lex s (update_pos s pos i)
-            | "fun" -> Parser.Fun :: lex s (update_pos s pos i)
-            | "match" -> Parser.Match :: lex s (update_pos s pos i)
-            | "with" -> Parser.With :: lex s (update_pos s pos i)
-            | "builtin" -> Parser.Builtin :: lex s (update_pos s pos i)
-            | "mod" -> Parser.Mod :: lex s (update_pos s pos i)
-            | "not" -> Parser.Not :: lex s (update_pos s pos i)
-            | "ref" -> Parser.Ref :: lex s (update_pos s pos i)
-            | ident -> Parser.Ident ident :: lex s (update_pos s pos i)
+            | "true" -> True :: lex s (update_pos s pos i)
+            | "false" -> False :: lex s (update_pos s pos i)
+            | "if" -> If :: lex s (update_pos s pos i)
+            | "then" -> Then :: lex s (update_pos s pos i)
+            | "else" -> Else :: lex s (update_pos s pos i)
+            | "let" -> Let :: lex s (update_pos s pos i)
+            | "rec" -> Rec :: lex s (update_pos s pos i)
+            | "in" -> In :: lex s (update_pos s pos i)
+            | "fun" -> Fun :: lex s (update_pos s pos i)
+            | "match" -> Match :: lex s (update_pos s pos i)
+            | "with" -> With :: lex s (update_pos s pos i)
+            | "builtin" -> Builtin :: lex s (update_pos s pos i)
+            | "mod" -> Mod :: lex s (update_pos s pos i)
+            | "not" -> Not :: lex s (update_pos s pos i)
+            | "ref" -> Ref :: lex s (update_pos s pos i)
+            | ident -> Ident ident :: lex s (update_pos s pos i)
         end
         | None -> raise (LexException pos)

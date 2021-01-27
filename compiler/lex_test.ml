@@ -101,74 +101,74 @@ let rec lex s pos =
     let (_, _, _, i) = pos in
     let take e = String.sub s i (e-i) in
     if i = String.length s
-    then [Parser.Eof]
+    then [Lex.Eof]
     else
         match match_strlit s i with
         | Some i ->
             let inner = take i in
-            Parser.Str (String.sub inner 1 ((String.length inner) - 2)) :: lex s (update_pos s pos i)
+            Lex.Str (String.sub inner 1 ((String.length inner) - 2)) :: lex s (update_pos s pos i)
         | None -> match match_space s i with
         | Some i -> lex s (update_pos s pos i)
         | None -> match match_hexint s i with
         | Some i ->
-            Parser.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
+            Lex.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
         | None -> match match_int s i with
         | Some i ->
-            Parser.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
+            Lex.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
 
         (* 愚直すぎ (末尾再帰の最適化を狙っています。許して) *)
         | None -> match match_str "+" s i with
-        | Some i -> Parser.Add :: lex s (update_pos s pos i)
+        | Some i -> Lex.Add :: lex s (update_pos s pos i)
         | None -> match match_str "-" s i with
-        | Some i -> Parser.Sub :: lex s (update_pos s pos i)
+        | Some i -> Lex.Sub :: lex s (update_pos s pos i)
         | None -> match match_str "*" s i with
-        | Some i -> Parser.Mul :: lex s (update_pos s pos i)
+        | Some i -> Lex.Mul :: lex s (update_pos s pos i)
         | None -> match match_str "/" s i with
-        | Some i -> Parser.Div :: lex s (update_pos s pos i)
+        | Some i -> Lex.Div :: lex s (update_pos s pos i)
         | None -> match match_str "||" s i with
-        | Some i -> Parser.Or :: lex s (update_pos s pos i)
+        | Some i -> Lex.Or :: lex s (update_pos s pos i)
         | None -> match match_str "&&" s i with
-        | Some i -> Parser.And :: lex s (update_pos s pos i)
+        | Some i -> Lex.And :: lex s (update_pos s pos i)
         | None -> match match_str "=" s i with
-        | Some i -> Parser.Eq :: lex s (update_pos s pos i)
+        | Some i -> Lex.Eq :: lex s (update_pos s pos i)
         | None -> match match_str "<>" s i with
-        | Some i -> Parser.Neq :: lex s (update_pos s pos i)
+        | Some i -> Lex.Neq :: lex s (update_pos s pos i)
         | None -> match match_str ">" s i with
-        | Some i -> Parser.Gret :: lex s (update_pos s pos i)
+        | Some i -> Lex.Gret :: lex s (update_pos s pos i)
         | None -> match match_str "<" s i with
-        | Some i -> Parser.Cons :: lex s (update_pos s pos i)
+        | Some i -> Lex.Cons :: lex s (update_pos s pos i)
         | None -> match match_str "(" s i with
-        | Some i -> Parser.LP :: lex s (update_pos s pos i)
+        | Some i -> Lex.LP :: lex s (update_pos s pos i)
         | None -> match match_str ")" s i with
-        | Some i -> Parser.RP :: lex s (update_pos s pos i)
+        | Some i -> Lex.RP :: lex s (update_pos s pos i)
         | None -> match match_str "[" s i with
-        | Some i -> Parser.LB :: lex s (update_pos s pos i)
+        | Some i -> Lex.LB :: lex s (update_pos s pos i)
         | None -> match match_str "]" s i with
-        | Some i -> Parser.RB :: lex s (update_pos s pos i)
+        | Some i -> Lex.RB :: lex s (update_pos s pos i)
         | None -> match match_str ";" s i with
-        | Some i -> Parser.Semicol :: lex s (update_pos s pos i)
+        | Some i -> Lex.Semicol :: lex s (update_pos s pos i)
         | None -> match match_str "," s i with
-        | Some i -> Parser.Comma :: lex s (update_pos s pos i)
+        | Some i -> Lex.Comma :: lex s (update_pos s pos i)
         | None -> match match_str "|" s i with
-        | Some i -> Parser.VBar :: lex s (update_pos s pos i)
+        | Some i -> Lex.VBar :: lex s (update_pos s pos i)
         | None -> match match_str "->" s i with
-        | Some i -> Parser.Arrow :: lex s (update_pos s pos i)
+        | Some i -> Lex.Arrow :: lex s (update_pos s pos i)
         | None -> match match_ident s i with
         | Some i -> begin match take i with
-            | "if" -> Parser.If :: lex s (update_pos s pos i)
-            | "then" -> Parser.Then :: lex s (update_pos s pos i)
-            | "else" -> Parser.Else :: lex s (update_pos s pos i)
-            | "let" -> Parser.Let :: lex s (update_pos s pos i)
-            | "rec" -> Parser.Rec :: lex s (update_pos s pos i)
-            | "in" -> Parser.In :: lex s (update_pos s pos i)
-            | "fun" -> Parser.Fun :: lex s (update_pos s pos i)
-            | "match" -> Parser.Match :: lex s (update_pos s pos i)
-            | "with" -> Parser.With :: lex s (update_pos s pos i)
-            | "builtin" -> Parser.Builtin :: lex s (update_pos s pos i)
-            | "mod" -> Parser.Mod :: lex s (update_pos s pos i)
-            | "not" -> Parser.Not :: lex s (update_pos s pos i)
-            | "ref" -> Parser.Ref :: lex s (update_pos s pos i)
-            | ident -> Parser.Ident ident :: lex s (update_pos s pos i)
+            | "if" -> Lex.If :: lex s (update_pos s pos i)
+            | "then" -> Lex.Then :: lex s (update_pos s pos i)
+            | "else" -> Lex.Else :: lex s (update_pos s pos i)
+            | "let" -> Lex.Let :: lex s (update_pos s pos i)
+            | "rec" -> Lex.Rec :: lex s (update_pos s pos i)
+            | "in" -> Lex.In :: lex s (update_pos s pos i)
+            | "fun" -> Lex.Fun :: lex s (update_pos s pos i)
+            | "match" -> Lex.Match :: lex s (update_pos s pos i)
+            | "with" -> Lex.With :: lex s (update_pos s pos i)
+            | "builtin" -> Lex.Builtin :: lex s (update_pos s pos i)
+            | "mod" -> Lex.Mod :: lex s (update_pos s pos i)
+            | "not" -> Lex.Not :: lex s (update_pos s pos i)
+            | "ref" -> Lex.Ref :: lex s (update_pos s pos i)
+            | ident -> Lex.Ident ident :: lex s (update_pos s pos i)
         end
         | None -> raise (LexException pos)
 
@@ -204,24 +204,24 @@ let () =
     Test.assert_eq "match_strlit \"\"hoge\"" (match_strlit "\"hoge" 0) None; 
     Test.assert_eq "match_strlit \"hoge\"\"" (match_strlit "hoge\"" 0) None; 
     Test.assert_eq "match_strlit \"\"\"\"" (match_strlit "\"\"" 0) (Some 2); 
-    Test.assert_eq "lex strlit and space" (lex " \"hoge\" \"foo\"" (initial_pos "test.ml"))  [Parser.Str "hoge"; Parser.Str "foo"; Parser.Eof];
-    Test.assert_eq "lex int and space" (lex "123 0xff" (initial_pos "test.ml"))  [Parser.Int 123; Parser.Int 255; Parser.Eof];
-    Test.assert_eq "lex ident and space" (lex "aaa bbb" (initial_pos "test.ml"))  [Parser.Ident "aaa"; Parser.Ident "bbb"; Parser.Eof];
+    Test.assert_eq "lex strlit and space" (lex " \"hoge\" \"foo\"" (initial_pos "test.ml"))  [Lex.Str "hoge"; Lex.Str "foo"; Lex.Eof];
+    Test.assert_eq "lex int and space" (lex "123 0xff" (initial_pos "test.ml"))  [Lex.Int 123; Lex.Int 255; Lex.Eof];
+    Test.assert_eq "lex ident and space" (lex "aaa bbb" (initial_pos "test.ml"))  [Lex.Ident "aaa"; Lex.Ident "bbb"; Lex.Eof];
     Test.assert_eq "lex fib" (lex "let rec fib n = if n = 1 || n = 0 then 1 else (fib (n-1)) + fib (n-2) in fib 5"  (initial_pos "test.ml"))
         [
-            Parser.Let; Parser.Rec; Parser.Ident "fib"; Parser.Ident "n"; Parser.Eq;
-            Parser.If;
-            Parser.Ident "n"; Parser.Eq; Parser.Int 1;
-            Parser.Or;
-            Parser.Ident "n"; Parser.Eq; Parser.Int 0;
-            Parser.Then;
-            Parser.Int 1;
-            Parser.Else;
-            Parser.LP; Parser.Ident "fib"; Parser.LP; Parser.Ident "n"; Parser.Sub; Parser.Int 1; Parser.RP; Parser.RP;
-            Parser.Add;
-            Parser.Ident "fib"; Parser.LP; Parser.Ident "n"; Parser.Sub; Parser.Int 2; Parser.RP;
-            Parser.In;
-            Parser.Ident "fib";
-            Parser.Int 5;
-            Parser.Eof;
+            Lex.Let; Lex.Rec; Lex.Ident "fib"; Lex.Ident "n"; Lex.Eq;
+            Lex.If;
+            Lex.Ident "n"; Lex.Eq; Lex.Int 1;
+            Lex.Or;
+            Lex.Ident "n"; Lex.Eq; Lex.Int 0;
+            Lex.Then;
+            Lex.Int 1;
+            Lex.Else;
+            Lex.LP; Lex.Ident "fib"; Lex.LP; Lex.Ident "n"; Lex.Sub; Lex.Int 1; Lex.RP; Lex.RP;
+            Lex.Add;
+            Lex.Ident "fib"; Lex.LP; Lex.Ident "n"; Lex.Sub; Lex.Int 2; Lex.RP;
+            Lex.In;
+            Lex.Ident "fib";
+            Lex.Int 5;
+            Lex.Eof;
         ];

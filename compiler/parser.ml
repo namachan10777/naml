@@ -15,7 +15,7 @@ type t = | Emp
     | Var of string list
     | Index of t * t
     | Assign of t * t
-    | ArrayAssign of t * t
+    | ArrayAssign of t * t * t
     | Add of t * t
     | Sub of t * t
     | Mul of t * t
@@ -232,10 +232,10 @@ and parse_assign input = match parse_arrayassign input with
         let (rhr, remain) = parse_tuple rhr in (Assign (lhr, rhr), remain)
     | x -> x
 and parse_arrayassign input = match parse_tuple input with
-    | (lhr, Lex.ArrayAssign :: rhr) when succ_lets rhr ->
-        let (rhr, remain ) = parse_tuple rhr in (ArrayAssign (lhr, rhr), remain)
-    | (lhr, Lex.ArrayAssign :: rhr) ->
-        let (rhr, remain) = parse_tuple rhr in (ArrayAssign (lhr, rhr), remain)
+    | (Index (arr, idx), Lex.ArrayAssign :: rhr) when succ_lets rhr ->
+        let (rhr, remain ) = parse_tuple rhr in (ArrayAssign (arr, idx, rhr), remain)
+    | (Index (arr, idx), Lex.ArrayAssign :: rhr) ->
+        let (rhr, remain) = parse_tuple rhr in (ArrayAssign (arr, idx , rhr), remain)
     | x -> x
 and parse_tuple input = match parse_pipeline input with
     | (lhr, Lex.Comma :: rhr) when succ_lets rhr ->
@@ -388,7 +388,7 @@ and parse_app input =
         | [] -> raise @@ Failure "internal error"
         | f :: args -> List.fold_left (fun f arg -> App(f, arg)) f args
     in
-    let rec internal input = match parse_term input with
+    let rec internal input = match parse_array_access input with
         | (f, remain) when nexts_term remain ->
             begin match internal remain with
             | (arg, remain) -> App (f, arg), remain
@@ -396,6 +396,12 @@ and parse_app input =
         | x -> x
     in
     let (tree, remain) = internal input in (reverse tree, remain)
+and parse_array_access input = match parse_term input with
+    | (lhr, Lex.Dot :: Lex.LP :: remain) -> begin match parse_expr remain with
+        | (rhr, Lex.RP :: remain) -> (Index (lhr, rhr), remain)
+        | x -> raise @@ SyntaxError (Printf.sprintf "paren is not balanced %s " @@ show_parsed_t x)
+    end
+    | x -> x
 and parse_term = function
     | Lex.Ident _ :: _ as remain ->
         let (id, remain) = parse_ident remain in

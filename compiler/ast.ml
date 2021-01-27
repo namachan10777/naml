@@ -20,7 +20,7 @@ type t =
     | Fun of string list * t
     | Match of t * (pat_t * t * t) list
     | App of t * t
-    | ArrayAssign of t * t
+    | ArrayAssign of t * t * t
 [@@deriving show]
 
 
@@ -52,11 +52,12 @@ let rec of_parser_t = function
     | Parser.Cons (lhr, rhr) -> op "::" lhr rhr
     | Parser.Gret (lhr, rhr) -> op ">" lhr rhr
     | Parser.Less (lhr, rhr) -> op "<" lhr rhr
+    | Parser.Index (lhr, rhr) -> op "." lhr rhr
     | Parser.Neg e -> App (Var ["<unary>"], of_parser_t e)
     | Parser.Not e -> App (Var ["<not>"], of_parser_t e)
     | Parser.Ref e -> App (Var ["<ref>"], of_parser_t e)
     | Parser.Assign (lhr, rhr) -> op ":=" lhr rhr
-    | Parser.ArrayAssign (lhr, rhr) -> ArrayAssign (of_parser_t lhr, of_parser_t rhr)
+    | Parser.ArrayAssign (arr, idx, rhr) -> ArrayAssign (of_parser_t arr, of_parser_t idx, of_parser_t rhr)
     | Parser.Pipeline (arg, f) -> App(of_parser_t f, of_parser_t arg)
     | Parser.Tuple elem -> Tuple (List.map of_parser_t elem)
     | Parser.If (cond, e1, e2) -> If (of_parser_t cond, of_parser_t e1, of_parser_t e2)

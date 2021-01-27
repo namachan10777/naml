@@ -108,6 +108,7 @@ and parse_pat_term = function
     | Lex.Int i :: remain -> (PInt i, remain)
     | Lex.True :: remain -> (PBool true, remain)
     | Lex.False :: remain -> (PBool false, remain)
+    | Lex.LP :: Lex.RP :: remain -> (PTuple [], remain)
     | Lex.LB :: Lex.RB :: remain -> (PEmp, remain)
     | Lex.LB :: remain -> begin match parse_pat_list_elem remain with
             | (inner, Lex.RB :: remain) -> (inner, remain)
@@ -409,6 +410,7 @@ and parse_term = function
     | Lex.Int i :: remain -> (Int i, remain)
     | Lex.True :: remain -> (Bool true, remain)
     | Lex.False :: remain -> (Bool false, remain)
+    | Lex.LP :: Lex.RP :: remain -> (Tuple [], remain)
     | Lex.LB :: Lex.RB :: remain -> (Emp, remain)
     | Lex.LB :: remain -> begin match parse_list_elem remain with
             | (inner, Lex.RB :: remain) -> (inner, remain)

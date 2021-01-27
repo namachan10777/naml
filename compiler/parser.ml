@@ -32,7 +32,7 @@ type t =
     | Let of string * t * t
     | LetRec of string * t * t
     | Fun of string list * t
-    | Match of t * (pat_t * t) list
+    | Match of t * (pat_t * t * t) list
     | App of t * t
     | Seq of t * t
     | Pipeline of t * t
@@ -298,8 +298,17 @@ and parse_arms arm = match parse_pat arm with
     | (pat, Lex.Arrow :: expr) -> begin match parse_expr expr with
         | (expr, Lex.VBar :: remain) ->
             let (arms, remain) = parse_arms remain in
-            ((pat, expr) :: arms, remain)
-        | (expr, remain) -> ([pat, expr], remain)
+            ((pat, Bool true, expr) :: arms, remain)
+        | (expr, remain) -> ([pat, Bool true, expr], remain)
+        end
+    | (pat, Lex.When :: when_e) -> begin match parse_expr when_e with
+        | (when_e, Lex.Arrow :: expr) -> begin match parse_expr expr with
+            | (expr, Lex.VBar :: remain) ->
+                let (arms, remain) = parse_arms remain in
+                ((pat, when_e, expr) :: arms, remain)
+            | (expr, remain) -> ([pat, Bool true, expr], remain)
+            end
+        | _ -> raise @@ SyntaxError "invalid \'when\' guard"
         end
     | _ -> raise @@ SyntaxError "match arm"
 and parse_pat input = match parse_pat_cons input with

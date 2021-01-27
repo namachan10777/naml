@@ -17,7 +17,7 @@ type t =
     | Let of string * t * t
     | LetRec of string * t * t
     | Fun of string list * t
-    | Match of t * (pat_t * t) list
+    | Match of t * (pat_t * t * t) list
     | App of t * t
 [@@deriving show]
 
@@ -60,6 +60,6 @@ let rec of_parser_t = function
     | Parser.App (f, arg) -> App (of_parser_t f, of_parser_t arg)
     | Parser.Paren e -> of_parser_t e
     | Parser.Match (target, arms) ->
-        Match (of_parser_t target, List.map (fun (pat, expr) -> (of_parser_pat_t pat, of_parser_t expr)) arms)
+        Match (of_parser_t target, List.map (fun (pat, when_e, expr) -> (of_parser_pat_t pat, of_parser_t when_e, of_parser_t expr)) arms)
 and op id lhr rhr = App (App (Var id, of_parser_t lhr), of_parser_t rhr)
 

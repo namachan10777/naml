@@ -69,18 +69,23 @@ let () =
     ));
     test "match1" "match x with y -> 0 | z -> match z with a -> a"
     (Parser.Match (Parser.Var "x", [
-        (Parser.PVar "y", Parser.Int 0);
-        (Parser.PVar "z", Parser.Match (Parser.Var "z", [
-            (Parser.PVar "a", Parser.Var "a");
+        (Parser.PVar "y", Parser.Bool true, Parser.Int 0);
+        (Parser.PVar "z", Parser.Bool true, Parser.Match (Parser.Var "z", [
+            (Parser.PVar "a",  Parser.Bool true, Parser.Var "a");
         ]));
+    ]));
+    test "match_when" "match x with y when is_primve y -> 0 | z -> 1"
+    (Parser.Match (Parser.Var "x", [
+        (Parser.PVar "y", Parser.App (Parser.Var "is_primve", Parser.Var "y"), Parser.Int 0);
+        (Parser.PVar "z", Parser.Bool true, Parser.Int 1);
     ]));
     test "match2" "match x with y -> let x = 1 in x | z -> 1"
     (Parser.Match (Parser.Var "x", [
-        (Parser.PVar "y", Parser.Let ("x", Parser.Int 1, Parser.Var "x"));
-        (Parser.PVar "z", Parser.Int 1);
+        (Parser.PVar "y", Parser.Bool true, Parser.Let ("x", Parser.Int 1, Parser.Var "x"));
+        (Parser.PVar "z", Parser.Bool true, Parser.Int 1);
     ]));
     test "match nested" "match match [] with [] -> [] with [] -> []"
-    (Parser.Match (Parser.Match (Parser.Emp, [Parser.PEmp, Parser.Emp]), [Parser.PEmp, Parser.Emp]));
+    (Parser.Match (Parser.Match (Parser.Emp, [Parser.PEmp, Parser.Bool true, Parser.Emp]), [Parser.PEmp, Parser.Bool true, Parser.Emp]));
     test "tuple1" "1, 2" (Parser.Tuple [Parser.Int 1; Parser.Int 2]);
     test "tuple1" "1+2, 2+3"
         (Parser.Tuple [
@@ -91,18 +96,18 @@ let () =
     test "tuple nest" "1, (3, 4)" (Parser.Tuple [Parser.Int 1; Parser.Paren (Parser.Tuple [Parser.Int 3; Parser.Int 4])]);
     test "pattern_tuple" "match x with (x, y) -> x"
     (Parser.Match (Parser.Var "x", [
-        (Parser.PParen (Parser.PTuple [Parser.PVar "x"; Parser.PVar "y"]), Parser.Var "x");
+        (Parser.PParen (Parser.PTuple [Parser.PVar "x"; Parser.PVar "y"]), Parser.Bool true, Parser.Var "x");
     ]));
     test "pattern_tuple" "match x with (x, (y, z)) -> x"
     (Parser.Match (Parser.Var "x", [
         (Parser.PParen (Parser.PTuple [
             Parser.PVar "x";
             Parser.PParen (Parser.PTuple [Parser.PVar "y"; Parser.PVar "z"]);
-        ]), Parser.Var "x");
+        ]), Parser.Bool true, Parser.Var "x");
     ]));
     test "pattern_cons" "match x with x :: [] -> x"
     (Parser.Match (Parser.Var "x", [
-        (Parser.PCons (Parser.PVar "x", Parser.PEmp), Parser.Var "x")
+        (Parser.PCons (Parser.PVar "x", Parser.PEmp), Parser.Bool true, Parser.Var "x")
     ]));
     test "parse_list1" "[1]" (Parser.Cons (Parser.Int 1, Parser.Emp));
     test "parse_list2" "[1;]" (Parser.Cons (Parser.Int 1, Parser.Emp));
@@ -110,15 +115,15 @@ let () =
     test "parse_list4" "[1;2;3;]" (Parser.Cons (Parser.Int 1, Parser.Cons (Parser.Int 2, Parser.Cons (Parser.Int 3, Parser.Emp))));
     test "parse_list5" "1 :: [2;3]" (Parser.Cons (Parser.Int 1, Parser.Cons (Parser.Int 2, Parser.Cons (Parser.Int 3, Parser.Emp))));
     test "parse_list1" "match [] with [1] -> []"
-        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PEmp), Parser.Emp]));
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PEmp), Parser.Bool true, Parser.Emp]));
     test "parse_pattern_list2" "match [] with [1;] -> []"
-        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PEmp), Parser.Emp]));
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PEmp), Parser.Bool true, Parser.Emp]));
     test "parse_pattern_list3" "match [] with [1;2;3] -> []"
-        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Emp]));
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Bool true, Parser.Emp]));
     test "parse_pattern_list4" "match [] with [1;2;3;] -> []"
-        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Emp]));
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Bool true, Parser.Emp]));
     test "parse_pattern_list5" "match [] with 1 :: [2;3] -> []"
-        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Emp]));
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Bool true, Parser.Emp]));
     test "app1" "1 + f 2"
         (Parser.Add (Parser.Int 1, Parser.App (Parser.Var "f", Parser.Int 2)));
     test "app2" "- f 2"

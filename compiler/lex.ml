@@ -37,6 +37,7 @@ type t =
     | In
     | Rec
     | Match
+    | When
     | With
     | Builtin
     | Not
@@ -214,6 +215,7 @@ let rec lex s pos =
             | "in" -> In :: lex s (update_pos s pos i)
             | "fun" -> Fun :: lex s (update_pos s pos i)
             | "match" -> Match :: lex s (update_pos s pos i)
+            | "when" -> When :: lex s (update_pos s pos i)
             | "with" -> With :: lex s (update_pos s pos i)
             | "builtin" -> Builtin :: lex s (update_pos s pos i)
             | "mod" -> Mod :: lex s (update_pos s pos i)

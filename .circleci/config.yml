@@ -19,7 +19,7 @@ jobs:
 
       - run:
           name: test compiler
-          command: make test -C compiler
+          command: eval $(opam env) && make test -C compiler
 
       - run:
           name: build document

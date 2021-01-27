@@ -42,6 +42,7 @@ type t =
     | Builtin
     | Not
     | Ref
+    | As
     | Eof
 [@@deriving show]
 
@@ -205,6 +206,7 @@ let rec lex s pos =
         | Some i -> VBar :: lex s (update_pos s pos i)
         | None -> match match_ident s i with
         | Some i -> begin match take i with
+            | "as" -> As :: lex s (update_pos s pos i)
             | "true" -> True :: lex s (update_pos s pos i)
             | "false" -> False :: lex s (update_pos s pos i)
             | "if" -> If :: lex s (update_pos s pos i)

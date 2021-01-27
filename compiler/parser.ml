@@ -6,6 +6,7 @@ type pat_t =
     | PCons of pat_t * pat_t
     | PTuple of pat_t list
     | PParen of pat_t
+    | As of pat_t list
 [@@deriving show]
 
 type t =
@@ -82,8 +83,14 @@ let rec take_params = function
 type param_taken_t = string list * input_t
 [@@deriving show]
 
-let rec parse_pat input = match parse_pat_cons input with
-    | (pat, Lex.Comma :: rhr) -> begin match parse_pat rhr with
+let rec parse_pat input = match parse_pat_tuple input with
+    | (pat, Lex.As :: rhr) -> begin match parse_pat_tuple rhr with
+        | (PTuple tp, remain) -> (As (pat :: tp), remain)
+        | (rhr, remain) -> (As [pat; rhr], remain)
+    end
+    | p -> p
+and parse_pat_tuple input = match parse_pat_cons input with
+    | (pat, Lex.Comma :: rhr) -> begin match parse_pat_tuple rhr with
         | (PTuple tp, remain) -> (PTuple (pat :: tp), remain)
         | (rhr, remain) -> (PTuple [pat; rhr], remain)
     end
@@ -124,15 +131,6 @@ let rec parse_params stop input = match parse_pat input with
     | (pat, remain) ->
         let pats, remain = parse_params stop remain in
         (pat :: pats, remain)
-
-let rec take_free_vars_from_pat = function
-    | PCons (lhr, rhr) -> (take_free_vars_from_pat lhr) @ (take_free_vars_from_pat rhr)
-    | PEmp -> []
-    | PVar id -> [id]
-    | PInt _ -> []
-    | PBool _ -> []
-    | PParen inner -> take_free_vars_from_pat inner
-    | PTuple inner -> List.map take_free_vars_from_pat inner |> List.concat
 
 let rec parse_expr = function
     | Lex.Let :: Lex.Rec :: remain ->

@@ -5,6 +5,7 @@ type pat_t =
     | PBool of bool
     | PVar of string
     | PTuple of pat_t list
+    | As of pat_t list
 [@@deriving show]
 
 type t =
@@ -30,6 +31,7 @@ let rec of_parser_pat_t = function
     | Parser.PVar id -> PVar id
     | Parser.PTuple tp -> PTuple (List.map of_parser_pat_t tp)
     | Parser.PParen p -> of_parser_pat_t p
+    | Parser.As ps -> As (List.map of_parser_pat_t ps)
 
 let rec of_parser_t = function
     | Parser.Int i -> Int i

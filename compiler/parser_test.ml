@@ -86,9 +86,17 @@ let () =
             Parser.Add (Parser.Int 2, Parser.Int 3);
         ]);
     test "tuple1" "1, 2, 3, 4" (Parser.Tuple [Parser.Int 1; Parser.Int 2; Parser.Int 3; Parser.Int 4]);
+    test "tuple nest" "1, (3, 4)" (Parser.Tuple [Parser.Int 1; Parser.Paren (Parser.Tuple [Parser.Int 3; Parser.Int 4])]);
     test "pattern_tuple" "match x with (x, y) -> x"
     (Parser.Match (Parser.Var "x", [
-        (Parser.PTuple [Parser.PVar "x"; Parser.PVar "y"], Parser.Var "x");
+        (Parser.PParen (Parser.PTuple [Parser.PVar "x"; Parser.PVar "y"]), Parser.Var "x");
+    ]));
+    test "pattern_tuple" "match x with (x, (y, z)) -> x"
+    (Parser.Match (Parser.Var "x", [
+        (Parser.PParen (Parser.PTuple [
+            Parser.PVar "x";
+            Parser.PParen (Parser.PTuple [Parser.PVar "y"; Parser.PVar "z"]);
+        ]), Parser.Var "x");
     ]));
     test "pattern_cons" "match x with x :: [] -> x"
     (Parser.Match (Parser.Var "x", [

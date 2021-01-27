@@ -5,6 +5,7 @@ type pat_t =
     | PEmp
     | PCons of pat_t * pat_t
     | PTuple of pat_t list
+    | PParen of pat_t
 [@@deriving show]
 
 type t =
@@ -317,7 +318,7 @@ and parse_pat_term = function
             | x -> raise @@ SyntaxError "paren is not balanced in pattern"
         end
     | Lex.LP :: inner -> begin match parse_pat inner with
-        | (inner, Lex.RP :: remain) -> (inner, remain)
+        | (inner, Lex.RP :: remain) -> (PParen inner, remain)
         | _ -> raise @@ SyntaxError "paren is not balanced in pattern"
     end
     | x -> raise @@ SyntaxError (Printf.sprintf "pattern term %s" @@ show_input_t x)

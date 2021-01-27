@@ -95,3 +95,13 @@ let () =
     test "parse_list3" "[1;2;3]" (Parser.Cons (Parser.Int 1, Parser.Cons (Parser.Int 2, Parser.Cons (Parser.Int 3, Parser.Emp))));
     test "parse_list4" "[1;2;3;]" (Parser.Cons (Parser.Int 1, Parser.Cons (Parser.Int 2, Parser.Cons (Parser.Int 3, Parser.Emp))));
     test "parse_list5" "1 :: [2;3]" (Parser.Cons (Parser.Int 1, Parser.Cons (Parser.Int 2, Parser.Cons (Parser.Int 3, Parser.Emp))));
+    test "parse_list1" "match [] with [1] -> []"
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PEmp), Parser.Emp]));
+    test "parse_pattern_list2" "match [] with [1;] -> []"
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PEmp), Parser.Emp]));
+    test "parse_pattern_list3" "match [] with [1;2;3] -> []"
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Emp]));
+    test "parse_pattern_list4" "match [] with [1;2;3;] -> []"
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Emp]));
+    test "parse_pattern_list5" "match [] with 1 :: [2;3] -> []"
+        (Parser.Match (Parser.Emp, [Parser.PCons (Parser.PInt 1, Parser.PCons (Parser.PInt 2, Parser.PCons (Parser.PInt 3, Parser.PEmp))), Parser.Emp]));

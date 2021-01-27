@@ -276,11 +276,25 @@ and parse_pat_term = function
     | Lex.True :: remain -> (PBool true, remain)
     | Lex.False :: remain -> (PBool false, remain)
     | Lex.LB :: Lex.RB :: remain -> (PEmp, remain)
+    | Lex.LB :: remain -> begin match parse_pat_list_elem remain with
+            | (inner, Lex.RB :: remain) -> (inner, remain)
+            | x -> raise @@ SyntaxError "paren is not balanced in pattern"
+        end
     | Lex.LP :: inner -> begin match parse_pat inner with
         | (inner, Lex.RP :: remain) -> (inner, remain)
         | _ -> raise @@ SyntaxError "paren is not balanced in pattern"
     end
     | x -> raise @@ SyntaxError (Printf.sprintf "pattern term %s" @@ show_input_t x)
+and parse_pat_list_elem input = match parse_pat input with
+    | (lhr, Lex.Semicol :: Lex.RB :: remain) ->
+        (PCons (lhr, PEmp), Lex.RB :: remain)
+    | (lhr, Lex.Semicol :: rhr) when succ_lets rhr ->
+        let (rhr, remain ) = parse_pat rhr in (PCons (lhr, PCons (rhr, PEmp)), remain)
+    | (lhr, Lex.Semicol :: rhr) -> begin match parse_pat_list_elem rhr with
+        | (PCons _ as rhr, remain) -> (PCons (lhr, rhr), remain)
+        | (rhr, remain) -> (PCons (lhr, rhr), remain)
+    end
+    | (x, remain) -> (PCons(x, PEmp), remain)
 
 let parse input = match parse_expr input with
     | (ast, [Lex.Eof]) -> ast

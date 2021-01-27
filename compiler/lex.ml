@@ -155,6 +155,8 @@ let rec lex s pos =
         | Some i -> Parser.Arrow :: lex s (update_pos s pos i)
         | None -> match match_ident s i with
         | Some i -> begin match take i with
+            | "true" -> Parser.True :: lex s (update_pos s pos i)
+            | "false" -> Parser.False :: lex s (update_pos s pos i)
             | "if" -> Parser.If :: lex s (update_pos s pos i)
             | "then" -> Parser.Then :: lex s (update_pos s pos i)
             | "else" -> Parser.Else :: lex s (update_pos s pos i)

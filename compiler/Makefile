@@ -37,7 +37,7 @@ lex_test.cmx: lex_test.ml parser.cmx test.cmx
 lex_test: test.cmx lex.cmx ast.cmx lex_test.cmx 
 	$(OCAMLOPT) $^ -o $@
 
-parser_test.cmx: parser_test.ml parser.cmx ast.cmx
+parser_test.cmx: parser_test.ml parser.cmx ast.cmx lex.cmx
 	$(OCAMLOPT) $< -c
 
 parser.cmx: parser.ml ast.cmx

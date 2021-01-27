@@ -17,13 +17,21 @@ type t =
     | Gret of t * t
     | Less of t * t
     | Cons of t * t
+    | Tuple of t list
+    | If of t * t * t
     | Let of string * t * t
     | Fun of string list * t
+    | App of t * t
+    | Pipeline of t * t
     | Paren of t
 [@@deriving show]
 
 let rec remove_paren = function
     | Emp -> Emp
+    | If (cond, e1, e2) -> If (remove_paren cond, remove_paren e1, remove_paren e2)
+    | Tuple elems -> Tuple (List.map remove_paren elems)
+    | App (f, arg) -> App (remove_paren f, remove_paren arg)
+    | Pipeline (arg, f) -> App (remove_paren f, remove_paren arg)
     | Paren e -> remove_paren e
     | Neg e -> Neg (remove_paren e)
     | Not e -> Not (remove_paren e)

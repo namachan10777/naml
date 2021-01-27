@@ -129,6 +129,10 @@ let rec lex s pos =
         | Some i -> Parser.Mul :: lex s (update_pos s pos i)
         | None -> match match_str "/" s i with
         | Some i -> Parser.Div :: lex s (update_pos s pos i)
+        | None -> match match_str "|>" s i with
+        | Some i -> Parser.Pipeline :: lex s (update_pos s pos i)
+        | None -> match match_str "@@" s i with
+        | Some i -> Parser.AtAt :: lex s (update_pos s pos i)
         | None -> match match_str "||" s i with
         | Some i -> Parser.Or :: lex s (update_pos s pos i)
         | None -> match match_str "&&" s i with

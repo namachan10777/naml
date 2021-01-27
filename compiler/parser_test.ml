@@ -42,3 +42,7 @@ let () =
         Ast.Cons (Ast.Add (Ast.Int 1, Ast.Int 2), Ast.Cons (Ast.Int 3, Ast.Emp)),
         Ast.Emp
     ));
+    Test.assert_eq "pipeline" (Parser.parse @@ Lex.lex "1 |> f |> g" @@ Lex.initial_pos "test.ml")
+    (Ast.App (Ast.Var "g", Ast.App (Ast.Var "f", Ast.Int 1)));
+    Test.assert_eq "@@" (Parser.parse @@ Lex.lex "f @@ g @@ 1" @@ Lex.initial_pos "test.ml")
+    (Ast.App (Ast.Var "f", Ast.App (Ast.Var "g", Ast.Int 1)));

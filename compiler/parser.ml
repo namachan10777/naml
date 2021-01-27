@@ -16,6 +16,8 @@ type token_t =
     | Neq
     | And
     | Or
+    | Pipeline
+    | AtAt
     | LP
     | RP
     | LB
@@ -86,7 +88,21 @@ let rec parse_expr = function
             (Ast.Fun (params, expr), remain)
         | x -> raise @@ SyntaxError (Printf.sprintf "fun %s <---" @@ show_param_taken_t x)
     end
-    | others -> parse_or others
+    | others -> parse_pipeline others
+and parse_pipeline input = match parse_atat input with
+    | (lhr, Pipeline :: (Let :: _ as rhr)) ->
+        let (rhr, remain ) = parse_expr rhr in (Ast.Pipeline (lhr, rhr), remain)
+    | (lhr, Pipeline :: rhr) -> begin match parse_pipeline rhr with
+        | (Ast.Pipeline (rhrl, rhrr), remain) -> (Ast.Pipeline (Ast.Pipeline (lhr, rhrl), rhrr), remain)
+        | (rhr, remain) -> (Ast.Pipeline (lhr, rhr), remain)
+    end
+    | x -> x
+and parse_atat input = match parse_or input with
+    | (lhr, AtAt :: (Let :: _ as rhr)) ->
+        let (rhr, remain ) = parse_expr rhr in (Ast.App (lhr, rhr), remain)
+    | (lhr, AtAt :: rhr) ->
+        let (rhr, remain) = parse_atat rhr in (Ast.App (lhr, rhr), remain)
+    | x -> x
 and parse_or input = match parse_and input with
     | (lhr, Or :: (Let :: _ as rhr)) ->
         let (rhr, remain ) = parse_expr rhr in (Ast.Or (lhr, rhr), remain)

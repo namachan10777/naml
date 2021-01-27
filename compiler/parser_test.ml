@@ -46,3 +46,11 @@ let () =
     (Ast.App (Ast.Var "g", Ast.App (Ast.Var "f", Ast.Int 1)));
     Test.assert_eq "@@" (Parser.parse @@ Lex.lex "f @@ g @@ 1" @@ Lex.initial_pos "test.ml")
     (Ast.App (Ast.Var "f", Ast.App (Ast.Var "g", Ast.Int 1)));
+    Test.assert_eq "seq" (Parser.parse @@ Lex.lex "1; 2 |> f; 3" @@ Lex.initial_pos "test.ml")
+    (Ast.Seq (
+        Ast.Int 1,
+        Ast.Seq (
+            Ast.App (Ast.Var "f", Ast.Int 2),
+            Ast.Int 3
+        )
+    ));

@@ -88,7 +88,13 @@ let rec parse_expr = function
             (Ast.Fun (params, expr), remain)
         | x -> raise @@ SyntaxError (Printf.sprintf "fun %s <---" @@ show_param_taken_t x)
     end
-    | others -> parse_pipeline others
+    | others -> parse_seq others
+and parse_seq input = match parse_pipeline input with
+    | (lhr, Semicol :: (Let :: _ as rhr)) ->
+        let (rhr, remain ) = parse_pipeline rhr in (Ast.Seq (lhr, rhr), remain)
+    | (lhr, Semicol :: rhr) ->
+        let (rhr, remain) = parse_seq rhr in (Ast.Seq (lhr, rhr), remain)
+    | x -> x
 and parse_pipeline input = match parse_atat input with
     | (lhr, Pipeline :: (Let :: _ as rhr)) ->
         let (rhr, remain ) = parse_expr rhr in (Ast.Pipeline (lhr, rhr), remain)

@@ -22,6 +22,7 @@ type t =
     | Let of string * t * t
     | Fun of string list * t
     | App of t * t
+    | Seq of t * t
     | Pipeline of t * t
     | Paren of t
 [@@deriving show]
@@ -38,6 +39,7 @@ let rec remove_paren = function
     | Int i -> Int i
     | Bool b -> Bool b
     | Var id -> Var id
+    | Seq (lhr, rhr) -> Seq (remove_paren lhr, remove_paren rhr)
     | Add (lhr, rhr) -> Add (remove_paren lhr, remove_paren rhr)
     | Sub (lhr, rhr) -> Sub (remove_paren lhr, remove_paren rhr)
     | Mul (lhr, rhr) -> Mul (remove_paren lhr, remove_paren rhr)

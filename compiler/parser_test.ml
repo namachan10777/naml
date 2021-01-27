@@ -111,3 +111,11 @@ let () =
         (Parser.Neg (Parser.App (Parser.Var "f", Parser.Int 2)));
     test "app3" "f 1 + 2"
         (Parser.Add (Parser.App (Parser.Var "f", Parser.Int 1), Parser.Int 2));
+    test "if" "if f x then 1 else let x = 1 in x"
+        (Parser.If (Parser.App (Parser.Var "f", Parser.Var "x"), Parser.Int 1, Parser.Let ("x", Parser.Int 1, Parser.Var "x")));
+    test "if_nested" "if if x then true else false then true else if y then true else false"
+        (Parser.If (
+            Parser.If (Parser.Var "x", Parser.Bool true, Parser.Bool false),
+            Parser.Bool true,
+            Parser.If (Parser.Var "y", Parser.Bool true, Parser.Bool false)
+        ));

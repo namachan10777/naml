@@ -62,6 +62,7 @@ let succ_lets = function
     | Lex.Let :: _ -> true
     | Lex.Fun :: _ -> true
     | Lex.Match :: _ -> true
+    | Lex.If :: _ -> true
     | _ -> false
 
 let rec take_params = function
@@ -84,6 +85,15 @@ let rec parse_expr = function
             let (expr, remain) = parse_expr expr in
             (Fun (params, expr), remain)
         | x -> raise @@ SyntaxError (Printf.sprintf "fun %s <---" @@ show_param_taken_t x)
+    end
+    | Lex.If :: cond -> begin match parse_expr cond with
+        | (cond, Lex.Then :: then_e) -> begin match parse_expr then_e with
+            | (then_e, Lex.Else :: else_e) ->
+                let (else_e, remain) = parse_expr else_e in
+                (If (cond, then_e, else_e), remain)
+            | _ -> raise @@ SyntaxError "if: else not found"
+        end
+        | _ -> raise @@ SyntaxError "if: then not found"
     end
     | Lex.Match :: remain -> begin match parse_expr remain with
         | (target, Lex.With :: Lex.VBar :: arms) ->

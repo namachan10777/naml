@@ -36,6 +36,8 @@ let () =
     ));
     test "let simple" "let x = 1 in x"
     (Parser.Let ("x", Parser.Int 1, Parser.Var "x"));
+    test "let rec" "let rec x = 1 in x"
+    (Parser.LetRec ("x", Parser.Int 1, Parser.Var "x"));
     test "let add left" "1 + let x = 1 in x"
     (Parser.Add (Parser.Int 1, Parser.Let ("x", Parser.Int 1, Parser.Var "x")));
     test "let add right" "(let x = 1 in x) + 1"

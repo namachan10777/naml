@@ -30,6 +30,7 @@ type t =
     | Tuple of t list
     | If of t * t * t
     | Let of string * t * t
+    | LetRec of string * t * t
     | Fun of string list * t
     | Match of t * (pat_t * t) list
     | App of t * t
@@ -76,6 +77,11 @@ type param_taken_t = string list * input_t
 [@@deriving show]
 
 let rec parse_expr = function
+    | Lex.Let :: Lex.Rec :: Ident id :: Eq :: remain -> begin match parse_expr remain with
+        | (def, Lex.In :: remain) ->
+            let (expr, remain) = parse_expr remain in (LetRec (id, def, expr), remain)
+        | _ -> raise @@ SyntaxError "let"
+    end
     | Lex.Let :: Ident id :: Eq :: remain -> begin match parse_expr remain with
         | (def, Lex.In :: remain) ->
             let (expr, remain) = parse_expr remain in (Let (id, def, expr), remain)

@@ -76,11 +76,42 @@ let rec take_params = function
 type param_taken_t = string list * input_t
 [@@deriving show]
 
-let rec take_params = function
-    | Lex.Ident id :: remain ->
-        let (params, remain) = take_params remain in
-        (id :: params, remain)
-    | remain -> ([], remain)
+let rec parse_pat input = match parse_pat_cons input with
+    | (pat, Lex.Comma :: rhr) -> begin match parse_pat rhr with
+        | (PTuple tp, remain) -> (PTuple (pat :: tp), remain)
+        | (rhr, remain) -> (PTuple [pat; rhr], remain)
+    end
+    | p -> p
+and parse_pat_cons input = match parse_pat_term input with
+    | (pat, Lex.Cons :: rhr) ->
+        let (rhr, remain) = parse_pat_cons rhr in
+        (PCons (pat, rhr), remain)
+    | p -> p
+and parse_pat_term = function
+    | Lex.Ident id :: remain -> (PVar id, remain)
+    | Lex.Int i :: remain -> (PInt i, remain)
+    | Lex.True :: remain -> (PBool true, remain)
+    | Lex.False :: remain -> (PBool false, remain)
+    | Lex.LB :: Lex.RB :: remain -> (PEmp, remain)
+    | Lex.LB :: remain -> begin match parse_pat_list_elem remain with
+            | (inner, Lex.RB :: remain) -> (inner, remain)
+            | x -> raise @@ SyntaxError "paren is not balanced in pattern"
+        end
+    | Lex.LP :: inner -> begin match parse_pat inner with
+        | (inner, Lex.RP :: remain) -> (PParen inner, remain)
+        | _ -> raise @@ SyntaxError "paren is not balanced in pattern"
+    end
+    | x -> raise @@ SyntaxError (Printf.sprintf "pattern term %s" @@ show_input_t x)
+and parse_pat_list_elem input = match parse_pat input with
+    | (lhr, Lex.Semicol :: Lex.RB :: remain) ->
+        (PCons (lhr, PEmp), Lex.RB :: remain)
+    | (lhr, Lex.Semicol :: rhr) when succ_lets rhr ->
+        let (rhr, remain ) = parse_pat rhr in (PCons (lhr, PCons (rhr, PEmp)), remain)
+    | (lhr, Lex.Semicol :: rhr) -> begin match parse_pat_list_elem rhr with
+        | (PCons _ as rhr, remain) -> (PCons (lhr, rhr), remain)
+        | (rhr, remain) -> (PCons (lhr, rhr), remain)
+    end
+    | (x, remain) -> (PCons(x, PEmp), remain)
 
 let rec parse_expr = function
     | Lex.Let :: Lex.Rec :: params -> begin match take_params params with
@@ -340,42 +371,6 @@ and parse_arms arm = match parse_pat arm with
         | _ -> raise @@ SyntaxError "invalid \'when\' guard"
         end
     | _ -> raise @@ SyntaxError "match arm"
-and parse_pat input = match parse_pat_cons input with
-    | (pat, Lex.Comma :: rhr) -> begin match parse_pat rhr with
-        | (PTuple tp, remain) -> (PTuple (pat :: tp), remain)
-        | (rhr, remain) -> (PTuple [pat; rhr], remain)
-    end
-    | p -> p
-and parse_pat_cons input = match parse_pat_term input with
-    | (pat, Lex.Cons :: rhr) ->
-        let (rhr, remain) = parse_pat_cons rhr in
-        (PCons (pat, rhr), remain)
-    | p -> p
-and parse_pat_term = function
-    | Lex.Ident id :: remain -> (PVar id, remain)
-    | Lex.Int i :: remain -> (PInt i, remain)
-    | Lex.True :: remain -> (PBool true, remain)
-    | Lex.False :: remain -> (PBool false, remain)
-    | Lex.LB :: Lex.RB :: remain -> (PEmp, remain)
-    | Lex.LB :: remain -> begin match parse_pat_list_elem remain with
-            | (inner, Lex.RB :: remain) -> (inner, remain)
-            | x -> raise @@ SyntaxError "paren is not balanced in pattern"
-        end
-    | Lex.LP :: inner -> begin match parse_pat inner with
-        | (inner, Lex.RP :: remain) -> (PParen inner, remain)
-        | _ -> raise @@ SyntaxError "paren is not balanced in pattern"
-    end
-    | x -> raise @@ SyntaxError (Printf.sprintf "pattern term %s" @@ show_input_t x)
-and parse_pat_list_elem input = match parse_pat input with
-    | (lhr, Lex.Semicol :: Lex.RB :: remain) ->
-        (PCons (lhr, PEmp), Lex.RB :: remain)
-    | (lhr, Lex.Semicol :: rhr) when succ_lets rhr ->
-        let (rhr, remain ) = parse_pat rhr in (PCons (lhr, PCons (rhr, PEmp)), remain)
-    | (lhr, Lex.Semicol :: rhr) -> begin match parse_pat_list_elem rhr with
-        | (PCons _ as rhr, remain) -> (PCons (lhr, rhr), remain)
-        | (rhr, remain) -> (PCons (lhr, rhr), remain)
-    end
-    | (x, remain) -> (PCons(x, PEmp), remain)
 
 let parse input = match parse_expr input with
     | (ast, [Lex.Eof]) -> ast

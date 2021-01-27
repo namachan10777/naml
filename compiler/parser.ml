@@ -252,5 +252,5 @@ and parse_term = function
     | x -> (dbg_i x); raise @@ SyntaxError "term"
 
 let parse input = match parse_expr input with
-    | (ast, [Eof]) -> Ast.remove_paren ast
+    | (ast, [Eof]) -> ast
     | x -> (dbg x); raise @@ SyntaxError "top"

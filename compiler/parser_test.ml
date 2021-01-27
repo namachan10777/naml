@@ -54,3 +54,17 @@ let () =
             Parser.Int 3
         )
     ));
+    Test.assert_eq "match1" (Parser.parse @@ Lex.lex "match x with y -> 0 | z -> match z with a -> a" @@ Lex.initial_pos "test.ml")
+    (Parser.Match (Parser.Var "x", [
+        (Parser.PVar "y", Parser.Int 0);
+        (Parser.PVar "z", Parser.Match (Parser.Var "z", [
+            (Parser.PVar "a", Parser.Var "a");
+        ]));
+    ]));
+    Test.assert_eq "match2" (Parser.parse @@ Lex.lex "match x with y -> let x = 1 in x | z -> 1" @@ Lex.initial_pos "test.ml")
+    (Parser.Match (Parser.Var "x", [
+        (Parser.PVar "y", Parser.Let ("x", Parser.Int 1, Parser.Var "x"));
+        (Parser.PVar "z", Parser.Int 1);
+    ]));
+    Test.assert_eq "match nested" (Parser.parse @@ Lex.lex "match match [] with [] -> [] with [] -> []" @@ Lex.initial_pos "test.ml")
+    (Parser.Match (Parser.Match (Parser.Emp, [Parser.PEmp, Parser.Emp]), [Parser.PEmp, Parser.Emp]))

@@ -216,8 +216,8 @@ let () =
     test "assign" "a := 1 + 2" (P.Assign (P.Var ["a"], P.Add (P.Int 1, P.Int 2)));
     test "assign" "a.(0) <- 1 + 2" (P.ArrayAssign (P.Var ["a"], P.Int 0, P.Add (P.Int 1, P.Int 2)));
     test "ref array" "a.(0) <- a.(0)" (P.ArrayAssign (P.Var ["a"], P.Int 0, P.Index (P.Var ["a"], P.Int 0)));
-    test "dot access" "x.y.z" (P.Var ["x"; "y"; "z"]);
+    test "dot access" "X.Y.z" (P.Var ["X"; "Y"; "z"]);
     test "arr assign" "(getarr 0).(1+1) <- 2" (P.ArrayAssign (P.Paren (P.App (P.Var ["getarr"], P.Int 0)), P.Add (P.Int 1, P.Int 1), P.Int 2));
-    test "dot array assign" "x.y.(1) <- 1 + 1"
-        (P.ArrayAssign (P.Var ["x"; "y"], P.Int 1, P.Add (P.Int 1, P.Int 1)));
+    test "dot array assign" "X.y.(1) <- 1 + 1"
+        (P.ArrayAssign (P.Var ["X"; "y"], P.Int 1, P.Add (P.Int 1, P.Int 1)));
     test "unit" "let () = () in ()" (P.Match (P.Tuple[], [P.PTuple [], P.Bool true, P.Tuple []]));

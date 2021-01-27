@@ -1,10 +1,10 @@
 type pos_t = string * int * int * int
+[@@deriving show]
 let initial_pos fname = (fname, 1, 1, 0)
 
 type t =
     | Str of string
-    | Int of int
-    | UIdent of string
+    | Int of int | UIdent of string
     | LIdent of string
     | Dot
     | True
@@ -80,20 +80,11 @@ let match_alph_lower_char s i =
     then None
     else
         let code = Char.code s.[i] in
-        if code >= 0x41 && code <= 0x5a
+        if code >= 0x61 && code <= 0x7a
         then Some(i+1)
         else None
 
 let match_alph_upper_char s i =
-    if i >= String.length s
-    then None
-    else
-        let code = Char.code s.[i] in
-        if code >= 61 && code <= 0x7a
-        then Some(i+1)
-        else None
- 
-let match_alph_lower_char s i =
     if i >= String.length s
     then None
     else
@@ -174,9 +165,8 @@ let chain pat1 pat2 s i =
     | None -> None
 
 let match_space = opt match_space_char
-let match_ident = opt match_alph_char
-let match_lower_ident = chain (match_alph_lower_char) @@ opt (comb_or (comb_or (match_str "_") match_num_char) match_alph_char)
-let match_upper_ident = chain (match_alph_upper_char) @@ opt (comb_or (comb_or (match_str "_") match_num_char) match_alph_char)
+let match_lower_ident = chain match_alph_lower_char @@ star (comb_or match_alph_char (comb_or match_num_char (match_char '_')))
+let match_upper_ident = chain match_alph_upper_char @@ star (comb_or match_alph_char (comb_or match_num_char (match_char '_')))
 let match_int = opt match_num_char
 let match_hexint = chain (match_str "0x") (opt match_hexnum_char)
 

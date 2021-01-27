@@ -245,9 +245,15 @@ and parse_arms arm = match parse_pat arm with
         | (expr, remain) -> ([pat, expr], remain)
         end
     | _ -> raise @@ SyntaxError "match arm"
-and parse_pat input = match parse_pat_term input with
+and parse_pat input = match parse_pat_cons input with
+    | (pat, Lex.Comma :: rhr) -> begin match parse_pat rhr with
+        | (PTuple tp, remain) -> (PTuple (pat :: tp), remain)
+        | (rhr, remain) -> (PTuple [pat; rhr], remain)
+    end
+    | p -> p
+and parse_pat_cons input = match parse_pat_term input with
     | (pat, Lex.Cons :: rhr) ->
-        let (rhr, remain) = parse_pat rhr in
+        let (rhr, remain) = parse_pat_cons rhr in
         (PCons (pat, rhr), remain)
     | p -> p
 and parse_pat_term = function

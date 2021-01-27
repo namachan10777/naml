@@ -234,13 +234,22 @@ and parse_app input =
         | Lex.LB :: _ -> true
         | _ -> false
     in
-    match parse_term input with
-    | (f, remain) when nexts_term remain ->
-        begin match parse_app remain with
-        | (App (arg1, arg2), remain) -> App (App (f, arg1), arg2), remain
-        | (arg, remain) -> App (f, arg), remain
-        end
-    | x -> x
+    let reverse tree =
+        let rec dec = function
+            | App (f, arg) -> f :: dec arg
+            | t -> [t]
+        in match dec tree with
+        | [] -> raise @@ Failure "internal error"
+        | f :: args -> List.fold_left (fun f arg -> App(f, arg)) f args
+    in
+    let rec internal input = match parse_term input with
+        | (f, remain) when nexts_term remain ->
+            begin match internal remain with
+            | (arg, remain) -> App (f, arg), remain
+            end
+        | x -> x
+    in
+    let (tree, remain) = internal input in (reverse tree, remain)
 and parse_term = function
     | Lex.Ident id :: remain -> (Var id, remain)
     | Lex.Int i :: remain -> (Int i, remain)

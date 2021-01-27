@@ -44,6 +44,10 @@ let () =
     (Parser.Let ("x", Parser.Let ("y", Parser.Int 1, Parser.Var "y"), Parser.Let ("z", Parser.Var "x", Parser.Var "z")));
     test "fun" "fun x y z -> x + y + z"
     (Parser.Fun (["x"; "y"; "z"], Parser.Add (Parser.Add (Parser.Var "x", Parser.Var "y"), Parser.Var "z")));
+    test "fun" "(fun x y z -> x + y + z) 1"
+    (Parser.App (
+        Parser.Paren (Parser.Fun (["x"; "y"; "z"], Parser.Add (Parser.Add (Parser.Var "x", Parser.Var "y"), Parser.Var "z"))),
+    Parser.Int 1));
     test "cons" "1 + 2 :: 3 :: [] = []"
     (Parser.Eq (
         Parser.Cons (Parser.Add (Parser.Int 1, Parser.Int 2), Parser.Cons (Parser.Int 3, Parser.Emp)),
@@ -111,6 +115,10 @@ let () =
         (Parser.Neg (Parser.App (Parser.Var "f", Parser.Int 2)));
     test "app3" "f 1 + 2"
         (Parser.Add (Parser.App (Parser.Var "f", Parser.Int 1), Parser.Int 2));
+    test "app4" "f 1 2"
+        (Parser.App (Parser.App (Parser.Var "f", Parser.Int 1), Parser.Int 2));
+    test "app5" "f 1 2 3"
+        (Parser.App (Parser.App (Parser.App (Parser.Var "f", Parser.Int 1), Parser.Int 2), Parser.Int 3));
     test "if" "if f x then 1 else let x = 1 in x"
         (Parser.If (Parser.App (Parser.Var "f", Parser.Var "x"), Parser.Int 1, Parser.Let ("x", Parser.Int 1, Parser.Var "x")));
     test "if_nested" "if if x then true else false then true else if y then true else false"

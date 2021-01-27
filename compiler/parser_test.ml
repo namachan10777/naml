@@ -46,6 +46,10 @@ let () =
     (P.Add (P.Paren(P.Let ("x", P.Int 1, P.Var "x")), P.Int 1));
     test "let complex" "let x = let y = 1 in y in let z = x in z"
     (P.Let ("x", P.Let ("y", P.Int 1, P.Var "y"), P.Let ("z", P.Var "x", P.Var "z")));
+    test "letfun" "let add x y = x + y in add"
+    (P.Let ("add", P.Fun (["x"; "y"], P.Add (P.Var "x", P.Var "y")), P.Var "add"));
+    test "letrecfun" "let rec add x y = x + y in add"
+    (P.LetRec ("add", P.Fun (["x"; "y"], P.Add (P.Var "x", P.Var "y")), P.Var "add"));
     test "fun" "fun x y z -> x + y + z"
     (P.Fun (["x"; "y"; "z"], P.Add (P.Add (P.Var "x", P.Var "y"), P.Var "z")));
     test "fun" "(fun x y z -> x + y + z) 1"

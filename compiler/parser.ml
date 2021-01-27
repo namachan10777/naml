@@ -76,15 +76,37 @@ let rec take_params = function
 type param_taken_t = string list * input_t
 [@@deriving show]
 
+let rec take_params = function
+    | Lex.Ident id :: remain ->
+        let (params, remain) = take_params remain in
+        (id :: params, remain)
+    | remain -> ([], remain)
+
 let rec parse_expr = function
-    | Lex.Let :: Lex.Rec :: Ident id :: Eq :: remain -> begin match parse_expr remain with
-        | (def, Lex.In :: remain) ->
-            let (expr, remain) = parse_expr remain in (LetRec (id, def, expr), remain)
-        | _ -> raise @@ SyntaxError "let"
+    | Lex.Let :: Lex.Rec :: params -> begin match take_params params with
+        | ([id], Lex.Eq :: remain) -> begin match parse_expr remain with
+            | (def, Lex.In :: remain) -> 
+                let (expr, remain) = parse_expr remain in (LetRec (id, def, expr), remain)
+            | _ -> raise @@ SyntaxError "let rec"
+        end
+        | (id :: args, Lex.Eq :: remain) -> begin match parse_expr remain with
+            | (def, Lex.In :: remain) -> 
+                let (expr, remain) = parse_expr remain in (LetRec (id, Fun (args, def), expr), remain)
+            | _ -> raise @@ SyntaxError "let rec"
+        end
+        | _ -> raise @@ SyntaxError "let rec"
     end
-    | Lex.Let :: Ident id :: Eq :: remain -> begin match parse_expr remain with
-        | (def, Lex.In :: remain) ->
-            let (expr, remain) = parse_expr remain in (Let (id, def, expr), remain)
+    | Lex.Let :: params -> begin match take_params params with
+        | ([id], Lex.Eq :: remain) -> begin match parse_expr remain with
+            | (def, Lex.In :: remain) -> 
+                let (expr, remain) = parse_expr remain in (Let (id, def, expr), remain)
+            | _ -> raise @@ SyntaxError "let"
+        end
+        | (id :: args, Lex.Eq :: remain) -> begin match parse_expr remain with
+            | (def, Lex.In :: remain) -> 
+                let (expr, remain) = parse_expr remain in (Let (id, Fun (args, def), expr), remain)
+            | _ -> raise @@ SyntaxError "let"
+        end
         | _ -> raise @@ SyntaxError "let"
     end
     | Lex.Fun :: (Ident _ :: _ as remain) -> begin match take_params remain with

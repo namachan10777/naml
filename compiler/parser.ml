@@ -65,7 +65,8 @@ let is_add_or_sub = function
 let dbg ast = print_endline @@ show_parsed_t ast
 let dbg_i ast = print_endline @@ show_input_t ast
 
-let rec parse_or input = match parse_and input with
+let rec parse_expr input = parse_or input
+and parse_or input = match parse_and input with
     | (lhr, Or :: rhr) -> begin match parse_or rhr with
         | (Ast.Or (rhrl, rhrr), remain) -> (Ast.Or (Ast.Or (lhr, rhrl), rhrr), remain)
         | (rhr, remain) -> (Ast.Or (lhr, rhr), remain)
@@ -128,6 +129,7 @@ and parse_mul input = match parse_term input with
     end
     | x -> x
 and parse_term = function
+    | Ident id :: remain -> (Ast.Var id, remain)
     | Int i :: remain -> (Ast.Int i, remain)
     | True :: remain -> (Ast.Bool true, remain)
     | False :: remain -> (Ast.Bool false, remain)
@@ -137,12 +139,12 @@ and parse_term = function
     | Not :: remain ->
         let (exp, remain) = parse_term remain in
         (Ast.Not exp ,remain)
-    | LP :: remain -> begin match parse_or remain with
+    | LP :: remain -> begin match parse_expr remain with
         | (inner, RP :: remain) -> (Ast.Paren inner, remain)
         | x -> raise @@ SyntaxError (Printf.sprintf "paren is not balanced %s " @@ show_parsed_t x)
     end
     | x -> (dbg_i x); raise @@ SyntaxError "term"
 
-let parse input = match parse_or input with
+let parse input = match parse_expr input with
     | (ast, [Eof]) -> Ast.remove_paren ast
     | x -> (dbg x); raise @@ SyntaxError "top"

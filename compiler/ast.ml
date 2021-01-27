@@ -1,6 +1,7 @@
 type t =
     | Int of int
     | Bool of bool
+    | Var of string
     | Add of t * t
     | Sub of t * t
     | Mul of t * t
@@ -23,6 +24,7 @@ let rec remove_paren = function
     | Not e -> Not (remove_paren e)
     | Int i -> Int i
     | Bool b -> Bool b
+    | Var id -> Var id
     | Add (lhr, rhr) -> Add (remove_paren lhr, remove_paren rhr)
     | Sub (lhr, rhr) -> Sub (remove_paren lhr, remove_paren rhr)
     | Mul (lhr, rhr) -> Mul (remove_paren lhr, remove_paren rhr)

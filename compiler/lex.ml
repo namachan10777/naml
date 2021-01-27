@@ -136,7 +136,7 @@ let rec lex s pos =
         | None -> match match_str ">" s i with
         | Some i -> Parser.Gret :: lex s (update_pos s pos i)
         | None -> match match_str "<" s i with
-        | Some i -> Parser.Cons :: lex s (update_pos s pos i)
+        | Some i -> Parser.Less :: lex s (update_pos s pos i)
         | None -> match match_str "(" s i with
         | Some i -> Parser.LP :: lex s (update_pos s pos i)
         | None -> match match_str ")" s i with

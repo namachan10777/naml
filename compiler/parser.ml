@@ -107,7 +107,14 @@ let rec parse_expr = function
                 let (expr, remain) = parse_expr remain in (Let (id, Fun (args, def), expr), remain)
             | _ -> raise @@ SyntaxError "let"
         end
-        | _ -> raise @@ SyntaxError "let"
+        | _ -> match parse_pat params with
+            | (pat, Lex.Eq :: remain) -> begin match parse_expr remain with
+                | (def, Lex.In :: remain) ->
+                    let (expr, remain) = parse_expr remain in
+                    Match (def, [(pat, Bool true, expr)]), remain
+                | _ -> raise @@ SyntaxError "let"
+            end
+            | _ -> raise @@ SyntaxError "let"
     end
     | Lex.Fun :: (Ident _ :: _ as remain) -> begin match take_params remain with
         | ((_ :: _) as params, Lex.Arrow :: expr) ->

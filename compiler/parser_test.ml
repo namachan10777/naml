@@ -130,6 +130,8 @@ let () =
         (P.Match (P.Emp, [P.PCons (P.PInt 1, P.PCons (P.PInt 2, P.PCons (P.PInt 3, P.PEmp))), P.Bool true, P.Emp]));
     test "parse_pattern_list5" "match [] with 1 :: [2;3] -> []"
         (P.Match (P.Emp, [P.PCons (P.PInt 1, P.PCons (P.PInt 2, P.PCons (P.PInt 3, P.PEmp))), P.Bool true, P.Emp]));
+    test "let x, y = z in x" "let x, y = z in x"
+        (P.Match (P.Var "z", [P.PTuple [P.PVar "x"; P.PVar "y"], P.Bool true, P.Var "x"]));
     test "app1" "1 + f 2"
         (P.Add (P.Int 1, P.App (P.Var "f", P.Int 2)));
     test "app2" "- f 2"

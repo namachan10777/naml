@@ -105,7 +105,7 @@ and parse_and input = match parse_eq input with
         | (rhr, remain) -> (Ast.And (lhr, rhr), remain)
     end
     | x -> x
-and parse_eq input = match parse_add input with
+and parse_eq input = match parse_cons input with
     | (lhr, Eq :: (Let :: _ as rhr)) ->
         let (rhr, remain ) = parse_expr rhr in (Ast.Eq (lhr, rhr), remain)
     | (lhr, Eq :: (Fun :: _ as rhr)) ->
@@ -129,18 +129,26 @@ and parse_eq input = match parse_add input with
     | (lhr, Gret :: (Fun :: _ as rhr)) ->
         let (rhr, remain ) = parse_expr rhr in (Ast.Gret (lhr, rhr), remain)
     | (lhr, Gret :: rhr) ->
-        let (rhr, remain) = parse_add rhr in
+        let (rhr, remain) = parse_cons rhr in
         (Ast.Gret (lhr, rhr), remain)
     | (lhr, Less :: (Let :: _ as rhr)) ->
         let (rhr, remain ) = parse_expr rhr in (Ast.Less (lhr, rhr), remain)
     | (lhr, Less :: (Fun :: _ as rhr)) ->
         let (rhr, remain ) = parse_expr rhr in (Ast.Less (lhr, rhr), remain)
     | (lhr, Less :: rhr) ->
-        let (rhr, remain) = parse_add rhr in
+        let (rhr, remain) = parse_cons rhr in
         (Ast.Less (lhr, rhr), remain)
     | x -> x
-and parse_add input = match parse_mul input with
-    | (lhr, Add :: (Fun :: _ as rhr)) ->
+and parse_cons input = match parse_add input with
+    | (lhr, Cons :: (Let :: _ as rhr)) ->
+        let (rhr, remain ) = parse_expr rhr in (Ast.Cons (lhr, rhr), remain)
+    | (lhr, Cons :: (Fun :: _ as rhr)) ->
+        let (rhr, remain ) = parse_expr rhr in (Ast.Cons (lhr, rhr), remain)
+    | (lhr, Cons :: rhr) ->
+        let (rhr, remain) = parse_cons rhr in
+        Ast.Cons (lhr, rhr), remain
+    | x -> x
+and parse_add input = match parse_mul input with | (lhr, Add :: (Fun :: _ as rhr)) ->
         let (rhr, remain ) = parse_expr rhr in (Ast.Add (lhr, rhr), remain)
     | (lhr, Add :: (Let :: _ as rhr)) ->
         let (rhr, remain ) = parse_expr rhr in (Ast.Add (lhr, rhr), remain)
@@ -214,6 +222,7 @@ and parse_term = function
     | Not :: remain ->
         let (exp, remain) = parse_term remain in
         (Ast.Not exp ,remain)
+    | LB :: RB :: remain -> (Ast.Emp, remain)
     | LP :: remain -> begin match parse_expr remain with
         | (inner, RP :: remain) -> (Ast.Paren inner, remain)
         | x -> raise @@ SyntaxError (Printf.sprintf "paren is not balanced %s " @@ show_parsed_t x)

@@ -37,3 +37,8 @@ let () =
     (Ast.Let ("x", Ast.Let ("y", Ast.Int 1, Ast.Var "y"), Ast.Let ("z", Ast.Var "x", Ast.Var "z")));
     Test.assert_eq "fun" (Parser.parse @@ Lex.lex "fun x y z -> x + y + z" @@ Lex.initial_pos "test.ml")
     (Ast.Fun (["x"; "y"; "z"], Ast.Add (Ast.Add (Ast.Var "x", Ast.Var "y"), Ast.Var "z")));
+    Test.assert_eq "cons" (Parser.parse @@ Lex.lex "1 + 2 :: 3 :: [] = []" @@ Lex.initial_pos "test.ml")
+    (Ast.Eq (
+        Ast.Cons (Ast.Add (Ast.Int 1, Ast.Int 2), Ast.Cons (Ast.Int 3, Ast.Emp)),
+        Ast.Emp
+    ));

@@ -117,6 +117,8 @@ let rec lex s pos =
             Parser.Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
 
         (* 愚直すぎ (末尾再帰の最適化を狙っています。許して) *)
+        | None -> match match_str "::" s i with
+        | Some i -> Parser.Cons :: lex s (update_pos s pos i)
         | None -> match match_str "->" s i with
         | Some i -> Parser.Arrow :: lex s (update_pos s pos i)
         | None -> match match_str "+" s i with

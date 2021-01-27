@@ -21,6 +21,8 @@ type t =
     | Or
     | Pipeline
     | AtAt
+    | Assign
+    | ArrayAssign
     | LP
     | RP
     | LB
@@ -166,6 +168,10 @@ let rec lex s pos =
         | Some i -> Cons :: lex s (update_pos s pos i)
         | None -> match match_str "->" s i with
         | Some i -> Arrow :: lex s (update_pos s pos i)
+        | None -> match match_str "<-" s i with
+        | Some i -> ArrayAssign :: lex s (update_pos s pos i)
+        | None -> match match_str ":=" s i with
+        | Some i -> Assign :: lex s (update_pos s pos i)
         | None -> match match_str "+" s i with
         | Some i -> Add :: lex s (update_pos s pos i)
         | None -> match match_str "-" s i with

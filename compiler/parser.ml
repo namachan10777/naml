@@ -14,6 +14,8 @@ type t =
     | Int of int
     | Bool of bool
     | Var of string
+    | Assign of t * t
+    | ArrayAssign of t * t
     | Add of t * t
     | Sub of t * t
     | Mul of t * t
@@ -21,6 +23,7 @@ type t =
     | Mod of t * t
     | Neg of t
     | Not of t
+    | Ref of t
     | Eq of t * t
     | Neq of t * t
     | Or of t * t
@@ -216,11 +219,23 @@ and unfold_fun args expr =
         (List.rev args)
     in
     Fun (params, body)
-and parse_seq input = match parse_tuple input with
+and parse_seq input = match parse_assign input with
     | (lhr, Lex.Semicol :: rhr) when succ_lets rhr ->
-        let (rhr, remain ) = parse_tuple rhr in (Seq (lhr, rhr), remain)
+        let (rhr, remain ) = parse_assign rhr in (Seq (lhr, rhr), remain)
     | (lhr, Lex.Semicol :: rhr) ->
         let (rhr, remain) = parse_seq rhr in (Seq (lhr, rhr), remain)
+    | x -> x
+and parse_assign input = match parse_arrayassign input with
+    | (lhr, Lex.Assign :: rhr) when succ_lets rhr ->
+        let (rhr, remain ) = parse_tuple rhr in (Assign (lhr, rhr), remain)
+    | (lhr, Lex.Assign :: rhr) ->
+        let (rhr, remain) = parse_tuple rhr in (Assign (lhr, rhr), remain)
+    | x -> x
+and parse_arrayassign input = match parse_tuple input with
+    | (lhr, Lex.ArrayAssign :: rhr) when succ_lets rhr ->
+        let (rhr, remain ) = parse_tuple rhr in (ArrayAssign (lhr, rhr), remain)
+    | (lhr, Lex.ArrayAssign :: rhr) ->
+        let (rhr, remain) = parse_tuple rhr in (ArrayAssign (lhr, rhr), remain)
     | x -> x
 and parse_tuple input = match parse_pipeline input with
     | (lhr, Lex.Comma :: rhr) when succ_lets rhr ->
@@ -378,6 +393,12 @@ and parse_term = function
     | Lex.Not :: remain ->
         let (exp, remain) = parse_app remain in
         (Not exp ,remain)
+    | Lex.Ref :: remain when succ_lets remain ->
+        let (exp, remain) = parse_expr remain in
+        (Ref exp ,remain)
+    | Lex.Ref :: remain ->
+        let (exp, remain) = parse_app remain in
+        (Ref exp ,remain)
     | Lex.LB :: Lex.RB :: remain -> (Emp, remain)
     | Lex.LB :: remain -> begin match parse_list_elem remain with
             | (inner, Lex.RB :: remain) -> (inner, remain)

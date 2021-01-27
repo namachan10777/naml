@@ -31,6 +31,7 @@ let () =
         P.Gret (P.Int 3, P.Int 2),
         P.Not (P.Not (P.Paren (P.Less (P.Int 1, P.Int 0))))
     ));
+    test "ref" "ref 1" (P.Ref (P.Int 1));
     test "bool2"  "true && false || 1 = 2 && false"
     (P.Or (
         P.And (P.Bool true, P.Bool false),
@@ -212,3 +213,5 @@ let () =
             P.Bool true,
             P.If (P.Var "y", P.Bool true, P.Bool false)
         ));
+    test "assign" "a := 1 + 2" (P.Assign (P.Var "a", P.Add (P.Int 1, P.Int 2)));
+    test "assign" "a <- 1 + 2" (P.ArrayAssign (P.Var "a", P.Add (P.Int 1, P.Int 2)));

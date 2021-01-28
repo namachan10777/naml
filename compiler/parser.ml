@@ -64,9 +64,12 @@ type stmt_t =
     | LetS of (pat_t * t) list
     (* and chain *)
     | LetRecS of (pat_t * t) list
+    (* and chain *)
+    | Type of (string * string list * ty_t) list
 [@@deriving show]
 type stmts_t = stmt_t list
 [@@deriving show]
+
 exception SyntaxError of string
 
 let rec split_with f = function
@@ -152,7 +155,7 @@ and parse_ty_term = function
         | (inner, RP :: remain) -> TParen inner, remain
         | _ -> raise @@ SyntaxError "paren is not balanced in type"
     end
-    | _ -> raise @@ SyntaxError "ty_term"
+    | t -> raise @@ SyntaxError (Printf.sprintf "ty_term %s" @@ show_input_t t)
 and parse_tid = function
     | Lex.LIdent id :: remain -> [id], remain
     | Lex.UIdent m_id :: Lex.Dot :: Lex.LIdent id :: remain -> [m_id; id], remain
@@ -547,6 +550,18 @@ and parse_arms arm = match parse_pat arm with
     | _ -> raise @@ SyntaxError "match arm"
 
 let rec parse_stmts = function
+    | Lex.Type :: Lex.LIdent name :: remain ->
+        begin match take_targs remain with
+        | (targs, Lex.Eq :: remain) ->
+            begin match parse_ty remain with
+                | (ty, Lex.AndDef :: remain) ->
+                    let (ands, remain) = parse_type_ands remain in
+                    Type ((name, targs, ty) :: ands) :: parse_stmts remain
+                | (ty, remain) ->
+                    Type [name, targs, ty] :: parse_stmts remain
+            end
+        | _ -> raise @@ SyntaxError "type def"
+        end
     | Lex.Let :: Lex.Rec :: remain -> begin match parse_params Lex.Eq remain with
         | ([pat], Lex.Eq :: remain) ->
             begin match parse_expr remain with
@@ -600,6 +615,26 @@ and parse_let_ands input = begin match parse_params Lex.Eq input with
         end
     | _ -> raise @@ SyntaxError "let stmt"
     end
+and parse_type_ands = function
+    | Lex.LIdent name :: remain ->
+        begin match take_targs remain with
+        | (targs, Lex.Eq :: remain) ->
+            begin match parse_ty remain with
+                | (ty, Lex.AndDef :: remain) ->
+                    let (ands, remain) = parse_type_ands remain in
+                    (name, targs, ty) :: ands, remain
+                | (ty, remain) ->
+                    [name, targs, ty], remain
+            end
+        | _ -> raise @@ SyntaxError "and type"
+        end
+    | _ -> raise @@ SyntaxError "and type"
+and take_targs = function
+    | Lex.TVar id :: remain ->
+        let (targs, remain) = take_targs remain in
+        (id :: targs, remain)
+    | remain -> [], remain
+
 let parse input = match parse_expr input with
     | (ast, [Lex.Eof]) -> ast
     | x -> (dbg x); raise @@ SyntaxError "top"

@@ -64,6 +64,10 @@ let () =
     (P.Add (P.Paren(P.Let ([P.PVar "x", P.Int 1], P.Var ["x"])), P.Int 1));
     test "let complex" "let x = let y = 1 in y in let z = x in z"
     (P.Let ([P.PVar "x", P.Let ([P.PVar "y", P.Int 1], P.Var ["y"])], P.Let ([P.PVar "z", P.Var ["x"]], P.Var ["z"])));
+    test "let and" "let x = 1 and y = 2 in y"
+    (P.Let ([P.PVar "x", P.Int 1; P.PVar "y", P.Int 2], P.Var ["y"]));
+    test "let rec and" "let rec x = 1 and y = 2 in y"
+    (P.LetRec ([["x"], P.Int 1; ["y"], P.Int 2], P.Var ["y"]));
     test "letfun" "let add x y = x + y in add"
     (P.Let ([P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))], P.Var ["add"]));
     Parser.count := 0;

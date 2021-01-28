@@ -7,6 +7,16 @@ let test name src right =
         Printf.printf "left  : %s\nright : %s\n" (P.show left) (P.show right);
         raise @@ Test.UnitTestError err
 
+let test_ty name src right =
+    let left = match P.parse_ty @@ Lex.lex src @@ Lex.initial_pos "test.ml" with
+        | (t, [Lex.Eof]) -> t
+        | _ -> raise @@ Test.UnitTestError "parse failed"
+    in
+    try Test.assert_eq name left right with
+    | Test.UnitTestError err ->
+        Printf.printf "left  : %s\nright : %s\n" (P.show_ty_t left) (P.show_ty_t right);
+        raise @@ Test.UnitTestError err
+
 let () =
     test "parse_add" "0+1+2"
     (P.Add (P.Add(P.Int 0, P.Int 1), P.Int 2));
@@ -225,3 +235,18 @@ let () =
     test "dot array assign" "X.y.(1) <- 1 + 1"
         (P.ArrayAssign (P.Var ["X"; "y"], P.Int 1, P.Add (P.Int 1, P.Int 1)));
     test "unit" "let () = () in ()" (P.Match (P.Tuple[], [P.PTuple [], P.Bool true, P.Tuple []]));
+    test_ty "tuple1" "t * t" (P.TTuple [P.TId ["t"]; P.TId ["t"]]);
+    test_ty "tuple2" "t * (t * t)" (P.TTuple [P.TId ["t"]; P.TParen (P.TTuple [P.TId ["t"]; P.TId ["t"]])]);
+    test_ty "variant1" "L of t * t | R of t" (
+        P.TVariant [
+            ("L", P.TTuple [P.TId ["t"]; P.TId ["t"]]);
+            ("R", P.TId ["t"]);
+        ]
+    );
+    test_ty "variant2" "| L of t * t | R of t" (
+        P.TVariant [
+            ("L", P.TTuple [P.TId ["t"]; P.TId ["t"]]);
+            ("R", P.TId ["t"]);
+        ]
+    );
+    test_ty "tid" "M1.t * M2.t" (P.TTuple [P.TId ["M1"; "t"]; P.TId ["M2"; "t"]]);

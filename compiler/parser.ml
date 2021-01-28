@@ -1,3 +1,10 @@
+type ty_t =
+    | TParen of ty_t
+    | TId of string list
+    | TTuple of ty_t list
+    | TVariant of (string * ty_t) list
+[@@deriving show]
+
 type pat_t =
     | PInt of int
     | PBool of bool
@@ -87,6 +94,46 @@ let rec take_params = function
 
 type param_taken_t = string list * input_t
 [@@deriving show]
+
+let rec parse_ty input = parse_ty_variant input
+and parse_ty_variant = function
+    | Lex.VBar :: Lex.UIdent name :: Lex.Of :: remain -> begin match parse_ty_tuple remain with
+        | (t, Lex.VBar :: arms) -> begin match parse_ty_variant arms with
+            | (TVariant arms, remain) -> (TVariant ((name, t) :: arms), remain)
+            | _ -> raise @@ SyntaxError "variant"
+        end
+        | (t, remain) -> TVariant ([name, t]), remain
+    end
+    | Lex.UIdent name :: Lex.Of :: remain -> begin match parse_ty_tuple remain with
+        | (t, Lex.VBar :: arms) -> begin match parse_ty_variant arms with
+            | (TVariant arms, remain) -> (TVariant ((name, t) :: arms), remain)
+            | _ -> raise @@ SyntaxError "variant"
+        end
+        | (t, remain) -> TVariant ([name, t]), remain
+    end
+    | input -> parse_ty_tuple input
+and parse_ty_tuple input = match parse_ty_term input with
+    | (lhr, Lex.Mul :: remain) -> begin match parse_ty_tuple remain with
+        | (TTuple rhr, remain) -> TTuple (lhr :: rhr), remain
+        | (rhr, remain) -> TTuple [lhr; rhr], remain
+    end
+    | t -> t
+and parse_ty_term = function
+    | Lex.LIdent id :: remain -> TId [id], remain
+    | Lex.UIdent _ :: _ as remain ->
+        let (tid, remain) = parse_tid remain in TId tid, remain
+    | Lex.LP :: inner -> begin match parse_ty inner with
+        | (inner, RP :: remain) -> TParen inner, remain
+        | _ -> raise @@ SyntaxError "paren is not balanced in type"
+    end
+    | _ -> raise @@ SyntaxError "ty_term"
+and parse_tid = function
+    | Lex.LIdent id :: remain -> [id], remain
+    | Lex.UIdent m_id :: Lex.Dot :: Lex.LIdent id :: remain -> [m_id; id], remain
+    | Lex.UIdent m_id :: Lex.Dot :: (Lex.UIdent _ :: _ as remain) ->
+        let (child, remain) = parse_tid remain in
+        (m_id :: child), remain
+    | _ -> raise @@ SyntaxError "type id"
 
 let rec parse_pat input = match parse_pat_tuple input with
     | (pat, Lex.As :: rhr) -> begin match parse_pat_tuple rhr with

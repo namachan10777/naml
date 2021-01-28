@@ -6,6 +6,8 @@ type t =
     | Str of string
     | Int of int | UIdent of string
     | LIdent of string
+    | Type
+    | Of
     | Dot
     | True
     | False
@@ -247,6 +249,8 @@ let rec lex s pos =
         | Some i -> UIdent (take i) :: lex s (update_pos s pos i)
         | None -> match match_lower_ident s i with
         | Some i -> begin match take i with
+            | "type" -> Type :: lex s (update_pos s pos i)
+            | "of" -> Of :: lex s (update_pos s pos i)
             | "as" -> As :: lex s (update_pos s pos i)
             | "true" -> True :: lex s (update_pos s pos i)
             | "false" -> False :: lex s (update_pos s pos i)

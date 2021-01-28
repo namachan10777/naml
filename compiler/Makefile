@@ -63,7 +63,7 @@ typing_test: lex.cmx parser.cmx ast.cmx typing_test.cmx util.cmx types.cmx alpha
 alpha.cmx: alpha.ml ast.cmx util.cmx types.cmx
 	$(OCAMLOPT) $< -c
 
-main.cmx: main.ml parser.cmx lex.cmx
+main.cmx: main.ml alpha.cmx parser.cmx lex.cmx
 	$(OCAMLOPT) $< -c
 
 util.cmx: util.ml

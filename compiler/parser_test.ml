@@ -57,7 +57,7 @@ let () =
     test "let simple" "let x = 1 in x"
     (P.Let ([P.PVar "x", P.Int 1], P.Var ["x"]));
     test "let rec" "let rec x = 1 in x"
-    (P.LetRec ([P.PVar "x", P.Int 1], P.Var ["x"]));
+    (P.LetRec ([["x"], P.Int 1], P.Var ["x"]));
     test "let add left" "1 + let x = 1 in x"
     (P.Add (P.Int 1, P.Let ([P.PVar "x", P.Int 1], P.Var ["x"])));
     test "let add right" "(let x = 1 in x) + 1"
@@ -85,10 +85,10 @@ let () =
         )]
     , P.Var ["add"]));
     test "letrecfun" "let rec add x y = x + y in add"
-    (P.LetRec ([P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))], P.Var ["add"]));
+    (P.LetRec ([["add"], P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))], P.Var ["add"]));
     Parser.count := 0;
     test "letrecfun_pat" "let rec add (x, y) (z, w) = x + y in add"
-    (P.LetRec ([P.PVar "add",
+    (P.LetRec ([["add"],
         P.Fun (["<anonymous2>"; "<anonymous1>"],
             P.Match (P.Var ["<anonymous2>"], [
                 (
@@ -213,7 +213,7 @@ let () =
     test "parse_as" "match [] with X 1 :: [] -> []"
         (P.Match (P.Emp, [P.PCons (P.PCtorApp (["X"], P.PInt 1), P.PEmp), P.Bool true, P.Emp]));
     test "let x, y = z in x" "let x, y = z in x"
-        (P.Match (P.Var ["z"], [P.PTuple [P.PVar "x"; P.PVar "y"], P.Bool true, P.Var ["x"]]));
+        (P.Let ([P.PTuple [P.PVar "x"; P.PVar "y"], P.Var ["z"]], P.Var ["x"]));
     test "app1" "1 + f 2"
         (P.Add (P.Int 1, P.App (P.Var ["f"], P.Int 2)));
     test "app2" "- f 2"
@@ -241,7 +241,7 @@ let () =
     test "arr assign" "(getarr 0).(1+1) <- 2" (P.ArrayAssign (P.Paren (P.App (P.Var ["getarr"], P.Int 0)), P.Add (P.Int 1, P.Int 1), P.Int 2));
     test "dot array assign" "X.y.(1) <- 1 + 1"
         (P.ArrayAssign (P.Var ["X"; "y"], P.Int 1, P.Add (P.Int 1, P.Int 1)));
-    test "unit" "let () = () in ()" (P.Match (P.Tuple[], [P.PTuple [], P.Bool true, P.Tuple []]));
+    test "unit" "let () = () in ()" (P.Let ([P.PTuple [], P.Tuple []], P.Tuple[]));
     test_ty "tuple1" "t * t" (P.TTuple [P.TId ["t"]; P.TId ["t"]]);
     test_ty "tuple2" "t * (t * t)" (P.TTuple [P.TId ["t"]; P.TParen (P.TTuple [P.TId ["t"]; P.TId ["t"]])]);
     test_ty "tid" "M1.t * M2.t" (P.TTuple [P.TId ["M1"; "t"]; P.TId ["M2"; "t"]]);
@@ -253,8 +253,8 @@ let () =
     (P.Let ([P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))], P.Never));
     test_stmts "letrec and" "let rec f = 1 and g = 2"
         (P.LetRec ([
-            (P.PVar "f", P.Int 1);
-            (P.PVar "g", P.Int 2);
+            (["f"], P.Int 1);
+            (["g"], P.Int 2);
         ], P.Never));
     test_stmts "let and" "let f = 1 and g = 2"
         (P.Let ([

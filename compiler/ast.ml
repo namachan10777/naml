@@ -31,7 +31,7 @@ type t =
     | Tuple of t list
     | If of t * t * t
     | Let of (pat_t * t) list * t
-    | LetRec of (pat_t * t) list * t
+    | LetRec of (string list * t) list * t
     | Fun of string list * t
     | Match of t * (pat_t * t * t) list
     | App of t * t
@@ -89,7 +89,7 @@ let rec of_parser_t = function
     | Parser.Let (defs, expr) ->
         Let (List.map (fun (pat, def) -> (of_parser_pat_t pat, of_parser_t def)) defs, of_parser_t expr)
     | Parser.LetRec (defs, expr) ->
-        LetRec (List.map (fun (pat, def) -> (of_parser_pat_t pat, of_parser_t def)) defs, of_parser_t expr)
+        LetRec (List.map (fun (id, def) -> (id, of_parser_t def)) defs, of_parser_t expr)
     | Parser.Fun (params, expr) -> Fun (params, of_parser_t expr)
     | Parser.App (f, arg) -> App (of_parser_t f, of_parser_t arg)
     | Parser.Paren e -> of_parser_t e

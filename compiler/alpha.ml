@@ -37,7 +37,7 @@ type t =
     | Tuple of t list
     | If of t * t * t
     | Let of (pat_t * t) list * t
-    | LetRec of (pat_t * t) list * t
+    | LetRec of (id_t * t) list * t
     | Type of (id_t * string list * tydef_t) list * t
     | Fun of id_t list * t
     | Match of t * (pat_t * t * t) list
@@ -131,15 +131,12 @@ let rec of_expr env = function
         Match (of_expr env target, arms)
     | ArrayAssign (target, idx, value) -> ArrayAssign (of_expr env target, of_expr env idx, of_expr env value)
     | Ast.LetRec (defs, expr) ->
-        let pats = List.map fst defs in
+        let ids = List.map fst defs in
         let exprs = List.map snd defs in
-        let pats, env = List.fold_left (fun (pats, env) pat ->
-            let pat, env = of_pat env pat in
-            (pat :: pats, env))
-            ([], env)
-            pats in
+        let ids = List.map (fun id -> gen id) ids in
+        let env = ids @ env in
         let exprs = List.map (of_expr env) exprs in
-        LetRec (Util.zip pats exprs, of_expr env expr)
+        LetRec (Util.zip ids exprs, of_expr env expr)
     | Ast.Let (defs, expr) ->
         let pats = List.map fst defs in
         let exprs = List.map snd defs in

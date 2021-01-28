@@ -29,7 +29,6 @@ type ty_t =
     | TId of string list
     | TVar of string
     | TTuple of ty_t list
-    | TVariant of (string * ty_t) list
     | TApp of ty_t * string list
 [@@deriving show]
 

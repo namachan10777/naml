@@ -5,7 +5,9 @@ let initial_pos fname = (fname, 1, 1, 0)
 type t =
     | Str of string
     | Int of int | UIdent of string
+    | Char of char
     | LIdent of string
+    | TVar of string
     | Type
     | Of
     | Dot
@@ -161,6 +163,13 @@ let match_strlit s i =
     then f (i+1)
     else None
 
+let match_charlit s i =
+    if i + 3 < String.length s && s.[i] = '\'' && s.[i+1] == '\\' && s.[i+3] == '\''
+    then Some (i+4)
+    else if i + 2 < String.length s && s.[i] = '\'' && s.[i+2] == '\''
+    then Some (i+3)
+    else None
+
 let chain pat1 pat2 s i =
     match pat1 s i with
     | Some i -> pat2 s i
@@ -169,6 +178,7 @@ let chain pat1 pat2 s i =
 let match_space = opt match_space_char
 let match_lower_ident = chain match_alph_lower_char @@ star (comb_or match_alph_char (comb_or match_num_char (match_char '_')))
 let match_upper_ident = chain match_alph_upper_char @@ star (comb_or match_alph_char (comb_or match_num_char (match_char '_')))
+let match_tvar = chain (match_char '\'') match_lower_ident
 let match_int = opt match_num_char
 let match_hexint = chain (match_str "0x") (opt match_hexnum_char)
 
@@ -187,6 +197,10 @@ let rec lex s pos =
         | Some i ->
             let inner = take i in
             Str (String.sub inner 1 ((String.length inner) - 2)) :: lex s (update_pos s pos i)
+        | None -> match match_charlit s i with
+        | Some i ->
+            let inner = take i in
+            Char (inner.[(String.length inner) - 2]) :: lex s (update_pos s pos i)
         | None -> match match_space s i with
         | Some i -> lex s (update_pos s pos i)
         | None -> match match_hexint s i with
@@ -270,4 +284,7 @@ let rec lex s pos =
             | "ref" -> Ref :: lex s (update_pos s pos i)
             | ident -> LIdent ident :: lex s (update_pos s pos i)
         end
+        | None -> match match_tvar s i with
+        | Some i -> let s = take i in
+            TVar (String.sub s 1 ((String.length s) - 1)) :: lex s (update_pos s pos i)
         | None -> raise (LexException pos)

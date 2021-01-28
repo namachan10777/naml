@@ -1,8 +1,10 @@
 type ty_t =
     | TParen of ty_t
     | TId of string list
+    | TVar of string
     | TTuple of ty_t list
     | TVariant of (string * ty_t) list
+    | TApp of ty_t * string list
 [@@deriving show]
 
 type pat_t =
@@ -112,12 +114,28 @@ and parse_ty_variant = function
         | (t, remain) -> TVariant ([name, t]), remain
     end
     | input -> parse_ty_tuple input
-and parse_ty_tuple input = match parse_ty_term input with
+and parse_ty_tuple input = match parse_tapp input with
     | (lhr, Lex.Mul :: remain) -> begin match parse_ty_tuple remain with
         | (TTuple rhr, remain) -> TTuple (lhr :: rhr), remain
         | (rhr, remain) -> TTuple [lhr; rhr], remain
     end
     | t -> t
+and parse_tapp input = match parse_ty_term input with
+    | (t, (Lex.LIdent _ :: _ as remain)) ->
+        let (higher_types, remain) = take_tids remain in
+        (List.fold_left (fun t higher_type -> TApp (t, higher_type)) t higher_types, remain)
+    | (t, (Lex.UIdent _ :: _ as remain)) ->
+        let (higher_types, remain) = take_tids remain in
+        (List.fold_left (fun t higher_type -> TApp (t, higher_type)) t higher_types, remain)
+    | t -> t
+and take_tids input = match parse_tid input with
+    | (tid, (Lex.LIdent _ :: _ as remain)) ->
+        let (tids, remain) = take_tids remain in
+        tid :: tids, remain
+    | (tid, (Lex.UIdent _ :: _ as remain)) ->
+        let (tids, remain) = take_tids remain in
+        tid :: tids, remain
+    | (tid, remain) -> [tid], remain
 and parse_ty_term = function
     | Lex.LIdent id :: remain -> TId [id], remain
     | Lex.UIdent _ :: _ as remain ->

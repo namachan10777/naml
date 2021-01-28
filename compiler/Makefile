@@ -15,9 +15,10 @@ clean:
 	rm -f *.pp.ml
 
 .PHONY: test
-test: lex_test parser_test
+test: lex_test parser_test typing_test
 	./lex_test
 	./parser_test
+	./typing_test
 
 test.cmx: test.ml
 	$(OCAMLOPT) $< -c
@@ -42,6 +43,18 @@ parser.cmx: parser.ml lex.cmx
 
 parser_test: lex.cmx test.cmx ast.cmx parser.cmx parser_test.cmx 
 	$(OCAMLOPT) $^ -o $@
+
+typing.cmx: typing.ml alpha.cmx
+	$(OCAMLOPT) $< -c
+
+typing_test.cmx: typing_test.ml typing.cmx
+	$(OCAMLOPT) $< -c
+
+typing_test: typing_test.cmx alpha.cmx
+	$(OCAMLOPT) $^ -o $@
+
+alpha.cmx: alpha.ml ast.cmx
+	$(OCAMLOPT) $< -c
 
 compiler1st: main.ml Makefile
 	ocamlopt $< -o $@

@@ -137,6 +137,7 @@ and take_tids input = match parse_tid input with
         tid :: tids, remain
     | (tid, remain) -> [tid], remain
 and parse_ty_term = function
+    | Lex.TVar id :: remain -> TVar id, remain
     | Lex.LIdent id :: remain -> TId [id], remain
     | Lex.UIdent _ :: _ as remain ->
         let (tid, remain) = parse_tid remain in TId tid, remain

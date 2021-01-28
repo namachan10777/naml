@@ -38,7 +38,6 @@ let rec of_parser_ty_t = function
     | Parser.TId id -> TId id
     | Parser.TVar id -> TVar id
     | Parser.TTuple ts -> TTuple (List.map of_parser_ty_t ts)
-    | Parser.TVariant arms -> TVariant (List.map (fun (name, t) -> (name, of_parser_ty_t t)) arms)
     | Parser.TApp (t, higher) -> TApp (of_parser_ty_t t, higher)
 
 let rec of_parser_pat_t = function
@@ -89,14 +88,24 @@ let rec of_parser_t = function
         Match (of_parser_t target, List.map (fun (pat, when_e, expr) -> (of_parser_pat_t pat, of_parser_t when_e, of_parser_t expr)) arms)
 and op id lhr rhr = App (App (Var [id], of_parser_t lhr), of_parser_t rhr)
 
+type tydef_t =
+    | Variant of (string * ty_t) list
+    | Alias of ty_t
+
 type stmt_t =
     | LetS of (pat_t * t) list
     | LetRecS of (pat_t * t) list
-    | Type of (string * string list * ty_t) list
+    | Type of (string * string list * tydef_t) list
 
 let rec of_parser_stmt_t = function
     | Parser.LetS defs -> LetS (List.map (fun (pat, def) -> (of_parser_pat_t pat, of_parser_t def)) defs)
     | Parser.LetRecS defs -> LetRecS (List.map (fun (pat, def) -> (of_parser_pat_t pat, of_parser_t def)) defs)
-    | Parser.Type defs -> Type (List.map (fun (id, targs, ty) -> id, targs, of_parser_ty_t ty) defs)
+    | Parser.Type defs -> Type (
+        List.map (
+            function
+            | (id, targs, Parser.Variant pairs) -> (id, targs, Variant (List.map (fun (name, ty) -> (name, of_parser_ty_t ty)) pairs))
+            | (id, targs, Parser.Alias ty) ->id, targs, Alias (of_parser_ty_t ty)
+        )
+    defs)
 
 let of_parser_stmts_t stmts = List.map of_parser_stmt_t stmts

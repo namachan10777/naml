@@ -3,8 +3,12 @@ type ty_t =
     | TId of string list
     | TVar of string
     | TTuple of ty_t list
-    | TVariant of (string * ty_t) list
     | TApp of ty_t * string list
+[@@deriving show]
+
+type tydef_t =
+    | Variant of (string * ty_t) list
+    | Alias of ty_t
 [@@deriving show]
 
 type pat_t =
@@ -65,7 +69,7 @@ type stmt_t =
     (* and chain *)
     | LetRecS of (pat_t * t) list
     (* and chain *)
-    | Type of (string * string list * ty_t) list
+    | Type of (string * string list * tydef_t) list
 [@@deriving show]
 type stmts_t = stmt_t list
 [@@deriving show]
@@ -107,23 +111,8 @@ let rec take_params = function
 type param_taken_t = string list * input_t
 [@@deriving show]
 
-let rec parse_ty input = parse_ty_variant input
-and parse_ty_variant = function
-    | Lex.VBar :: Lex.UIdent name :: Lex.Of :: remain -> begin match parse_ty_tuple remain with
-        | (t, Lex.VBar :: arms) -> begin match parse_ty_variant arms with
-            | (TVariant arms, remain) -> (TVariant ((name, t) :: arms), remain)
-            | _ -> raise @@ SyntaxError "variant"
-        end
-        | (t, remain) -> TVariant ([name, t]), remain
-    end
-    | Lex.UIdent name :: Lex.Of :: remain -> begin match parse_ty_tuple remain with
-        | (t, Lex.VBar :: arms) -> begin match parse_ty_variant arms with
-            | (TVariant arms, remain) -> (TVariant ((name, t) :: arms), remain)
-            | _ -> raise @@ SyntaxError "variant"
-        end
-        | (t, remain) -> TVariant ([name, t]), remain
-    end
-    | input -> parse_ty_tuple input
+let rec parse_ty input = parse_ty_tuple input
+
 and parse_ty_tuple input = match parse_tapp input with
     | (lhr, Lex.Mul :: remain) -> begin match parse_ty_tuple remain with
         | (TTuple rhr, remain) -> TTuple (lhr :: rhr), remain
@@ -549,11 +538,30 @@ and parse_arms arm = match parse_pat arm with
         end
     | _ -> raise @@ SyntaxError "match arm"
 
+let rec parse_ty_variant = function
+    | Lex.VBar :: Lex.UIdent name :: Lex.Of :: remain -> begin match parse_ty remain with
+        | (t, Lex.VBar :: arms) -> begin match parse_ty_variant arms with
+            | (Variant arms, remain) -> (Variant ((name, t) :: arms), remain)
+            | _ -> raise @@ SyntaxError "variant"
+        end
+        | (t, remain) -> Variant ([name, t]), remain
+    end
+    | Lex.UIdent name :: Lex.Of :: remain -> begin match parse_ty remain with
+        | (t, Lex.VBar :: arms) -> begin match parse_ty_variant arms with
+            | (Variant arms, remain) -> (Variant ((name, t) :: arms), remain)
+            | _ -> raise @@ SyntaxError "variant"
+        end
+        | (t, remain) -> Variant ([name, t]), remain
+    end
+    | input ->
+        let (ty, remain) = parse_ty input in
+        Alias ty, remain
+
 let rec parse_stmts = function
     | Lex.Type :: Lex.LIdent name :: remain ->
         begin match take_targs remain with
         | (targs, Lex.Eq :: remain) ->
-            begin match parse_ty remain with
+            begin match parse_ty_variant remain with
                 | (ty, Lex.AndDef :: remain) ->
                     let (ands, remain) = parse_type_ands remain in
                     Type ((name, targs, ty) :: ands) :: parse_stmts remain
@@ -619,7 +627,7 @@ and parse_type_ands = function
     | Lex.LIdent name :: remain ->
         begin match take_targs remain with
         | (targs, Lex.Eq :: remain) ->
-            begin match parse_ty remain with
+            begin match parse_ty_variant remain with
                 | (ty, Lex.AndDef :: remain) ->
                     let (ands, remain) = parse_type_ands remain in
                     (name, targs, ty) :: ands, remain

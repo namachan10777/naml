@@ -32,14 +32,18 @@ type ty_t =
     | TId of string list
     | TVar of id_t
     | TTuple of ty_t list
-    | TVariant of (id_t * ty_t) list
     | TApp of ty_t * id_t
+[@@deriving show]
+
+type tydef_t =
+    | Variant of (id_t * ty_t) list
+    | Alias of ty_t
 [@@deriving show]
 
 type stmt_t =
     | LetS of (pat_t * t) list
     | LetRecS of (pat_t * t) list
-    | Type of (string * string list * ty_t) list
+    | Type of (string * string list * tydef_t) list
 [@@deriving show]
 
 let count = ref 0

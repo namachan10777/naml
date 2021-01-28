@@ -244,18 +244,6 @@ let () =
     test "unit" "let () = () in ()" (P.Match (P.Tuple[], [P.PTuple [], P.Bool true, P.Tuple []]));
     test_ty "tuple1" "t * t" (P.TTuple [P.TId ["t"]; P.TId ["t"]]);
     test_ty "tuple2" "t * (t * t)" (P.TTuple [P.TId ["t"]; P.TParen (P.TTuple [P.TId ["t"]; P.TId ["t"]])]);
-    test_ty "variant1" "L of t * t | R of t" (
-        P.TVariant [
-            ("L", P.TTuple [P.TId ["t"]; P.TId ["t"]]);
-            ("R", P.TId ["t"]);
-        ]
-    );
-    test_ty "variant2" "| L of t * t | R of t" (
-        P.TVariant [
-            ("L", P.TTuple [P.TId ["t"]; P.TId ["t"]]);
-            ("R", P.TId ["t"]);
-        ]
-    );
     test_ty "tid" "M1.t * M2.t" (P.TTuple [P.TId ["M1"; "t"]; P.TId ["M2"; "t"]]);
     test_ty "higher type" "t list list" (P.TApp (P.TApp (P.TId ["t"], ["list"]), ["list"]));
     test_ty "tapp2" "(a * a) list" (P.TApp (P.TParen (P.TTuple [P.TId ["a"];P.TId ["a"]]), ["list"]));
@@ -303,7 +291,7 @@ let () =
     ];
     test_stmt "type variant" "type t = Leaf of int | Node of t * t" [
         P.Type [
-            "t", [], P.TVariant [
+            "t", [], P.Variant [
                 "Leaf", P.TId ["int"];
                 "Node", P.TTuple [P.TId ["t"]; P.TId ["t"]];
             ]
@@ -311,10 +299,10 @@ let () =
     ];
     test_stmt "type variant" "type t = Leaf of int | Node of t * t and a_t 'a = int" [
         P.Type [
-            "t", [], P.TVariant [
+            "t", [], P.Variant [
                 "Leaf", P.TId ["int"];
                 "Node", P.TTuple [P.TId ["t"]; P.TId ["t"]];
             ];
-            "a_t", ["a"], P.TId ["int"];
+            "a_t", ["a"], P.Alias (P.TId ["int"]);
         ];
     ];

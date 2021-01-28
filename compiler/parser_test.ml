@@ -17,6 +17,13 @@ let test_ty name src right =
         Printf.printf "left  : %s\nright : %s\n" (P.show_ty_t left) (P.show_ty_t right);
         raise @@ Test.UnitTestError err
 
+let test_stmt name src right =
+    let left = P.parse_stmts @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
+    try Test.assert_eq name left right with
+    | Test.UnitTestError err ->
+        Printf.printf "left  : %s\nright : %s\n" (P.show_stmts_t left) (P.show_stmts_t right);
+        raise @@ Test.UnitTestError err
+
 let () =
     test "parse_add" "0+1+2"
     (P.Add (P.Add(P.Int 0, P.Int 1), P.Int 2));
@@ -253,3 +260,44 @@ let () =
     test_ty "higher type" "t list list" (P.TApp (P.TApp (P.TId ["t"], ["list"]), ["list"]));
     test_ty "tapp2" "(a * a) list" (P.TApp (P.TParen (P.TTuple [P.TId ["a"];P.TId ["a"]]), ["list"]));
     test_ty "tvar" "'a list" (P.TApp (P.TVar "a", ["list"]));
+    test_stmt "let stmt" "let x = 1" [P.LetS [P.PVar "x", P.Int 1]];
+    test_stmt "letfun stmt" "let add x y = x + y"
+    [
+        P.LetS [P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))];
+    ];
+    test_stmt "letrec and" "let rec f = 1 and g = 2"
+    [
+        P.LetRecS ([
+            (P.PVar "f", P.Int 1);
+            (P.PVar "g", P.Int 2);
+        ]);
+    ];
+    test_stmt "let and" "let f = 1 and g = 2"
+    [
+        P.LetS ([
+            (P.PVar "f", P.Int 1);
+            (P.PVar "g", P.Int 2);
+        ]);
+    ];
+    P.count := 0;
+    test_stmt "letfun and" "let add (x, y) (z, w) = x + y and add2 = add"
+    [
+        P.LetS [
+            P.PVar "add",
+            P.Fun (["<anonymous2>"; "<anonymous1>"],
+                P.Match (P.Var ["<anonymous2>"], [
+                    (
+                        P.PParen(P.PTuple ([P.PVar "x"; P.PVar "y"])),
+                        P.Bool true,
+                        P.Match (P.Var ["<anonymous1>"], [
+                            (
+                                P.PParen(P.PTuple ([P.PVar "z"; P.PVar "w"])),
+                                P.Bool true,
+                                P.Add (P.Var ["x"], P.Var ["y"]))
+                        ])
+                    )
+                ])
+            );
+            P.PVar "add2", P.Var ["add"]
+        ]
+    ];

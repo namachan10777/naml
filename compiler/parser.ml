@@ -60,6 +60,13 @@ type input_t = Lex.t list
 type parsed_t = t * Lex.t list
 [@@deriving show]
 
+type stmt_t =
+    | LetS of (pat_t * t) list
+    (* and chain *)
+    | LetRecS of (pat_t * t) list
+[@@deriving show]
+type stmts_t = stmt_t list
+[@@deriving show]
 exception SyntaxError of string
 
 let rec split_with f = function
@@ -539,6 +546,60 @@ and parse_arms arm = match parse_pat arm with
         end
     | _ -> raise @@ SyntaxError "match arm"
 
+let rec parse_stmts = function
+    | Lex.Let :: Lex.Rec :: remain -> begin match parse_params Lex.Eq remain with
+        | ([pat], Lex.Eq :: remain) ->
+            begin match parse_expr remain with
+            | (def, Lex.AndDef :: remain) ->
+                let (ands, remain) = parse_let_ands remain in
+                LetRecS ((pat, def) :: ands) :: parse_stmts remain
+            | (def, remain) -> LetRecS [pat, def] :: parse_stmts remain
+            end
+        | (PVar id :: args, Lex.Eq :: remain) ->
+            begin match parse_expr remain with
+            | (def, Lex.AndDef :: remain) ->
+                let (ands, remain) = parse_let_ands remain in
+                LetRecS ((PVar id, unfold_fun args def) :: ands) :: parse_stmts remain
+            | (def, remain) -> LetRecS [PVar id, unfold_fun args def] :: parse_stmts remain
+            end
+        | _ -> raise @@ SyntaxError "let stmt"
+        end
+    | Lex.Let :: remain -> begin match parse_params Lex.Eq remain with
+        | ([pat], Lex.Eq :: remain) ->
+            begin match parse_expr remain with
+            | (def, Lex.AndDef :: remain) ->
+                let (ands, remain) = parse_let_ands remain in
+                LetS ((pat, def) :: ands) :: parse_stmts remain
+            | (def, remain) -> LetS [pat, def] :: parse_stmts remain
+            end
+        | (PVar id :: args, Lex.Eq :: remain) ->
+            begin match parse_expr remain with
+            | (def, Lex.AndDef :: remain) ->
+                let (ands, remain) = parse_let_ands remain in
+                LetS ((PVar id, unfold_fun args def) :: ands) :: parse_stmts remain
+            | (def, remain) -> LetS [PVar id, unfold_fun args def] :: parse_stmts remain
+            end
+        | _ -> raise @@ SyntaxError "let stmt"
+        end
+    | Lex.Eof :: [] -> []
+    | _ -> raise @@ SyntaxError "stmt"
+and parse_let_ands input = begin match parse_params Lex.Eq input with
+    | ([pat], Lex.Eq :: remain) ->
+        begin match parse_expr remain with
+        | (def, Lex.AndDef :: remain) ->
+            let (ands, remain) = parse_let_ands remain in
+            (pat, def) :: ands, remain
+        | (def, remain) -> [pat, def], remain
+        end
+    | (PVar id :: args, Lex.Eq :: remain) ->
+        begin match parse_expr remain with
+        | (def, Lex.AndDef :: remain) ->
+            let (ands, remain) = parse_let_ands remain in
+            (PVar id, unfold_fun args def) :: ands, remain
+        | (def, remain) -> [PVar id, unfold_fun args def], remain
+        end
+    | _ -> raise @@ SyntaxError "let stmt"
+    end
 let parse input = match parse_expr input with
     | (ast, [Lex.Eof]) -> ast
     | x -> (dbg x); raise @@ SyntaxError "top"

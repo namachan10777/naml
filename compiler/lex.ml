@@ -44,6 +44,7 @@ type t =
     | Let
     | In
     | Rec
+    | AndDef
     | Match
     | When
     | With
@@ -266,6 +267,7 @@ let rec lex s pos =
         | Some i -> UIdent (take i) :: lex s (update_pos s pos i)
         | None -> match match_lower_ident s i with
         | Some i -> begin match take i with
+            | "and" -> AndDef :: lex s (update_pos s pos i)
             | "type" -> Type :: lex s (update_pos s pos i)
             | "of" -> Of :: lex s (update_pos s pos i)
             | "as" -> As :: lex s (update_pos s pos i)

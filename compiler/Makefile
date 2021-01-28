@@ -56,5 +56,8 @@ typing_test: typing_test.cmx alpha.cmx
 alpha.cmx: alpha.ml ast.cmx
 	$(OCAMLOPT) $< -c
 
-compiler1st: main.ml Makefile
-	ocamlopt $< -o $@
+main.cmx: main.ml parser.cmx lex.cmx
+	$(OCAMLOPT) $< -c
+
+compiler1st: lex.cmx parser.cmx main.cmx
+	ocamlopt $^ -o $@

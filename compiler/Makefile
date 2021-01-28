@@ -32,16 +32,16 @@ lex.cmx: lex.ml test.cmx
 lex_test.cmx: lex_test.ml parser.cmx test.cmx
 	$(OCAMLOPT) $< -c
 
-lex_test: test.cmx lex.cmx ast.cmx lex_test.cmx 
+lex_test: test.cmx lex.cmx lex_test.cmx 
 	$(OCAMLOPT) $^ -o $@
 
-parser_test.cmx: parser_test.ml parser.cmx ast.cmx lex.cmx
+parser_test.cmx: parser_test.ml parser.cmx lex.cmx
 	$(OCAMLOPT) $< -c
 
 parser.cmx: parser.ml lex.cmx
 	$(OCAMLOPT) $< -c
 
-parser_test: lex.cmx test.cmx ast.cmx parser.cmx parser_test.cmx 
+parser_test: lex.cmx test.cmx parser.cmx parser_test.cmx 
 	$(OCAMLOPT) $^ -o $@
 
 typing.cmx: typing.ml alpha.cmx

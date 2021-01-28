@@ -290,3 +290,5 @@ let rec lex s pos =
             | ident -> LIdent ident :: lex s (update_pos s pos i)
         end
         | None -> raise (LexException pos)
+
+let f fname src = lex src @@ initial_pos fname

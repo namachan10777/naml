@@ -646,3 +646,5 @@ and take_targs = function
 let parse input = match parse_expr input with
     | (ast, [Lex.Eof]) -> ast
     | x -> (dbg x); raise @@ SyntaxError "top"
+
+let f fname src = parse_stmts @@ Lex.f fname src

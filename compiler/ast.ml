@@ -109,3 +109,5 @@ let rec of_parser_stmt_t = function
     defs)
 
 let of_parser_stmts_t stmts = List.map of_parser_stmt_t stmts
+
+let f fname src = of_parser_stmts_t @@ Parser.f fname src

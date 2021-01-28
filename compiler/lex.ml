@@ -201,6 +201,9 @@ let rec lex s pos =
         | Some i ->
             let inner = take i in
             Char (inner.[(String.length inner) - 2]) :: lex s (update_pos s pos i)
+        | None -> match match_tvar s i with
+        | Some i -> let inner = take i in
+            TVar (String.sub inner 1 ((String.length inner) - 1)) :: lex s (update_pos s pos i)
         | None -> match match_space s i with
         | Some i -> lex s (update_pos s pos i)
         | None -> match match_hexint s i with
@@ -284,7 +287,4 @@ let rec lex s pos =
             | "ref" -> Ref :: lex s (update_pos s pos i)
             | ident -> LIdent ident :: lex s (update_pos s pos i)
         end
-        | None -> match match_tvar s i with
-        | Some i -> let s = take i in
-            TVar (String.sub s 1 ((String.length s) - 1)) :: lex s (update_pos s pos i)
         | None -> raise (LexException pos)

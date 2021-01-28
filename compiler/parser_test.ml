@@ -17,11 +17,11 @@ let test_ty name src right =
         Printf.printf "left  : %s\nright : %s\n" (P.show_ty_t left) (P.show_ty_t right);
         raise @@ Test.UnitTestError err
 
-let test_stmt name src right =
-    let left = P.parse_stmts @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
+let test_stmts name src right =
+    let left =P.parse_stmts @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
     try Test.assert_eq name left right with
     | Test.UnitTestError err ->
-        Printf.printf "left  : %s\nright : %s\n" (P.show_stmts_t left) (P.show_stmts_t right);
+        Printf.printf "left  : %s\nright : %s\n" (P.show left) (P.show right);
         raise @@ Test.UnitTestError err
 
 let () =
@@ -55,20 +55,20 @@ let () =
         P.And (P.Eq (P.Int 1, P.Int 2), P.Bool false)
     ));
     test "let simple" "let x = 1 in x"
-    (P.Let ("x", P.Int 1, P.Var ["x"]));
+    (P.Let ([P.PVar "x", P.Int 1], P.Var ["x"]));
     test "let rec" "let rec x = 1 in x"
-    (P.LetRec ("x", P.Int 1, P.Var ["x"]));
+    (P.LetRec ([P.PVar "x", P.Int 1], P.Var ["x"]));
     test "let add left" "1 + let x = 1 in x"
-    (P.Add (P.Int 1, P.Let ("x", P.Int 1, P.Var ["x"])));
+    (P.Add (P.Int 1, P.Let ([P.PVar "x", P.Int 1], P.Var ["x"])));
     test "let add right" "(let x = 1 in x) + 1"
-    (P.Add (P.Paren(P.Let ("x", P.Int 1, P.Var ["x"])), P.Int 1));
+    (P.Add (P.Paren(P.Let ([P.PVar "x", P.Int 1], P.Var ["x"])), P.Int 1));
     test "let complex" "let x = let y = 1 in y in let z = x in z"
-    (P.Let ("x", P.Let ("y", P.Int 1, P.Var ["y"]), P.Let ("z", P.Var ["x"], P.Var ["z"])));
+    (P.Let ([P.PVar "x", P.Let ([P.PVar "y", P.Int 1], P.Var ["y"])], P.Let ([P.PVar "z", P.Var ["x"]], P.Var ["z"])));
     test "letfun" "let add x y = x + y in add"
-    (P.Let ("add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"])), P.Var ["add"]));
+    (P.Let ([P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))], P.Var ["add"]));
     Parser.count := 0;
     test "letfun_pat" "let add (x, y) (z, w) = x + y in add"
-    (P.Let ("add",
+    (P.Let ([P.PVar "add",
         P.Fun (["<anonymous2>"; "<anonymous1>"],
             P.Match (P.Var ["<anonymous2>"], [
                 (
@@ -82,13 +82,13 @@ let () =
                     ])
                 )
             ])
-        )
+        )]
     , P.Var ["add"]));
     test "letrecfun" "let rec add x y = x + y in add"
-    (P.LetRec ("add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"])), P.Var ["add"]));
+    (P.LetRec ([P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))], P.Var ["add"]));
     Parser.count := 0;
     test "letrecfun_pat" "let rec add (x, y) (z, w) = x + y in add"
-    (P.LetRec ("add",
+    (P.LetRec ([P.PVar "add",
         P.Fun (["<anonymous2>"; "<anonymous1>"],
             P.Match (P.Var ["<anonymous2>"], [
                 (
@@ -102,7 +102,7 @@ let () =
                     ])
                 )
             ])
-        )
+        )]
     , P.Var ["add"]));
     test "fun" "fun x y z -> x + y + z"
     (P.Fun (["x"; "y"; "z"], P.Add (P.Add (P.Var ["x"], P.Var ["y"]), P.Var ["z"])));
@@ -165,7 +165,7 @@ let () =
     ]));
     test "match2" "match x with y -> let x = 1 in x | z -> 1"
     (P.Match (P.Var ["x"], [
-        (P.PVar "y", P.Bool true, P.Let ("x", P.Int 1, P.Var ["x"]));
+        (P.PVar "y", P.Bool true, P.Let ([P.PVar "x", P.Int 1], P.Var ["x"]));
         (P.PVar "z", P.Bool true, P.Int 1);
     ]));
     test "match nested" "match match [] with [] -> [] with [] -> []"
@@ -227,7 +227,7 @@ let () =
     test "ctor" "Leaf (1, 2)"
         (P.App (P.Var ["Leaf"], P.Paren (P.Tuple [P.Int 1; P.Int 2])));
     test "if" "if f x then 1 else let x = 1 in x"
-        (P.If (P.App (P.Var ["f"], P.Var ["x"]), P.Int 1, P.Let ("x", P.Int 1, P.Var ["x"])));
+        (P.If (P.App (P.Var ["f"], P.Var ["x"]), P.Int 1, P.Let ([P.PVar "x", P.Int 1], P.Var ["x"])));
     test "if_nested" "if if x then true else false then true else if y then true else false"
         (P.If (
             P.If (P.Var ["x"], P.Bool true, P.Bool false),
@@ -248,29 +248,22 @@ let () =
     test_ty "higher type" "t list list" (P.TApp (P.TApp (P.TId ["t"], ["list"]), ["list"]));
     test_ty "tapp2" "(a * a) list" (P.TApp (P.TParen (P.TTuple [P.TId ["a"];P.TId ["a"]]), ["list"]));
     test_ty "tvar" "'a list" (P.TApp (P.TVar "a", ["list"]));
-    test_stmt "let stmt" "let x = 1" [P.LetS [P.PVar "x", P.Int 1]];
-    test_stmt "letfun stmt" "let add x y = x + y"
-    [
-        P.LetS [P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))];
-    ];
-    test_stmt "letrec and" "let rec f = 1 and g = 2"
-    [
-        P.LetRecS ([
+    test_stmts "let stmt" "let x = 1" (P.Let ([P.PVar "x", P.Int 1], P.Never));
+    test_stmts "letfun stmt" "let add x y = x + y"
+    (P.Let ([P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))], P.Never));
+    test_stmts "letrec and" "let rec f = 1 and g = 2"
+        (P.LetRec ([
             (P.PVar "f", P.Int 1);
             (P.PVar "g", P.Int 2);
-        ]);
-    ];
-    test_stmt "let and" "let f = 1 and g = 2"
-    [
-        P.LetS ([
+        ], P.Never));
+    test_stmts "let and" "let f = 1 and g = 2"
+        (P.Let ([
             (P.PVar "f", P.Int 1);
             (P.PVar "g", P.Int 2);
-        ]);
-    ];
+        ], P.Never));
     P.count := 0;
-    test_stmt "letfun and" "let add (x, y) (z, w) = x + y and add2 = add"
-    [
-        P.LetS [
+    test_stmts "letfun and" "let add (x, y) (z, w) = x + y and add2 = add"
+        (P.Let ([
             P.PVar "add",
             P.Fun (["<anonymous2>"; "<anonymous1>"],
                 P.Match (P.Var ["<anonymous2>"], [
@@ -287,22 +280,19 @@ let () =
                 ])
             );
             P.PVar "add2", P.Var ["add"]
-        ]
-    ];
-    test_stmt "type variant" "type t = Leaf of int | Node of t * t" [
-        P.Type [
+        ], P.Never));
+    test_stmts "type variant" "type t = Leaf of int | Node of t * t"
+        (P.Type ([
             "t", [], P.Variant [
                 "Leaf", P.TId ["int"];
                 "Node", P.TTuple [P.TId ["t"]; P.TId ["t"]];
             ]
-        ]
-    ];
-    test_stmt "type variant" "type t = Leaf of int | Node of t * t and a_t 'a = int" [
-        P.Type [
+        ], P.Never));
+    test_stmts "type variant" "type t = Leaf of int | Node of t * t and a_t 'a = int"
+        (P.Type ([
             "t", [], P.Variant [
                 "Leaf", P.TId ["int"];
                 "Node", P.TTuple [P.TId ["t"]; P.TId ["t"]];
             ];
             "a_t", ["a"], P.Alias (P.TId ["int"]);
-        ];
-    ];
+        ], P.Never));

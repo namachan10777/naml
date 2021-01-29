@@ -292,11 +292,25 @@ let () =
                 "Node", Some (P.TTuple [P.TId ["t"]; P.TId ["t"]]);
             ]
         ], P.Never));
-    test_stmts "type variant" "type t = Leaf of int | Node of t * t and a_t 'a = int"
+    test_stmts "type variant and" "type t = Leaf of int | Node of t * t and 'a a_t = int"
         (P.Type ([
             "t", [], P.Variant [
                 "Leaf", Some (P.TId ["int"]);
                 "Node", Some (P.TTuple [P.TId ["t"]; P.TId ["t"]]);
             ];
             "a_t", ["a"], P.Alias (P.TId ["int"]);
+        ], P.Never));
+    test_stmts "type option" "type 'a t = Some of 'a | None"
+        (P.Type ([
+            "t", ["a"], P.Variant [
+                "Some", Some (P.TVar "a");
+                "None", None;
+            ];
+        ], P.Never));
+    test_stmts "type result" "type ('a, 'b) t = Ok of 'a | Err of 'b"
+        (P.Type ([
+            "t", ["a"; "b"], P.Variant [
+                "Ok", Some (P.TVar "a");
+                "Err", Some (P.TVar "b");
+            ];
         ], P.Never));

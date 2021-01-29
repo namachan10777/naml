@@ -7,7 +7,7 @@ type ty_t =
 [@@deriving show]
 
 type tydef_t =
-    | Variant of (string * ty_t) list
+    | Variant of (string * ty_t option) list
     | Alias of ty_t
 [@@deriving show]
 
@@ -142,23 +142,35 @@ and parse_tid = function
     | Lex.UIdent m_id :: Lex.Dot :: (Lex.UIdent _ :: _ as remain) ->
         let (child, remain) = parse_tid remain in
         (m_id :: child), remain
-    | _ -> raise @@ SyntaxError "type id"
+    | i -> raise @@ SyntaxError (Printf.sprintf "type id %s" @@ show_input_t i)
 
 let rec parse_ty_variant = function
     | Lex.VBar :: Lex.UIdent name :: Lex.Of :: remain -> begin match parse_ty remain with
         | (t, Lex.VBar :: arms) -> begin match parse_ty_variant arms with
-            | (Variant arms, remain) -> (Variant ((name, t) :: arms), remain)
+            | (Variant arms, remain) -> (Variant ((name, Some t) :: arms), remain)
             | _ -> raise @@ SyntaxError "variant"
         end
-        | (t, remain) -> Variant ([name, t]), remain
+        | (t, remain) -> Variant ([name, Some t]), remain
     end
     | Lex.UIdent name :: Lex.Of :: remain -> begin match parse_ty remain with
         | (t, Lex.VBar :: arms) -> begin match parse_ty_variant arms with
-            | (Variant arms, remain) -> (Variant ((name, t) :: arms), remain)
+            | (Variant arms, remain) -> (Variant ((name, Some t) :: arms), remain)
             | _ -> raise @@ SyntaxError "variant"
         end
-        | (t, remain) -> Variant ([name, t]), remain
+        | (t, remain) -> Variant ([name, Some t]), remain
     end
+    | Lex.VBar :: Lex.UIdent name :: Lex.VBar :: arms -> begin match parse_ty_variant arms with
+        | (Variant arms, remain) -> (Variant ((name, None) :: arms), remain)
+        | _ -> raise @@ SyntaxError "variant"
+    end
+    | Lex.VBar :: Lex.UIdent name :: remain ->
+        Variant ([name, None]), remain
+    | Lex.UIdent name :: Lex.VBar :: arms -> begin match parse_ty_variant arms with
+        | (Variant arms, remain) -> (Variant ((name, None) :: arms), remain)
+        | _ -> raise @@ SyntaxError "variant"
+    end
+    | Lex.UIdent name :: remain ->
+        Variant ([name, None]), remain
     | input ->
         let (ty, remain) = parse_ty input in
         Alias ty, remain

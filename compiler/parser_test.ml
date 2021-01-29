@@ -288,15 +288,15 @@ let () =
     test_stmts "type variant" "type t = Leaf of int | Node of t * t"
         (P.Type ([
             "t", [], P.Variant [
-                "Leaf", P.TId ["int"];
-                "Node", P.TTuple [P.TId ["t"]; P.TId ["t"]];
+                "Leaf", Some (P.TId ["int"]);
+                "Node", Some (P.TTuple [P.TId ["t"]; P.TId ["t"]]);
             ]
         ], P.Never));
     test_stmts "type variant" "type t = Leaf of int | Node of t * t and a_t 'a = int"
         (P.Type ([
             "t", [], P.Variant [
-                "Leaf", P.TId ["int"];
-                "Node", P.TTuple [P.TId ["t"]; P.TId ["t"]];
+                "Leaf", Some (P.TId ["int"]);
+                "Node", Some (P.TTuple [P.TId ["t"]; P.TId ["t"]]);
             ];
             "a_t", ["a"], P.Alias (P.TId ["int"]);
         ], P.Never));

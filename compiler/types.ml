@@ -7,10 +7,11 @@ type ty_t =
     | Tuple of ty_t list
     | Array of ty_t
     | Var of int
+    | Higher of int
     | Ref of ty_t
 [@@deriving show]
 
-let builtin_def = [
+let pervasive_vals = [
     "+", Arrow (Int, Arrow (Int, Int));
     "-", Arrow (Int, Arrow (Int, Int));
     "*", Arrow (Int, Arrow (Int, Int));
@@ -29,8 +30,22 @@ let builtin_def = [
     ":=", Arrow (Ref (Var 0), Arrow (Var 0, Tuple []));
 ]
 
-let initial_alpha_env =
-    List.mapi (fun i (x, _) -> ([x], i)) builtin_def
+let pervasive_types = [
+    "int", Int;
+    "bool", Bool;
+    "option", Higher 0;
+]
 
-let initial_type_env =
-    List.mapi (fun i (_, ty) -> (i, ty)) builtin_def
+let pervasive_ctors = [
+    "Some", Arrow (Var 0, Higher 0);
+    "None", Higher 0;
+]
+
+let ids = List.mapi (fun i (id, _) -> ([id], i))
+let types = List.mapi (fun i (_, ty) -> (i, ty))
+let pervasive_val_ids = ids pervasive_vals
+let pervasive_val_types = types pervasive_vals
+let pervasive_type_ids = ids pervasive_types
+let pervasive_type_types = types pervasive_types
+let pervasive_ctor_ids = ids pervasive_ctors
+let pervasive_ctor_types = types pervasive_ctors

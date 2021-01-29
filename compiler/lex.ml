@@ -285,8 +285,6 @@ let rec lex s pos =
             | "with" -> With :: lex s (update_pos s pos i)
             | "builtin" -> Builtin :: lex s (update_pos s pos i)
             | "mod" -> Mod :: lex s (update_pos s pos i)
-            | "not" -> Not :: lex s (update_pos s pos i)
-            | "ref" -> Ref :: lex s (update_pos s pos i)
             | ident -> LIdent ident :: lex s (update_pos s pos i)
         end
         | None -> raise (LexException pos)

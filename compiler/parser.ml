@@ -38,8 +38,6 @@ type t =
     | Div of t * t
     | Mod of t * t
     | Neg of t
-    | Not of t
-    | Ref of t
     | Eq of t * t
     | Neq of t * t
     | Or of t * t
@@ -474,18 +472,6 @@ and parse_unary = function
     | Lex.Sub :: remain ->
         let (exp, remain) = parse_unary remain in
         (Neg exp ,remain)
-    | Lex.Not :: remain when succ_lets remain ->
-        let (exp, remain) = parse_expr remain in
-        (Not exp ,remain)
-    | Lex.Not :: remain ->
-        let (exp, remain) = parse_unary remain in
-        (Not exp ,remain)
-    | Lex.Ref :: remain when succ_lets remain ->
-        let (exp, remain) = parse_expr remain in
-        (Ref exp ,remain)
-    | Lex.Ref :: remain ->
-        let (exp, remain) = parse_unary remain in
-        (Ref exp ,remain)
     | input -> parse_app input
 and parse_app input =
     let nexts_term = function

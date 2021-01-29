@@ -43,12 +43,12 @@ let () =
         ),
         P.Int 5
     ));
-    test "bool" "3>2 && not not (1 < 0)"
+    test "bool" "3>2 && not (1 < 0)"
     (P.And (
         P.Gret (P.Int 3, P.Int 2),
-        P.Not (P.Not (P.Paren (P.Less (P.Int 1, P.Int 0))))
+        P.App (P.Var ["not"],  (P.Paren (P.Less (P.Int 1, P.Int 0))))
     ));
-    test "ref" "ref 1" (P.Ref (P.Int 1));
+    test "ref" "ref 1" (P.App (P.Var ["ref"], P.Int 1));
     test "bool2"  "true && false || 1 = 2 && false"
     (P.Or (
         P.And (P.Bool true, P.Bool false),

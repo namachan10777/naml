@@ -81,8 +81,6 @@ let rec of_parser_t = function
     | Parser.Less (lhr, rhr) -> op "<" lhr rhr
     | Parser.Index (lhr, rhr) -> op "." lhr rhr
     | Parser.Neg e -> App (Var ["<unary>"], of_parser_t e)
-    | Parser.Not e -> App (Var ["<not>"], of_parser_t e)
-    | Parser.Ref e -> App (Var ["<ref>"], of_parser_t e)
     | Parser.Assign (lhr, rhr) -> op ":=" lhr rhr
     | Parser.ArrayAssign (arr, idx, rhr) -> ArrayAssign (of_parser_t arr, of_parser_t idx, of_parser_t rhr)
     | Parser.Pipeline (arg, f) -> App(of_parser_t f, of_parser_t arg)

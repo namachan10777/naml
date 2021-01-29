@@ -6,7 +6,8 @@ type ty_t =
     | List of ty_t
     | Tuple of ty_t list
     | Array of ty_t
-    | Var of int
+    | Unknown of int
+    | Forall of int
     | Higher of int
     | Ref of ty_t
 [@@deriving show]
@@ -17,17 +18,17 @@ let pervasive_vals = [
     "*", Arrow (Int, Arrow (Int, Int));
     "/", Arrow (Int, Arrow (Int, Int));
     "mod", Arrow (Int, Arrow (Int, Int));
-    "=", Arrow (Var 0, Arrow (Var 0, Bool));
-    "<>", Arrow (Var 0, Arrow (Var 0, Bool));
+    "=", Arrow (Forall 0, Arrow (Forall 0, Bool));
+    "<>", Arrow (Forall 0, Arrow (Forall 0, Bool));
     ">", Arrow (Int, Arrow (Int, Bool));
     "<", Arrow (Int, Arrow (Int, Bool));
-    ";", Arrow (Var 0, Arrow (Var 1, Bool));
-    "::", Arrow (Var 0, Arrow (List (Var 1), Bool));
-    ".", Arrow (Array (Var 0), (Arrow (Int, Var 0)));
+    ";", Arrow (Forall 0, Arrow (Forall 1, Bool));
+    "::", Arrow (Forall 0, Arrow (List (Forall 1), Bool));
+    ".", Arrow (Array (Forall 0), (Arrow (Int, Forall 0)));
     "<unary>", Arrow (Int, Int);
     "<not>", Arrow (Bool, Bool);
-    "<ref>", Arrow (Var 0, Ref (Var 0));
-    ":=", Arrow (Ref (Var 0), Arrow (Var 0, Tuple []));
+    "<ref>", Arrow (Forall 0, Ref (Forall 0));
+    ":=", Arrow (Ref (Forall 0), Arrow (Forall 0, Tuple []));
 ]
 
 let pervasive_types = [
@@ -37,7 +38,7 @@ let pervasive_types = [
 ]
 
 let pervasive_ctors = [
-    "Some", Arrow (Var 0, Higher 0);
+    "Some", Arrow (Forall 0, Higher 0);
     "None", Higher 0;
 ]
 

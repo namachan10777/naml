@@ -45,16 +45,16 @@ type t =
     | ArrayAssign of t * t * t
 [@@deriving show]
 
-let count_vals = ref (List.length Types.pervasive_val_ids)
-let count_types = ref (List.length Types.pervasive_type_ids)
-let count_ctors = ref (List.length Types.pervasive_ctor_ids)
+let count_vals = ref @@ (List.length Types.pervasive_val_ids) - 1
+let count_types = ref @@ (List.length Types.pervasive_type_ids) - 1
+let count_ctors = ref @@ (List.length Types.pervasive_ctor_ids) - 1
 
 type env_t = (string * id_t) list
 
 let init () =
-    count_vals := List.length Types.pervasive_val_ids;
-    count_types := List.length Types.pervasive_type_ids;
-    count_ctors := List.length Types.pervasive_ctor_ids;
+    count_vals  := (List.length Types.pervasive_val_ids ) - 1;
+    count_types := (List.length Types.pervasive_type_ids) - 1;
+    count_ctors := (List.length Types.pervasive_ctor_ids) - 1;
     Types.pervasive_val_ids, Types.pervasive_type_ids, Types.pervasive_ctor_ids
 
 exception AlphaError of string

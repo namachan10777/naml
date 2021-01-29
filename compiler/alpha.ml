@@ -129,6 +129,7 @@ let rec of_expr env =
     | Ast.Never -> Never
     | Ast.Emp -> Emp
     | Ast.Var id -> Var (lookup id venv)
+    | Ast.Ctor id -> Var (lookup id cenv)
     | Ast.Bool b -> Bool b
     | Ast.Int i -> Int i
     | Ast.App (f, arg) -> App (of_expr env f, of_expr env arg)

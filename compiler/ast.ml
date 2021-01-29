@@ -28,6 +28,7 @@ type t =
     | Int of int
     | Bool of bool
     | Var of string list
+    | Ctor of string list
     | Tuple of t list
     | If of t * t * t
     | Let of (pat_t * t) list * t
@@ -63,6 +64,7 @@ let rec of_parser_t = function
     | Parser.Int i -> Int i
     | Parser.Bool i -> Bool i
     | Parser.Var i -> Var i
+    | Parser.Ctor i -> Ctor i
     | Parser.Emp -> Emp
     | Parser.Add (lhr, rhr) -> op "+" lhr rhr
     | Parser.Sub (lhr, rhr) -> op "-" lhr rhr

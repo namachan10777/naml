@@ -229,7 +229,7 @@ let () =
     test "app5" "f 1 2 3"
         (P.App (P.App (P.App (P.Var ["f"], P.Int 1), P.Int 2), P.Int 3));
     test "ctor" "Leaf (1, 2)"
-        (P.App (P.Var ["Leaf"], P.Paren (P.Tuple [P.Int 1; P.Int 2])));
+        (P.App (P.Ctor ["Leaf"], P.Paren (P.Tuple [P.Int 1; P.Int 2])));
     test "if" "if f x then 1 else let x = 1 in x"
         (P.If (P.App (P.Var ["f"], P.Var ["x"]), P.Int 1, P.Let ([P.PVar "x", P.Int 1], P.Var ["x"])));
     test "if_nested" "if if x then true else false then true else if y then true else false"

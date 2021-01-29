@@ -30,6 +30,7 @@ type t =
     | Int of int
     | Bool of bool
     | Var of string list
+    | Ctor of string list
     | Index of t * t | Assign of t * t | ArrayAssign of t * t * t
     | Add of t * t
     | Sub of t * t
@@ -521,7 +522,7 @@ and parse_array_access input = match parse_term input with
 and parse_term = function
     | Lex.UIdent _ :: _ as remain ->
         let (id, remain) = parse_ident remain in
-        (Var id, remain)
+        (id, remain)
     | Lex.LIdent id :: remain -> (Var [id], remain)
     | Lex.Int i :: remain -> (Int i, remain)
     | Lex.True :: remain -> (Bool true, remain)
@@ -538,11 +539,14 @@ and parse_term = function
     end
     | x -> (dbg_i x); raise @@ SyntaxError "term"
 and parse_ident = function
-    | Lex.UIdent id :: Lex.Dot :: remain ->
-        let (last, remain) = parse_ident remain in
-        (id :: last, remain)
-    | Lex.LIdent id :: remain -> ([id], remain)
-    | Lex.UIdent id :: remain -> ([id], remain)
+    | Lex.UIdent pre :: Lex.Dot :: remain ->
+        begin match parse_ident remain with
+            | Var id, remain -> Var (pre :: id), remain
+            | Ctor id, remain -> Ctor (pre :: id), remain
+            | _ -> raise @@ Failure "internal error in parsing identifier"
+        end
+    | Lex.LIdent id :: remain -> (Var [id], remain)
+    | Lex.UIdent id :: remain -> (Ctor [id], remain)
     | _ -> raise @@ SyntaxError "ident"
 and parse_list_elem input = match parse_tuple input with
     | (lhr, Lex.Semicol :: Lex.RB :: remain) ->

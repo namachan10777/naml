@@ -2,60 +2,45 @@ type t =
     | Int
     | Str
     | Bool
-    | Fun of t ref list * t ref
-    | Tuple of t ref list
-    | Array of t ref
-    (* level * id *)
-    | Unknown of int * int
+    | Fun of t list * t
+    | Tuple of t list
+    | Array of t
+    (* 不明の型。最初のintはlevelで2つめのintはデバッグ用のタグ *)
+    | Unknown of int * (int * t option) ref ref
+    (* 多相型。intはタグ *)
     | Poly of int
-    | Higher of t ref * string list
-    | Ref of t ref
+    | Higher of t * string list
+    | Ref of t
 [@@deriving show]
 
 let unit_ty = Tuple []
 
 let pervasive_vals = [
-    (*["+"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
-    ["-"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
-    ["*"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
-    ["/"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
-    ["mod"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
-    ["="], Arrow (ref (Poly 0), ref (Arrow (ref (Poly 0), ref Bool)));
-    ["<>"], Arrow (ref (Poly 0), ref (Arrow (ref (Poly 0), ref Bool)));
-    [">"], Arrow (ref Int, ref (Arrow (ref Int, ref Bool)));
-    ["<"], Arrow (ref Int, ref (Arrow (ref Int, ref Bool)));
-    [";"], Arrow (ref (Poly 0), ref (Arrow (ref (Poly 1), ref Bool)));
-    ["::"], Arrow (ref (Poly 0), ref (Arrow (ref (List (ref (Poly 1))), ref Bool)));
-    ["."], Arrow (ref (Array (ref (Poly 0))), ref (Arrow (ref Int, ref (Poly 0))));
-    ["<neg>"], Arrow (ref Int, ref Int);
-    ["not"], Arrow (ref Bool, ref Bool);
-    ["ref"], Arrow (ref (Poly 0), ref (Ref (ref (Poly 0))));
-    [":="], Arrow (ref (Ref (ref (Poly 0))), ref (Poly 0));*)
-    ["+"], Fun ([ref Int; ref Int], ref Int);
-    ["-"], Fun ([ref Int; ref Int], ref Int);
-    ["*"], Fun ([ref Int; ref Int], ref Int);
-    ["/"], Fun ([ref Int; ref Int], ref Int);
-    ["mod"], Fun ([ref Int; ref Int], ref Int);
-    [">"], Fun ([ref Int; ref Int], ref Bool);
-    ["<"], Fun ([ref Int; ref Int], ref Bool);
-    [";"], Fun ([ref @@ Poly 0], ref @@ Poly 1);
-    ["::"], Fun ([ref @@ Poly 0], ref @@ Higher (ref @@ Poly 0, ["list"]));
-    ["."], Fun ([ref @@ Higher (ref @@ Poly 0, ["array"]); ref @@ Int], ref @@ Poly 0);
-    ["<neg>"], Fun ([ref @@ Int], ref @@ Int);
-    ["not"], Fun ([ref @@ Bool], ref @@ Bool);
-    ["ref"], Fun ([ref @@ Poly 0], ref @@ Ref (ref @@ Poly 0));
-    [":="], Fun ([ref @@ Ref (ref @@ Poly 0); ref @@ Poly 0], ref unit_ty);
+    ["+"], Fun ([Int; Int], Int);
+    ["-"], Fun ([Int; Int], Int);
+    ["*"], Fun ([Int; Int], Int);
+    ["/"], Fun ([Int; Int], Int);
+    ["mod"], Fun ([Int; Int], Int);
+    [">"], Fun ([Int; Int], Bool);
+    ["<"], Fun ([Int; Int], Bool);
+    [";"], Fun ([Poly 0], Poly 1);
+    ["::"], Fun ([Poly 0], Higher (Poly 0, ["list"]));
+    ["."], Fun ([Higher (Poly 0, ["array"]); Int], Poly 0);
+    ["<neg>"], Fun ([Int], Int);
+    ["not"], Fun ([Bool], Bool);
+    ["ref"], Fun ([Poly 0], Ref (Poly 0));
+    [":="], Fun ([Ref (Poly 0); Poly 0], unit_ty);
 ]
 
 let pervasive_types = [
     ["int"], Int;
     ["bool"], Bool;
-    ["option"], Higher (ref (Poly 0), ["option"]);
+    ["option"], Higher (Poly 0, ["option"]);
 ]
 
 let pervasive_ctors = [
-    ["Some"], Fun ([ref @@ Poly 0], ref @@ Higher (ref @@ Poly 0, ["option"]));
-    ["None"], Higher (ref (Poly 0), ["option"]);
+    ["Some"], Fun ([Poly 0], Higher (Poly 0, ["option"]));
+    ["None"], Higher (Poly 0, ["option"]);
 ]
 
 let ids = List.mapi (fun i (id, _) -> (id, i))

@@ -12,6 +12,7 @@ let test src expected =
     end
 
 module Ty = Types
+module T = Typing
 
 let () =
     test "0" (Typing.Int 0);
@@ -52,3 +53,15 @@ let () =
             ])
         )
     );
+    test "let mk_pair x y = (x, y) in let a = mk_pair 1 in let b = mk_pair true false in a"
+    (T.Let (
+        [
+            T.PVar ("mk_pair",Ty.Fun ([Ty.Poly 0; Ty.Poly 1], Ty.Tuple [Ty.Poly 0; Ty.Poly 1])),
+            T.Fun (["x", Ty.Poly 0; "y", Ty.Poly 1], T.Tuple ([T.Var ["x"]; T.Var ["y"]], [Ty.Poly 0; Ty.Poly 1]),
+            Ty.Fun ([Ty.Poly 0; Ty.Poly 1], Ty.Tuple [Ty.Poly 0; Ty.Poly 1]));
+        ],
+        T.Let ([
+            T.PVar ("a", Ty.Fun ([Ty.Poly 0], Ty.Tuple [Ty.Int; Ty.Poly 0])),
+            T.App (T.Var ["mk_pair"], [T.Int 1])
+        ], T.Int 0)
+    ))

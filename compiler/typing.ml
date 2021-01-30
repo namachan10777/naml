@@ -13,6 +13,7 @@ type t =
     | App of t * t list
     | Let of (pat_t * t) list * t
     | Fun of (string * Types.t) list * t * Types.t
+    | Tuple of t list * Types.t list
 [@@deriving show]
 
 let rec lookup x = function
@@ -45,6 +46,8 @@ let rec instantiate level =
         | Types.Unknown _ as t -> t
         | Types.Poly i ->
             lookup i
+        | Types.Tuple ts ->
+            Types.Tuple (List.map f ts)
         | _ -> failwith "instantiate unimplemented"
     in f
 
@@ -62,6 +65,8 @@ let rec unify a b = match a, b with
         | Types.Fun (as', r) -> Types.Fun ((unify a1 a2) :: as', r)
         | _ -> failwith "cannot unify fun"
         end
+    | Types.Tuple ts1, Types.Tuple ts2 ->
+        Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
     | Types.Unknown (_, r1), (Types.Unknown (_, r2) as t) -> begin match ! !r1, ! !r2 with
         | (_, None), (_, None) -> r1 := !r2; t
         | (_, Some t), (_, None) -> r1 := !r2; t
@@ -103,6 +108,8 @@ let generalize_ty level =
         end
     | Types.Fun (args, ret_ty) ->
         Types.Fun (List.map f args, f ret_ty)
+    | Types.Tuple ts ->
+        Types.Tuple (List.map f ts)
     | _ -> failwith @@ "generalize unimplemented"
     in f
 
@@ -117,6 +124,8 @@ let rec generalize level = function
             generalize level body,
             generalize_ty level ret_ty
         )
+    | Tuple (vals, types) ->
+        Tuple (List.map (generalize level) vals, List.map (generalize_ty level) types)
     | _ -> failwith "unimplemented generalize"
 
 let rec g env level =
@@ -146,7 +155,10 @@ let rec g env level =
         let venv = List.map (fun (arg, ty) -> [arg], ty) args in
         let body, body_ty = g (venv, tenv, cenv) level body in
         Fun (args, body, body_ty), Types.Fun (List.map snd args, body_ty)
-    | _ -> failwith "unimplemented"
+    | Ast.Tuple tp ->
+        let elems, types = Util.unzip @@ List.map (g env level) tp in
+        Tuple (elems, types), Types.Tuple types
+    | t -> failwith @@ Printf.sprintf "unimplemented: %s" @@ Ast.show t
 
 let f ast =
     fst @@ g (

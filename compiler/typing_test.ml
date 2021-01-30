@@ -14,4 +14,4 @@ module Ty = Types
 
 let () =
     test "0" (Typing.Int 0);
-    test "not" (Typing.Var (["not"], ref (Ty.Arrow (ref Ty.Bool, ref Ty.Bool))));
+    test "not" (Typing.Var (["not"], ref (Ty.Fun ([ref Ty.Bool], ref Ty.Bool))));

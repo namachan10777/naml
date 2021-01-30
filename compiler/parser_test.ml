@@ -46,9 +46,9 @@ let () =
     test "bool" "3>2 && not (1 < 0)"
     (P.And (
         P.Gret (P.Int 3, P.Int 2),
-        P.App (P.Var ["not"],  (P.Paren (P.Less (P.Int 1, P.Int 0))))
+        P.App (P.Var ["not"],  [P.Paren (P.Less (P.Int 1, P.Int 0))])
     ));
-    test "ref" "ref 1" (P.App (P.Var ["ref"], P.Int 1));
+    test "ref" "ref 1" (P.App (P.Var ["ref"], [P.Int 1]));
     test "bool2"  "true && false || 1 = 2 && false"
     (P.Or (
         P.And (P.Bool true, P.Bool false),
@@ -113,7 +113,7 @@ let () =
     test "fun" "(fun x y z -> x + y + z) 1"
     (P.App (
         P.Paren (P.Fun (["x"; "y"; "z"], P.Add (P.Add (P.Var ["x"], P.Var ["y"]), P.Var ["z"]))),
-    P.Int 1));
+    [P.Int 1]));
     Parser.count := 0;
     test "fun pat" "fun x, y -> x + y"
     (P.Fun (["<anonymous1>"], P.Match (
@@ -146,7 +146,7 @@ let () =
     test "pipeline" "1 |> f |> g"
     (P.Pipeline (P.Pipeline (P.Int 1, P.Var ["f"]), P.Var ["g"]));
     test "@@" "f @@ g @@ 1"
-    (P.App (P.Var ["f"], P.App (P.Var ["g"], P.Int 1)));
+    (P.App (P.Var ["f"], [P.App (P.Var ["g"], [P.Int 1])]));
     test "seq" "1; 2 |> f; 3"
     (P.Seq (
         P.Int 1,
@@ -164,7 +164,7 @@ let () =
     ]));
     test "match_when" "match x with y when is_prime y -> 0 | z -> 1"
     (P.Match (P.Var ["x"], [
-        (P.PVar "y", P.App (P.Var ["is_prime"], P.Var ["y"]), P.Int 0);
+        (P.PVar "y", P.App (P.Var ["is_prime"], [P.Var ["y"]]), P.Int 0);
         (P.PVar "z", P.Bool true, P.Int 1);
     ]));
     test "match2" "match x with y -> let x = 1 in x | z -> 1"
@@ -219,19 +219,19 @@ let () =
     test "let x, y = z in x" "let x, y = z in x"
         (P.Let ([P.PTuple [P.PVar "x"; P.PVar "y"], P.Var ["z"]], P.Var ["x"]));
     test "app1" "1 + f 2"
-        (P.Add (P.Int 1, P.App (P.Var ["f"], P.Int 2)));
+        (P.Add (P.Int 1, P.App (P.Var ["f"], [P.Int 2])));
     test "app2" "- f 2"
-        (P.Neg (P.App (P.Var ["f"], P.Int 2)));
+        (P.Neg (P.App (P.Var ["f"], [P.Int 2])));
     test "app3" "f 1 + 2"
-        (P.Add (P.App (P.Var ["f"], P.Int 1), P.Int 2));
+        (P.Add (P.App (P.Var ["f"], [P.Int 1]), P.Int 2));
     test "app4" "f 1 2"
-        (P.App (P.App (P.Var ["f"], P.Int 1), P.Int 2));
+        (P.App (P.Var ["f"], [P.Int 1; P.Int 2]));
     test "app5" "f 1 2 3"
-        (P.App (P.App (P.App (P.Var ["f"], P.Int 1), P.Int 2), P.Int 3));
+        (P.App (P.Var ["f"], [P.Int 1; P.Int 2; P.Int 3]));
     test "ctor" "Leaf (1, 2)"
-        (P.App (P.Ctor ["Leaf"], P.Paren (P.Tuple [P.Int 1; P.Int 2])));
+        (P.App (P.Ctor ["Leaf"], [P.Paren (P.Tuple [P.Int 1; P.Int 2])]));
     test "if" "if f x then 1 else let x = 1 in x"
-        (P.If (P.App (P.Var ["f"], P.Var ["x"]), P.Int 1, P.Let ([P.PVar "x", P.Int 1], P.Var ["x"])));
+        (P.If (P.App (P.Var ["f"], [P.Var ["x"]]), P.Int 1, P.Let ([P.PVar "x", P.Int 1], P.Var ["x"])));
     test "if_nested" "if if x then true else false then true else if y then true else false"
         (P.If (
             P.If (P.Var ["x"], P.Bool true, P.Bool false),
@@ -242,7 +242,7 @@ let () =
     test "assign" "a.(0) <- 1 + 2" (P.ArrayAssign (P.Var ["a"], P.Int 0, P.Add (P.Int 1, P.Int 2)));
     test "ref array" "a.(0) <- a.(0)" (P.ArrayAssign (P.Var ["a"], P.Int 0, P.Index (P.Var ["a"], P.Int 0)));
     test "dot access" "X.Y.z" (P.Var ["X"; "Y"; "z"]);
-    test "arr assign" "(getarr 0).(1+1) <- 2" (P.ArrayAssign (P.Paren (P.App (P.Var ["getarr"], P.Int 0)), P.Add (P.Int 1, P.Int 1), P.Int 2));
+    test "arr assign" "(getarr 0).(1+1) <- 2" (P.ArrayAssign (P.Paren (P.App (P.Var ["getarr"], [P.Int 0])), P.Add (P.Int 1, P.Int 1), P.Int 2));
     test "dot array assign" "X.y.(1) <- 1 + 1"
         (P.ArrayAssign (P.Var ["X"; "y"], P.Int 1, P.Add (P.Int 1, P.Int 1)));
     test "unit" "let () = () in ()" (P.Let ([P.PTuple [], P.Tuple []], P.Tuple[]));
@@ -256,8 +256,7 @@ let () =
     test_stmts "letfun stmt" "let add x y = x + y"
     (P.Let ([P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))], P.Never));
     test_stmts "letrec and" "let rec f = 1 and g = 2"
-        (P.LetRec ([
-            (["f"], P.Int 1);
+        (P.LetRec ([ (["f"], P.Int 1);
             (["g"], P.Int 2);
         ], P.Never));
     test_stmts "let and" "let f = 1 and g = 2"

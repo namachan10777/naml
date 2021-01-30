@@ -10,7 +10,7 @@ type t =
     | Int of int
     | Bool of bool
     | Var of id_t * Types.t ref 
-    | App of t * t * Types.t ref
+    | App of t * t list * Types.t ref
 [@@deriving show]
 
 let rec lookup x = function
@@ -36,13 +36,6 @@ let rec g env level =
     | Ast.Int i -> Int i, ref Types.Int
     | Ast.Bool b -> Bool b, ref Types.Int
     | Ast.Var name -> Var (name, lookup name venv), lookup name venv
-    | Ast.App (f, arg) ->
-        let f, f_ty = g env level f in
-        let arg, arg_ty = g env level arg in
-        begin match unify (ref (Types.Arrow (arg_ty, fresh level))) f_ty with
-        | Types.Arrow (_, ret_ty) -> App (f, arg, ret_ty), ret_ty
-        | _ -> raise @@ Failure "internal error"
-        end
     | _ -> raise @@ Failure "unimlemented"
 
 let f ast =

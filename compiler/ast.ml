@@ -38,7 +38,7 @@ type t =
     | LetRec of (string list * t) list * t
     | Fun of string list * t
     | Match of t * (pat_t * t * t) list
-    | App of t * t
+    | App of t * t list
     | ArrayAssign of t * t * t
     | Type of (string * string list * tydef_t) list * t
 [@@deriving show]
@@ -83,10 +83,10 @@ let rec of_parser_t = function
     | Parser.Gret (lhr, rhr) -> op ">" lhr rhr
     | Parser.Less (lhr, rhr) -> op "<" lhr rhr
     | Parser.Index (lhr, rhr) -> op "." lhr rhr
-    | Parser.Neg e -> App (Var ["<unary>"], of_parser_t e)
+    | Parser.Neg e -> App (Var ["<neg>"], [of_parser_t e])
     | Parser.Assign (lhr, rhr) -> op ":=" lhr rhr
     | Parser.ArrayAssign (arr, idx, rhr) -> ArrayAssign (of_parser_t arr, of_parser_t idx, of_parser_t rhr)
-    | Parser.Pipeline (arg, f) -> App(of_parser_t f, of_parser_t arg)
+    | Parser.Pipeline (arg, f) -> App(of_parser_t f, [of_parser_t arg])
     | Parser.Tuple elem -> Tuple (List.map of_parser_t elem)
     | Parser.If (cond, e1, e2) -> If (of_parser_t cond, of_parser_t e1, of_parser_t e2)
     | Parser.Let (defs, expr) ->
@@ -94,7 +94,7 @@ let rec of_parser_t = function
     | Parser.LetRec (defs, expr) ->
         LetRec (List.map (fun (id, def) -> (id, of_parser_t def)) defs, of_parser_t expr)
     | Parser.Fun (params, expr) -> Fun (params, of_parser_t expr)
-    | Parser.App (f, arg) -> App (of_parser_t f, of_parser_t arg)
+    | Parser.App (f, arg) -> App (of_parser_t f, List.map of_parser_t arg)
     | Parser.Paren e -> of_parser_t e
     | Parser.Match (target, arms) ->
         Match (of_parser_t target, List.map (fun (pat, when_e, expr) -> (of_parser_pat_t pat, of_parser_t when_e, of_parser_t expr)) arms)
@@ -105,6 +105,6 @@ let rec of_parser_t = function
             | (id, targs, Parser.Alias ty) ->id, targs, Alias (of_parser_ty_t ty)
         )
     defs, of_parser_t expr)
-and op id lhr rhr = App (App (Var [id], of_parser_t lhr), of_parser_t rhr)
+and op id lhr rhr = App (Var [id], [of_parser_t lhr; of_parser_t rhr])
 
 let f fname src = of_parser_t @@ Parser.f fname src

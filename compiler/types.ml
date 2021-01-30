@@ -2,8 +2,7 @@ type t =
     | Int
     | Str
     | Bool
-    | Arrow of t ref * t ref
-    | List of t ref
+    | Fun of t ref list * t ref
     | Tuple of t ref list
     | Array of t ref
     (* level * id *)
@@ -13,8 +12,10 @@ type t =
     | Ref of t ref
 [@@deriving show]
 
+let unit_ty = Tuple []
+
 let pervasive_vals = [
-    ["+"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
+    (*["+"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
     ["-"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
     ["*"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
     ["/"], Arrow (ref Int, ref (Arrow (ref Int, ref Int)));
@@ -26,10 +27,24 @@ let pervasive_vals = [
     [";"], Arrow (ref (Poly 0), ref (Arrow (ref (Poly 1), ref Bool)));
     ["::"], Arrow (ref (Poly 0), ref (Arrow (ref (List (ref (Poly 1))), ref Bool)));
     ["."], Arrow (ref (Array (ref (Poly 0))), ref (Arrow (ref Int, ref (Poly 0))));
-    ["<unary>"], Arrow (ref Int, ref Int);
+    ["<neg>"], Arrow (ref Int, ref Int);
     ["not"], Arrow (ref Bool, ref Bool);
     ["ref"], Arrow (ref (Poly 0), ref (Ref (ref (Poly 0))));
-    [":="], Arrow (ref (Ref (ref (Poly 0))), ref (Poly 0));
+    [":="], Arrow (ref (Ref (ref (Poly 0))), ref (Poly 0));*)
+    ["+"], Fun ([ref Int; ref Int], ref Int);
+    ["-"], Fun ([ref Int; ref Int], ref Int);
+    ["*"], Fun ([ref Int; ref Int], ref Int);
+    ["/"], Fun ([ref Int; ref Int], ref Int);
+    ["mod"], Fun ([ref Int; ref Int], ref Int);
+    [">"], Fun ([ref Int; ref Int], ref Bool);
+    ["<"], Fun ([ref Int; ref Int], ref Bool);
+    [";"], Fun ([ref @@ Poly 0], ref @@ Poly 1);
+    ["::"], Fun ([ref @@ Poly 0], ref @@ Higher (ref @@ Poly 0, ["list"]));
+    ["."], Fun ([ref @@ Higher (ref @@ Poly 0, ["array"]); ref @@ Int], ref @@ Poly 0);
+    ["<neg>"], Fun ([ref @@ Int], ref @@ Int);
+    ["not"], Fun ([ref @@ Bool], ref @@ Bool);
+    ["ref"], Fun ([ref @@ Poly 0], ref @@ Ref (ref @@ Poly 0));
+    [":="], Fun ([ref @@ Ref (ref @@ Poly 0); ref @@ Poly 0], ref unit_ty);
 ]
 
 let pervasive_types = [
@@ -39,7 +54,7 @@ let pervasive_types = [
 ]
 
 let pervasive_ctors = [
-    ["Some"], Arrow (ref (Poly 0), ref (Higher (ref (Poly 0), ["option"])));
+    ["Some"], Fun ([ref @@ Poly 0], ref @@ Higher (ref @@ Poly 0, ["option"]));
     ["None"], Higher (ref (Poly 0), ["option"]);
 ]
 

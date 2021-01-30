@@ -52,7 +52,7 @@ type t =
     | Type of (string * string list * tydef_t) list * t
     | Fun of string list * t
     | Match of t * (pat_t * t * t) list
-    | App of t * t
+    | App of t * t list
     | Seq of t * t
     | Pipeline of t * t
     | Paren of t
@@ -323,9 +323,9 @@ and parse_pipeline input = match parse_atat input with
     | x -> x
 and parse_atat input = match parse_or input with
     | (lhr, Lex.AtAt :: rhr) when succ_lets rhr ->
-        let (rhr, remain ) = parse_expr rhr in (App (lhr, rhr), remain)
+        let (rhr, remain ) = parse_expr rhr in (App (lhr, [rhr]), remain)
     | (lhr, Lex.AtAt :: rhr) ->
-        let (rhr, remain) = parse_atat rhr in (App (lhr, rhr), remain)
+        let (rhr, remain) = parse_atat rhr in (App (lhr, [rhr]), remain)
     | x -> x
 and parse_or input = match parse_and input with
     | (lhr, Lex.Or :: rhr) when succ_lets rhr ->
@@ -437,22 +437,16 @@ and parse_app input =
         | Lex.LB :: _ -> true
         | _ -> false
     in
-    let reverse tree =
-        let rec dec = function
-            | App (f, arg) -> f :: dec arg
-            | t -> [t]
-        in match dec tree with
-        | [] -> raise @@ Failure "internal error"
-        | f :: args -> List.fold_left (fun f arg -> App(f, arg)) f args
+    let rec take_args input = match parse_array_access input with
+        | (arg, remain) when nexts_term remain ->
+            let args, remain = take_args remain in
+            arg :: args, remain
+        | (arg, remain) -> [arg], remain
     in
-    let rec internal input = match parse_array_access input with
-        | (f, remain) when nexts_term remain ->
-            begin match internal remain with
-            | (arg, remain) -> App (f, arg), remain
-            end
-        | x -> x
-    in
-    let (tree, remain) = internal input in (reverse tree, remain)
+    match take_args input with
+    | [x], remain -> x, remain
+    | f :: args, remain -> App (f, args), remain
+    | [], _ -> raise @@ SyntaxError "function app"
 and parse_array_access input = match parse_term input with
     | (lhr, Lex.Dot :: Lex.LP :: remain) -> begin match parse_expr remain with
         | (rhr, Lex.RP :: remain) -> (Index (lhr, rhr), remain)

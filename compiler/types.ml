@@ -6,7 +6,7 @@ type ty_t =
     | List of ty_t
     | Tuple of ty_t list
     | Array of ty_t
-    | Unknown of int
+    | Unknown of int * int
     | Poly of int
     | Higher of int
     | Ref of ty_t

@@ -1,7 +1,7 @@
 # Compiler
 
-- [ ] hand-made parser
-- [ ] alpha conversion
+- [x] hand-made parser
+- [x] alpha conversion
 - [ ] type inference
 - [ ] SSA conversion
 - [ ] resister allocation

@@ -13,3 +13,8 @@ let rec unzip = function
     | (a, b) :: remain ->
         let a', b' = unzip remain in
         a :: a', b :: b'
+
+let rec drop n l = match n, l with
+    | 0, l -> l
+    | n, h :: l -> drop (n-1) l
+    | _ -> raise @@ Invalid_argument "cannot drop"

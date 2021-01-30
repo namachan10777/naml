@@ -54,12 +54,15 @@ let rec instantiate level =
 let rec unify a b = match a, b with
     | Types.Int, Types.Int -> Types.Int
     | Types.Bool, Types.Bool -> Types.Bool
+    | Types.Fun ([], _), Types.Fun ([], _) -> failwith "unreachable"
     | Types.Fun ([], r), b ->
         unify r b
     | a, Types.Fun ([], r) ->
         unify r a
     | Types.Fun ([a1], r1), Types.Fun ([a2], r2) ->
         Types.Fun ([unify a1 a2], unify r1 r2)
+    | Types.Fun (_, _) as f1, Types.Fun ([], r2) ->
+        unify r2 f1
     | Types.Fun (a1 :: as1, r1), Types.Fun (a2 :: as2, r2) ->
         begin match unify (Types.Fun (as1, r1)) (Types.Fun (as2, r2)) with
         | Types.Fun (as', r) -> Types.Fun ((unify a1 a2) :: as', r)
@@ -92,14 +95,16 @@ let readable tbl tag =
         | [] ->
             tbl := (tag, List.length !tbl) :: !tbl;
             (List.length !tbl) - 1
-    in f !tbl
+    in
+        let x = f !tbl in
+        x
 
-let generalize_ty level =
-    let tbl = ref [] in
+let generalize_ty tbl level =
     let rec f = function
     | Types.Int -> Types.Int
     | Types.Bool -> Types.Bool
-    | Types.Unknown (level', inner) as ty -> begin match ! !inner with
+    | Types.Unknown (level', inner) as ty ->
+        begin match ! !inner with
         | (_, Some(ty)) -> ty
         | (tag, None) ->
             if level' > level
@@ -113,19 +118,20 @@ let generalize_ty level =
     | _ -> failwith @@ "generalize unimplemented"
     in f
 
-let rec generalize level = function
+let rec generalize tbl level =
+    function
     | Int i -> Int i
     | Bool b -> Bool b
     | Var id -> Var id
-    | App (f, args) -> App (generalize level f, List.map (generalize level) args)
+    | App (f, args) -> App (generalize tbl level f, List.map (generalize tbl level) args)
     | Fun (args, body, ret_ty) ->
         Fun (
-            List.map (fun (arg, ty) -> arg, generalize_ty level ty) args,
-            generalize level body,
-            generalize_ty level ret_ty
+            List.map (fun (arg, ty) -> arg, generalize_ty tbl level ty) args,
+            generalize tbl level body,
+            generalize_ty tbl level ret_ty
         )
     | Tuple (vals, types) ->
-        Tuple (List.map (generalize level) vals, List.map (generalize_ty level) types)
+        Tuple (List.map (generalize tbl level) vals, List.map (generalize_ty tbl level) types)
     | _ -> failwith "unimplemented generalize"
 
 let rec g env level =
@@ -138,16 +144,28 @@ let rec g env level =
         let args, arg_tys = Util.unzip @@ List.map (g env level) args in
         let arg_tys = List.map (instantiate level) arg_tys in
         let f, f_ty = g env level f in
-        (*Printf.printf "try unify %s\n" @@ Types.show @@ instantiate level f_ty;*)
-        (*Printf.printf "try unify %s\n" @@ Types.show @@ Types.Fun (arg_tys, fresh level);*)
+        (*print_endline "----------------------------------------------------";
+        Printf.printf "try unify %s\n" @@ Types.show @@ instantiate level f_ty;
+        Printf.printf "try unify %s\n" @@ Types.show @@ Types.Fun (arg_tys, fresh level);*)
         let f_ty = unify (instantiate level f_ty) @@ Types.Fun (arg_tys, fresh level) in
+        (*Printf.printf "=>\n%s\n" @@ Types.show @@ f_ty;*)
         begin match f_ty with
-        | Types.Fun (_, ret_ty) -> App (f, args), ret_ty
+        | Types.Fun (params, ret_ty) ->
+            if (List.length params) > (List.length args)
+            then
+                let param_tys = Util.drop (List.length arg_tys) params in
+                App (f, args), Types.Fun (param_tys, ret_ty)
+            else if (List.length params) = (List.length args)
+            then
+                App (f, args), ret_ty
+            else
+                failwith "too much argument"
         | _ -> failwith "unmatched app"
         end
     | Ast.Let ([Ast.PVar name, def], expr) ->
         let def, def_ty = g env (level + 1) def in
-        let def, def_ty = generalize level def, generalize_ty level def_ty in
+        let tbl = ref [] in
+        let def, def_ty = generalize tbl level def, generalize_ty tbl level def_ty in
         let expr, ty = g (([name], def_ty) :: venv, tenv, cenv) level expr in
         Let ([PVar (name, def_ty), def], expr), ty
     | Ast.Fun (args, body) ->

@@ -58,10 +58,14 @@ let () =
         [
             T.PVar ("mk_pair",Ty.Fun ([Ty.Poly 0; Ty.Poly 1], Ty.Tuple [Ty.Poly 0; Ty.Poly 1])),
             T.Fun (["x", Ty.Poly 0; "y", Ty.Poly 1], T.Tuple ([T.Var ["x"]; T.Var ["y"]], [Ty.Poly 0; Ty.Poly 1]),
-            Ty.Fun ([Ty.Poly 0; Ty.Poly 1], Ty.Tuple [Ty.Poly 0; Ty.Poly 1]));
+            Ty.Tuple [Ty.Poly 0; Ty.Poly 1]);
         ],
         T.Let ([
             T.PVar ("a", Ty.Fun ([Ty.Poly 0], Ty.Tuple [Ty.Int; Ty.Poly 0])),
             T.App (T.Var ["mk_pair"], [T.Int 1])
-        ], T.Int 0)
-    ))
+        ],
+        T.Let ([
+            T.PVar ("b", Ty.Tuple ([Ty.Bool; Ty.Bool])),
+            T.App (T.Var ["mk_pair"], [T.Bool true; T.Bool false])
+        ], Typing.Var ["a"]))
+    ));

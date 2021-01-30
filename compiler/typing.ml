@@ -1,40 +1,53 @@
 (* Algorithm W*)
 
-type id_t = Alpha.id_t
+type id_t = Ast.id_t
 [@@deriving show]
 
-type ty_t =
-    | Int
-    | Str
-    | Bool
-    | Arrow of ty_t * ty_t
-    | List of ty_t
-    | Var of string
-[@@deriving show]
-
-type pat_t =
-    | PEmp of ty_t ref
-    | PCons of (pat_t * ty_t ref) * (pat_t * ty_t ref)
-    | PInt of int
-    | PBool of bool
-    | PVar of string * ty_t ref
-    | PTuple of pat_t list * ty_t ref
-    | As of pat_t list * ty_t ref
-    | PCtorApp of id_t * pat_t * ty_t ref
-    | PCtor of id_t * ty_t ref
+type pat_t = unit
 [@@deriving show]
 
 type t =
-    | Emp of ty_t ref
     | Int of int
     | Bool of bool
-    | Var of id_t * ty_t ref
-    | Tuple of t list * ty_t ref
-    | If of (t * ty_t ref) * (t * ty_t ref) * (t * ty_t ref)
-    | Let of string * (t * ty_t ref) * (t * ty_t ref)
-    | LetRec of string * (t * ty_t ref) * (t * ty_t ref)
-    | Fun of id_t * (t * ty_t ref)
-    | Match of (t * ty_t ref) * (pat_t * (t * ty_t ref) * (t * ty_t ref)) list
-    | App of (t * ty_t ref) * (t * ty_t ref)
-    | ArrayAssign of (t * ty_t ref) * (t * ty_t ref) * (t * ty_t ref)
+    | Var of id_t * Types.t ref 
+    | App of t * t * Types.t ref
 [@@deriving show]
+
+let rec lookup x = function
+    | (y, ty) :: remain -> if x = y then ty else lookup x remain
+    | _ -> raise @@ Failure "notfound"
+
+let unify a b = match !a, !b with
+    | Types.Int, Types.Int -> Types.Int
+    | Types.Bool, Types.Bool -> Types.Bool
+    | _ -> raise @@ Failure (Printf.sprintf "cannot unify %s %s" (Types.show !a) (Types.show !b))
+
+let count = ref 0
+let init () =
+    count := 99
+
+let fresh level =
+    count := !count + 1;
+    ref (Types.Unknown (level, !count))
+
+let rec g env level =
+    let (venv, tenv, cenv) = env in
+    function
+    | Ast.Int i -> Int i, ref Types.Int
+    | Ast.Bool b -> Bool b, ref Types.Int
+    | Ast.Var name -> Var (name, lookup name venv), lookup name venv
+    | Ast.App (f, arg) ->
+        let f, f_ty = g env level f in
+        let arg, arg_ty = g env level arg in
+        begin match unify (ref (Types.Arrow (arg_ty, fresh level))) f_ty with
+        | Types.Arrow (_, ret_ty) -> App (f, arg, ret_ty), ret_ty
+        | _ -> raise @@ Failure "internal error"
+        end
+    | _ -> raise @@ Failure "unimlemented"
+
+let f ast =
+    fst @@ g (
+        List.map (fun (n, ty) -> n, ref ty) Types.pervasive_vals,
+        List.map (fun (n, ty) -> n, ref ty) Types.pervasive_types,
+        List.map (fun (n, ty) -> n, ref ty) Types.pervasive_ctors
+    ) 0 ast

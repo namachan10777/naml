@@ -1,3 +1,6 @@
+type id_t = string list
+[@@deriving show]
+
 type pat_t =
     | PEmp
     | PCons of pat_t * pat_t

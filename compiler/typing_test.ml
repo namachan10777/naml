@@ -40,12 +40,15 @@ let () =
             Typing.Var ["x"]
         )
     );
-    test "let id = fun x -> x in id 1" (
+    test "let id = fun x -> x in id 1; id true" (
         Typing.Let (
             [
                 Typing.PVar ("id", Ty.Fun ([Ty.Poly 0], Ty.Poly 0)),
                 Typing.Fun (["x", Ty.Poly 0], Typing.Var ["x"], Ty.Poly 0)
             ],
-            Typing.App (Typing.Var ["id"], [Typing.Int 1])
+            Typing.App (Typing.Var [";"], [
+                Typing.App (Typing.Var ["id"], [Typing.Int 1]);
+                Typing.App (Typing.Var ["id"], [Typing.Bool true]);
+            ])
         )
     );

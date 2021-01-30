@@ -31,7 +31,7 @@ let rec instantiate level =
     let env = ref [] in
     let lookup i =
         let rec f = function
-        | (x, y) :: remain -> if i = x then y else lookup i remain
+        | (x, y) :: remain -> if i = x then y else f remain
         | [] ->
             let unk = fresh level in
             env := (i, unk) :: !env;
@@ -43,7 +43,8 @@ let rec instantiate level =
         | Types.Bool -> Types.Bool
         | Types.Fun (args, ret) -> Types.Fun (List.map f args, f ret)
         | Types.Unknown _ as t -> t
-        | Types.Poly i -> lookup i
+        | Types.Poly i ->
+            lookup i
         | _ -> failwith "instantiate unimplemented"
     in f
 
@@ -62,7 +63,9 @@ let rec unify a b = match a, b with
         | _ -> failwith "cannot unify fun"
         end
     | Types.Unknown (_, r1), (Types.Unknown (_, r2) as t) -> begin match ! !r1, ! !r2 with
-        | (tag, None), (_, None) -> r1 := !r2; t
+        | (_, None), (_, None) -> r1 := !r2; t
+        | (_, Some t), (_, None) -> r1 := !r2; t
+        | (_, None), (_, Some t) -> r2 := !r1; t
         | _ -> failwith @@ Printf.sprintf "different unknown type %s %s" (Types.show a) (Types.show b)
     end
     | Types.Unknown (level, a), b -> begin match ! !a with

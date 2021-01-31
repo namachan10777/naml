@@ -129,4 +129,18 @@ let () =
     unify_test "unify 3" t2 t4;
     unify_test "unify 3" t2 t3;
     unify_test "unify 3" t1 t4;
-    unify_test "unify 3" t1 t5
+    unify_test "unify 3" t1 t5;
+    let u1 = T.fresh 0 in
+    let u2 = T.fresh 0 in
+    let u3 = T.unify u1 u2 in
+    T.unify Ty.Int u1 |> ignore;
+    unify_test "unify 4" u1 u3;
+    let u1 = T.fresh 0 in
+    let u2 = T.fresh 0 in
+    let u3 = T.unify u1 u2 in
+    T.unify Ty.Int u3 |> ignore;
+    unify_test "unify 5" u1 u3;
+    let u1 = T.fresh 0 in
+    let u2 = u1 in
+    T.unify u1 Ty.Int |> ignore;
+    unify_test "unify 6" u2 Ty.Int;

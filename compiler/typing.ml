@@ -88,7 +88,7 @@ let rec unify a b =
             let refs = u1 :: u2 :: refs1 @ refs2 in
             let u = Types.U (level, tag, t, refs) in
             List.map (fun r -> r := u) refs |> ignore;
-            Types.Unknown (ref @@ ref u)
+            Types.Unknown (ref u1)
         in begin match ! !u1, ! !u2 with
             | Types.U (level, tag, None, refs1), Types.U (level', _, None, refs2) when level < level' ->
                 unify_u_and_u level tag !u1 !u2 refs1 refs2 None

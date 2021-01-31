@@ -4,23 +4,21 @@ let test src expected =
     let ast = Ast.of_parser_t s in
     let typed = Typing.f ast in
     if typed = expected
-    then print_endline "ok"
+    then Printf.printf "ok\n"
     else begin
-        print_endline "-------------------------------------";
         Printf.printf "left: \n%s\n" @@  Typing.show typed;
         Printf.printf "right: \n%s\n" @@ Typing.show expected;
         failwith "test failed"
     end
 
 let unify_test name a b =
-    Printf.printf "testing \"%s\"\"...\n" name;
+    Printf.printf "testing \"%s\"\"..." name;
     let tbl = ref [] in
     let a = Typing.generalize_ty tbl 0 a in
     let b = Typing.generalize_ty tbl 0 b in
     if Types.eq b a
-    then print_endline "ok"
+    then Printf.printf "ok\n"
     else begin
-        print_endline "-------------------------------------";
         Printf.printf "left: \n%s\n" @@  Types.show a;
         Printf.printf "right: \n%s\n" @@ Types.show b;
         failwith "test failed"

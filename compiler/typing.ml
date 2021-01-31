@@ -181,7 +181,6 @@ let rec g env level =
         let args, arg_tys = Util.unzip @@ List.map (g env level) args in
         let arg_tys = List.map (instantiate level) arg_tys in
         let f, f_ty = g env level f in
-        print_endline "----------------------------------------------------";
         let f_ty' = Types.Fun (arg_tys, fresh level) in
         let f_ty = instantiate level f_ty in
         let f_ty = unify (instantiate level f_ty) f_ty' in

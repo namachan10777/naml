@@ -71,7 +71,11 @@ let rec unify a b = match a, b with
     | Types.Tuple ts1, Types.Tuple ts2 ->
         Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
     | Types.Unknown (_, r1), (Types.Unknown (_, r2) as t) -> begin match ! !r1, ! !r2 with
-        | (_, None), (_, None) -> r1 := !r2; t
+        (* levelが低い方に合わせる（多相性は低い方に推論する）*)
+        | (level1, None), (level2, None) when level1 > level2 ->
+            r1 := !r2; t
+        | (_, None), (_, None) ->
+            r2 := !r1; t
         | (_, Some t), (_, None) -> r1 := !r2; t
         | (_, None), (_, Some t) -> r2 := !r1; t
         | _ -> failwith @@ Printf.sprintf "different unknown type %s %s" (Types.show a) (Types.show b)

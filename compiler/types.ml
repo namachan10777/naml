@@ -23,6 +23,7 @@ let pervasive_vals = [
     ["mod"], Fun ([Int; Int], Int);
     [">"], Fun ([Int; Int], Bool);
     ["<"], Fun ([Int; Int], Bool);
+    ["="], Fun ([Poly 0; Poly 0], Bool);
     [";"], Fun ([Poly 0], Poly 1);
     ["::"], Fun ([Poly 0], Higher (Poly 0, ["list"]));
     ["."], Fun ([Higher (Poly 0, ["array"]); Int], Poly 0);

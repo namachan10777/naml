@@ -51,10 +51,31 @@ let rec instantiate level =
         | _ -> failwith "instantiate unimplemented"
     in f
 
+let rec occur_check id =
+    let rec f = function
+    | Types.Int -> ()
+    | Types.Bool -> ()
+    | Types.Str -> ()
+    | Types.Poly _ -> ()
+    | Types.Tuple ts -> List.map f ts |> ignore
+    | Types.Array t -> f t
+    | Types.Higher (t, _) -> f t
+    | Types.Ref t -> f t
+    | Types.Fun (args, ret) -> List.map f args|>ignore; f ret
+    | Types.Unknown u -> begin match ! ! u with
+        | Types.U (_, id', None, _) ->
+            if id = id'
+            then failwith "cyclic type"
+            else ()
+        | Types.U (_, _, Some t, _) -> f t
+    end
+    in f
+
 let rec unify a b =
     let unify_unk_and_t u t =
         match !u with
         | Types.U (level, tag, None, refs) ->
+            occur_check tag t;
             let refs = u :: refs in
             let u = Types.U (level, tag, Some t, refs) in
             List.map (fun r -> r := u) refs |> ignore;

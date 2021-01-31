@@ -6,7 +6,7 @@ type t =
     | Tuple of t list
     | Array of t
     (* 不明の型。最初のintはlevelで2つめのintはデバッグ用のタグ *)
-    | Unknown of int * (int * t option) ref ref
+    | Unknown of (int * int * t option) ref ref
     (* 多相型。intはタグ *)
     | Poly of int
     | Higher of t * string list

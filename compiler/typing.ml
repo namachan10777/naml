@@ -18,7 +18,7 @@ type t =
 
 let rec lookup x = function
     | (y, ty) :: remain -> if x = y then ty else lookup x remain
-    | _ -> raise @@ Failure "notfound"
+    | _ -> failwith @@ Printf.sprintf "notfound %s" @@ Ast.show_id_t x
 
 
 let count = ref 0
@@ -26,7 +26,7 @@ let init () =
     count := 99
 
 let fresh level =
-    count := !count + 1; Types.Unknown (level, ref (ref (!count, None)))
+    count := !count + 1; Types.Unknown (ref (ref (level, !count, None)))
 
 let rec instantiate level =
     let env = ref [] in
@@ -51,7 +51,9 @@ let rec instantiate level =
         | _ -> failwith "instantiate unimplemented"
     in f
 
-let rec unify a b = match a, b with
+let rec unify a b =
+    Printf.printf "unify \n  > %s\n  > %s\n" (Types.show a) (Types.show b);
+    match a, b with
     | Types.Int, Types.Int -> Types.Int
     | Types.Bool, Types.Bool -> Types.Bool
     | Types.Fun ([], _), Types.Fun ([], _) -> failwith "unreachable"
@@ -61,8 +63,6 @@ let rec unify a b = match a, b with
         unify r a
     | Types.Fun ([a1], r1), Types.Fun ([a2], r2) ->
         Types.Fun ([unify a1 a2], unify r1 r2)
-    | Types.Fun (_, _) as f1, Types.Fun ([], r2) ->
-        unify r2 f1
     | Types.Fun (a1 :: as1, r1), Types.Fun (a2 :: as2, r2) ->
         begin match unify (Types.Fun (as1, r1)) (Types.Fun (as2, r2)) with
         | Types.Fun (as', r) -> Types.Fun ((unify a1 a2) :: as', r)
@@ -70,73 +70,95 @@ let rec unify a b = match a, b with
         end
     | Types.Tuple ts1, Types.Tuple ts2 ->
         Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
-    | Types.Unknown (_, r1), (Types.Unknown (_, r2) as t) -> begin match ! !r1, ! !r2 with
+    | Types.Unknown r1, (Types.Unknown r2 as t) -> begin match ! !r1, ! !r2 with
         (* levelが低い方に合わせる（多相性は低い方に推論する）*)
-        | (level1, None), (level2, None) when level1 > level2 ->
-            r1 := !r2; t
-        | (_, None), (_, None) ->
-            r2 := !r1; t
-        | (_, Some t), (_, None) -> r1 := !r2; t
-        | (_, None), (_, Some t) -> r2 := !r1; t
-        | _ -> failwith @@ Printf.sprintf "different unknown type %s %s" (Types.show a) (Types.show b)
+        | (level1, _, None), (level2, _, None) when level1 > level2 ->
+            !r1 := ! !r2;
+            Printf.printf "unk unk %s(%d) %s(%d)\n" (Types.show a) (1 * Obj.magic !r1) (Types.show b) (1 * Obj.magic !r2);
+            t
+        | (_, _, None), (_, _, None) ->
+            !r2 := ! !r1;
+            Printf.printf "unk unk %s(%d) %s(%d)\n" (Types.show a) (1 * Obj.magic !r1) (Types.show b) (1 * Obj.magic !r2);
+            t
+        | (_, _, Some t ), (_, _, None   ) -> r1 := !r2; t
+        | (_, _, None   ), (_, _, Some t ) -> r2 := !r1; t
+        | (_, _, Some t1), (_, _, Some t2) -> failwith @@ Printf.sprintf "different unknown type %s %s" (Types.show t1) (Types.show t2)
     end
-    | Types.Unknown (level, a), b -> begin match ! !a with
-        | (_, Some a) -> unify a b
-        | (tag, None) -> !a := (tag, Some b); b
+    | Types.Unknown a, b -> begin match ! !a with
+        | (_,   _, Some a) -> unify a b
+        | (level, tag, None  ) -> !a := (level, tag, Some b); b
     end
-    | a, Types.Unknown (level, b) -> begin match ! !b with
-        | (_, Some b) -> unify a b
-        | (tag, None) -> !b := (tag, Some a); a
+    | a, Types.Unknown b -> begin match ! !b with
+        | (_, _  , Some b) -> unify a b
+        | (level, tag, None) -> !b := (level, tag, Some a); a
     end
     | a, b -> failwith @@ Printf.sprintf "cannot unify %s, %s" (Types.show a) (Types.show b)
 
-let readable tbl tag =
-    let rec f = function
-        | (x, y) :: remain ->
-            if tag = x
-            then y
-            else f remain
-        | [] ->
-            tbl := (tag, List.length !tbl) :: !tbl;
-            (List.length !tbl) - 1
+type poly_map_t =
+    | Unknown of int
+    | Poly of int
+
+let readable global tag =
+    let rec f tbl = match tag, tbl with
+        | Poly tag, (Poly tag', y) :: remain when tag = tag' ->
+            y
+        | Unknown tag, (Unknown tag', y) :: remain when tag = tag' ->
+            y
+        | _, _ :: remain -> f remain
+        | (_, []) ->
+            global := (tag, List.length !global) :: !global;
+            (List.length !global) - 1
     in
-        let x = f !tbl in
+        let x = f !global in
         x
 
 let generalize_ty tbl level =
     let rec f = function
     | Types.Int -> Types.Int
     | Types.Bool -> Types.Bool
-    | Types.Unknown (level', inner) as ty ->
+    | Types.Unknown inner as ty ->
         begin match ! !inner with
-        | (_, Some(ty)) -> ty
-        | (tag, None) ->
+        | (_, _, Some(ty)) -> ty
+        | (level', tag, None) ->
             if level' > level
-            then Types.Poly (readable tbl tag)
+            then Types.Poly (readable tbl (Unknown tag))
             else ty
         end
     | Types.Fun (args, ret_ty) ->
         Types.Fun (List.map f args, f ret_ty)
     | Types.Tuple ts ->
         Types.Tuple (List.map f ts)
-    | _ -> failwith @@ "generalize unimplemented"
+    | Types.Poly tag ->
+        Types.Poly (readable tbl (Poly tag))
+    | x -> failwith @@ Printf.sprintf "generalize unimplemented %s" @@ Types.show x
     in f
 
-let rec generalize tbl level =
+let rec generalize_pat tbl level =
+    let rec f = function
+    | PVar (id, ty) -> PVar (id, generalize_ty tbl level ty)
+    in f
+
+let generalize tbl level =
+    let rec f = 
     function
     | Int i -> Int i
     | Bool b -> Bool b
     | Var id -> Var id
-    | App (f, args) -> App (generalize tbl level f, List.map (generalize tbl level) args)
+    | App (g, args) -> App (f g, List.map f args)
     | Fun (args, body, ret_ty) ->
         Fun (
             List.map (fun (arg, ty) -> arg, generalize_ty tbl level ty) args,
-            generalize tbl level body,
+            f body,
             generalize_ty tbl level ret_ty
         )
     | Tuple (vals, types) ->
-        Tuple (List.map (generalize tbl level) vals, List.map (generalize_ty tbl level) types)
-    | _ -> failwith "unimplemented generalize"
+        Tuple (List.map f vals, List.map (generalize_ty tbl level) types)
+    | Let (defs, expr) ->
+        Let (List.map (fun (pat, def) -> (generalize_pat tbl level pat, f def)) defs, f expr)
+    in f
+
+type env_t = (id_t * Types.t) list
+[@@deriving show]
 
 let rec g env level =
     let (venv, tenv, cenv) = env in
@@ -148,11 +170,11 @@ let rec g env level =
         let args, arg_tys = Util.unzip @@ List.map (g env level) args in
         let arg_tys = List.map (instantiate level) arg_tys in
         let f, f_ty = g env level f in
-        (*print_endline "----------------------------------------------------";
-        Printf.printf "try unify %s\n" @@ Types.show @@ instantiate level f_ty;
-        Printf.printf "try unify %s\n" @@ Types.show @@ Types.Fun (arg_tys, fresh level);*)
-        let f_ty = unify (instantiate level f_ty) @@ Types.Fun (arg_tys, fresh level) in
-        (*Printf.printf "=>\n%s\n" @@ Types.show @@ f_ty;*)
+        print_endline "----------------------------------------------------";
+        let f_ty' = Types.Fun (arg_tys, fresh level) in
+        let f_ty = instantiate level f_ty in
+        let f_ty = unify (instantiate level f_ty) f_ty' in
+        Printf.printf "=>\n%s\n" @@ Types.show @@ f_ty;
         begin match f_ty with
         | Types.Fun (params, ret_ty) ->
             if (List.length params) > (List.length args)
@@ -174,8 +196,8 @@ let rec g env level =
         Let ([PVar (name, def_ty), def], expr), ty
     | Ast.Fun (args, body) ->
         let args = List.map (fun arg -> arg, fresh level) args in
-        let venv = List.map (fun (arg, ty) -> [arg], ty) args in
-        let body, body_ty = g (venv, tenv, cenv) level body in
+        let arg_as_vars = List.map (fun (arg, ty) -> [arg], ty) args in
+        let body, body_ty = g (arg_as_vars @ venv, tenv, cenv) level body in
         Fun (args, body, body_ty), Types.Fun (List.map snd args, body_ty)
     | Ast.Tuple tp ->
         let elems, types = Util.unzip @@ List.map (g env level) tp in

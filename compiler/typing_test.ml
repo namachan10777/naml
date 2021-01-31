@@ -9,6 +9,18 @@ let test src expected =
         print_endline "-------------------------------------";
         Printf.printf "left: \n%s\n" @@ Typing.show typed;
         Printf.printf "right: \n%s\n" @@ Typing.show expected;
+        failwith "test failed"
+    end
+
+let unify_test name a b =
+    Printf.printf "testing \"%s\"\"...\n" name;
+    if b = a 
+    then ()
+    else begin
+        print_endline "-------------------------------------";
+        Printf.printf "left: \n%s\n" @@ Types.show a;
+        Printf.printf "right: \n%s\n" @@ Types.show b;
+        failwith "test failed"
     end
 
 module Ty = Types
@@ -68,4 +80,32 @@ let () =
             T.PVar ("b", Ty.Tuple ([Ty.Bool; Ty.Bool])),
             T.App (T.Var ["mk_pair"], [T.Bool true; T.Bool false])
         ], Typing.Var ["a"]))
-    ));
+    ))(*;
+    test "let f x = let g y = x = y in g in f"
+    (T.Let (
+        [
+            T.PVar ("f", Ty.Fun ([Ty.Poly 0], Ty.Fun ([Ty.Poly 0], Ty.Bool))),
+            T.Let ([
+                    T.PVar ("g", Ty.Fun ([Ty.Poly 0], Ty.Bool)),
+                    T.App (T.Var ["="], [T.Var ["x"]; T.Var ["y"]])
+                ],
+                T.Var ["g"]
+            );
+        ],
+        T.Var ["f"]
+    ))*)
+
+let () =
+    let t1 = T.fresh 0 in
+    let t2 = T.fresh 1 in
+    let t3 = T.fresh 2 in
+    let t4 = T.fresh 3 in
+    T.unify t1 t2 |> ignore;
+    T.unify t3 t4 |> ignore;
+    T.unify t1 t3 |> ignore;
+    unify_test "unify 3" t1 t2;
+    unify_test "unify 3" t3 t4;
+    unify_test "unify 3" t1 t3;
+    unify_test "unify 3" t2 t4;
+    unify_test "unify 3" t2 t3;
+    unify_test "unify 3" t1 t4

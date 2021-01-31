@@ -26,7 +26,7 @@ let init () =
     count := 99
 
 let fresh level =
-    count := !count + 1; Types.Unknown (ref (ref (level, !count, None)))
+    count := !count + 1; Types.Unknown (ref @@ ref @@ Types.U (level, !count, None, []))
 
 let rec instantiate level =
     let env = ref [] in
@@ -52,7 +52,20 @@ let rec instantiate level =
     in f
 
 let rec unify a b =
-    Printf.printf "unify \n  > %s\n  > %s\n" (Types.show a) (Types.show b);
+    let unify_unk_and_t u t =
+        match !u with
+        | Types.U (level, tag, None, refs) ->
+            let refs = u :: refs in
+            let u = Types.U (level, tag, Some t, refs) in
+            List.map (fun r -> r := u) refs |> ignore;
+            t
+        | Types.U (level, tag, Some t', refs) ->
+            let refs = u :: refs in
+            let t = unify t t' in
+            let u = Types.U (level, tag, Some t, refs) in
+            List.map (fun r -> r := u) refs |> ignore;
+            t
+    in
     match a, b with
     | Types.Int, Types.Int -> Types.Int
     | Types.Bool, Types.Bool -> Types.Bool
@@ -70,28 +83,26 @@ let rec unify a b =
         end
     | Types.Tuple ts1, Types.Tuple ts2 ->
         Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
-    | Types.Unknown r1, (Types.Unknown r2 as t) -> begin match ! !r1, ! !r2 with
-        (* levelが低い方に合わせる（多相性は低い方に推論する）*)
-        | (level1, _, None), (level2, _, None) when level1 > level2 ->
-            !r1 := ! !r2;
-            Printf.printf "unk unk %s(%d) %s(%d)\n" (Types.show a) (1 * Obj.magic !r1) (Types.show b) (1 * Obj.magic !r2);
-            t
-        | (_, _, None), (_, _, None) ->
-            !r2 := ! !r1;
-            Printf.printf "unk unk %s(%d) %s(%d)\n" (Types.show a) (1 * Obj.magic !r1) (Types.show b) (1 * Obj.magic !r2);
-            t
-        | (_, _, Some t ), (_, _, None   ) -> r1 := !r2; t
-        | (_, _, None   ), (_, _, Some t ) -> r2 := !r1; t
-        | (_, _, Some t1), (_, _, Some t2) -> failwith @@ Printf.sprintf "different unknown type %s %s" (Types.show t1) (Types.show t2)
-    end
-    | Types.Unknown a, b -> begin match ! !a with
-        | (_,   _, Some a) -> unify a b
-        | (level, tag, None  ) -> !a := (level, tag, Some b); b
-    end
-    | a, Types.Unknown b -> begin match ! !b with
-        | (_, _  , Some b) -> unify a b
-        | (level, tag, None) -> !b := (level, tag, Some a); a
-    end
+    | Types.Unknown u1, Types.Unknown u2 ->
+        let unify_u_and_u level tag u1 u2 refs1 refs2 t =
+            let refs = u1 :: u2 :: refs1 @ refs2 in
+            let u = Types.U (level, tag, t, refs) in
+            List.map (fun r -> r := u) refs |> ignore;
+            Types.Unknown (ref @@ ref u)
+        in begin match ! !u1, ! !u2 with
+            | Types.U (level, tag, None, refs1), Types.U (level', _, None, refs2) when level < level' ->
+                unify_u_and_u level tag !u1 !u2 refs1 refs2 None
+            | Types.U (_, _, None, refs1), Types.U (level, tag, None, refs2) ->
+                unify_u_and_u level tag !u1 !u2 refs1 refs2 None
+            | Types.U (level, tag, Some t, refs1), Types.U (_, _, Some t', refs2) ->
+                unify_u_and_u level tag !u1 !u2 refs1 refs2 (Some (unify t t'))
+            | Types.U (_, _, None, refs1), Types.U (level, tag, Some t, refs2) ->
+                unify_u_and_u level tag !u1 !u2 refs1 refs2 (Some t)
+            | Types.U (level, tag, Some t, refs1), Types.U (_, _, None, refs2) ->
+                unify_u_and_u level tag !u1 !u2 refs1 refs2 (Some t)
+        end
+    | Types.Unknown u, t -> unify_unk_and_t !u t
+    | t, Types.Unknown u -> unify_unk_and_t !u t
     | a, b -> failwith @@ Printf.sprintf "cannot unify %s, %s" (Types.show a) (Types.show b)
 
 type poly_map_t =
@@ -116,10 +127,10 @@ let generalize_ty tbl level =
     let rec f = function
     | Types.Int -> Types.Int
     | Types.Bool -> Types.Bool
-    | Types.Unknown inner as ty ->
-        begin match ! !inner with
-        | (_, _, Some(ty)) -> ty
-        | (level', tag, None) ->
+    | Types.Unknown u as ty ->
+        begin match ! !u with
+        | Types.U (_, _, Some ty, _) -> ty
+        | Types.U (level', tag, None, _) ->
             if level' > level
             then Types.Poly (readable tbl (Unknown tag))
             else ty
@@ -174,7 +185,6 @@ let rec g env level =
         let f_ty' = Types.Fun (arg_tys, fresh level) in
         let f_ty = instantiate level f_ty in
         let f_ty = unify (instantiate level f_ty) f_ty' in
-        Printf.printf "=>\n%s\n" @@ Types.show @@ f_ty;
         begin match f_ty with
         | Types.Fun (params, ret_ty) ->
             if (List.length params) > (List.length args)

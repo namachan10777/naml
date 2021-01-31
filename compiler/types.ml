@@ -1,3 +1,6 @@
+type addresses_t = int list
+[@@deriving show]
+
 type t =
     | Int
     | Str
@@ -6,12 +9,39 @@ type t =
     | Tuple of t list
     | Array of t
     (* 不明の型。最初のintはlevelで2つめのintはデバッグ用のタグ *)
-    | Unknown of (int * int * t option) ref ref
+    | Unknown of unknown_t ref ref
     (* 多相型。intはタグ *)
     | Poly of int
     | Higher of t * string list
     | Ref of t
+and unknown_t = U of int * int * unk_payload_t * unknown_t ref list
+[@printer fun fmt (level, tag, t, refs) ->
+    fprintf fmt "(%d, %d, %s, %s)" level tag (show_unk_payload_t t) (refs |> List.map (fun r -> 2 * Obj.magic r) |> show_addresses_t)
+]
+and unk_payload_t = t option
 [@@deriving show]
+
+let rec eq a b = match a, b with
+    | Unknown u, Unknown u' ->
+        let U (level, tag, t, refs) = ! !u in
+        let U (level', tag', t', refs') = ! !u' in
+        let addr_conv = List.map (fun r -> 2 * Obj.magic r) in
+        level = level' &&
+        tag = tag' &&
+        t = t' &&
+        (addr_conv refs) = (addr_conv refs')
+    | Int, Int -> true
+    | Str, Str -> true
+    | Bool, Bool -> true
+    | Fun (args, ret), Fun (args', ret') ->
+        (Util.zip args args' |> List.for_all (fun (a, b) -> eq a b))
+        && eq ret ret'
+    | Tuple ts, Tuple ts' ->
+        Util.zip ts ts' |> List.for_all (fun (a, b) -> eq a b)
+    | Poly t, Poly t' -> t = t'
+    | Higher (t, name), Higher (t', name') -> (eq t t') && name = name'
+    | Ref t, Ref t' -> eq t t'
+    | _ -> false
 
 let unit_ty = Tuple []
 

@@ -1,24 +1,27 @@
 let test src expected =
-    Printf.printf "testing \"%s\"...\n" src;
+    Printf.printf "testing \"%s\"..." src;
     let s, _ = Parser.parse_expr @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
     let ast = Ast.of_parser_t s in
     let typed = Typing.f ast in
     if typed = expected
-    then ()
+    then print_endline "ok"
     else begin
         print_endline "-------------------------------------";
-        Printf.printf "left: \n%s\n" @@ Typing.show typed;
+        Printf.printf "left: \n%s\n" @@  Typing.show typed;
         Printf.printf "right: \n%s\n" @@ Typing.show expected;
         failwith "test failed"
     end
 
 let unify_test name a b =
     Printf.printf "testing \"%s\"\"...\n" name;
-    if b = a 
-    then ()
+    let tbl = ref [] in
+    let a = Typing.generalize_ty tbl 0 a in
+    let b = Typing.generalize_ty tbl 0 b in
+    if Types.eq b a
+    then print_endline "ok"
     else begin
         print_endline "-------------------------------------";
-        Printf.printf "left: \n%s\n" @@ Types.show a;
+        Printf.printf "left: \n%s\n" @@  Types.show a;
         Printf.printf "right: \n%s\n" @@ Types.show b;
         failwith "test failed"
     end
@@ -26,7 +29,7 @@ let unify_test name a b =
 module Ty = Types
 module T = Typing
 
-let () =
+let () = 
     test "0" (Typing.Int 0);
     test "not" (Typing.Var ["not"]);
     test "not true" (
@@ -80,26 +83,43 @@ let () =
             T.PVar ("b", Ty.Tuple ([Ty.Bool; Ty.Bool])),
             T.App (T.Var ["mk_pair"], [T.Bool true; T.Bool false])
         ], Typing.Var ["a"]))
-    ))(*;
+    ));
     test "let f x = let g y = x = y in g in f"
     (T.Let (
         [
             T.PVar ("f", Ty.Fun ([Ty.Poly 0], Ty.Fun ([Ty.Poly 0], Ty.Bool))),
-            T.Let ([
-                    T.PVar ("g", Ty.Fun ([Ty.Poly 0], Ty.Bool)),
-                    T.App (T.Var ["="], [T.Var ["x"]; T.Var ["y"]])
-                ],
-                T.Var ["g"]
-            );
+            T.Fun (["x", Ty.Poly 0],
+                T.Let ([
+                        T.PVar ("g", Ty.Fun ([Ty.Poly 0], Ty.Bool)),
+                        T.Fun (["y", Ty.Poly 0], T.App (T.Var ["="], [T.Var ["x"]; T.Var ["y"]]), Ty.Bool)
+                    ],
+                    T.Var ["g"]
+                ),
+                Ty.Fun ([Ty.Poly 0], Ty.Bool)
+            )
         ],
         T.Var ["f"]
-    ))*)
+    ))
 
 let () =
+    let t1 = Types.Int in
+    let t2 = T.fresh 1 in
+    T.unify t1 t2 |> ignore;
+    unify_test "unify int u" t1 t2;
+    let u1 = T.fresh 0 in
+    let u2 = T.fresh 0 in
+    unify_test "unify u u " u1 (T.unify u1 u2);
+    let u1 = T.fresh 0 in
+    let u2 = T.fresh 0 in
+    let t = Types.Int in
+    T.unify u1 t |> ignore;
+    T.unify u2 t |> ignore;
+    unify_test "unify 2" u1 u2;
     let t1 = T.fresh 0 in
     let t2 = T.fresh 1 in
     let t3 = T.fresh 2 in
     let t4 = T.fresh 3 in
+    let t5 = t4 in
     T.unify t1 t2 |> ignore;
     T.unify t3 t4 |> ignore;
     T.unify t1 t3 |> ignore;
@@ -108,4 +128,5 @@ let () =
     unify_test "unify 3" t1 t3;
     unify_test "unify 3" t2 t4;
     unify_test "unify 3" t2 t3;
-    unify_test "unify 3" t1 t4
+    unify_test "unify 3" t1 t4;
+    unify_test "unify 3" t1 t5

@@ -9,6 +9,7 @@ type pat_t =
 [@@deriving show]
 
 type t =
+    | Never
     | Int of int
     | Bool of bool
     | Var of id_t
@@ -18,6 +19,8 @@ type t =
     | If of t * t * t
     | Fun of (string * Types.t) list * t * Types.t
     | Tuple of t list * Types.t list
+    | Ctor of string list * Types.t
+    | CtorApp of string list * t * Types.t
 [@@deriving show]
 
 let rec lookup x = function
@@ -64,9 +67,7 @@ let rec occur_check id =
     | Types.Str -> ()
     | Types.Poly _ -> ()
     | Types.Tuple ts -> List.map f ts |> ignore
-    | Types.Array t -> f t
     | Types.Higher (t, _) -> f t
-    | Types.Ref t -> f t
     | Types.Fun (args, ret) -> List.map f args|>ignore; f ret
     | Types.Unknown u -> begin match ! ! u with
         | Types.U (_, id', None, _) ->
@@ -75,6 +76,7 @@ let rec occur_check id =
             else ()
         | Types.U (_, _, Some t, _) -> f t
     end
+    | Types.Variant names -> ()
     in f
 
 let rec unify a b =
@@ -158,6 +160,8 @@ let generalize_ty tbl level =
     let rec f = function
     | Types.Int -> Types.Int
     | Types.Bool -> Types.Bool
+    | Types.Str -> Types.Str
+    | Types.Variant name -> Types.Variant name
     | Types.Unknown u as ty ->
         begin match ! !u with
         | Types.U (_, _, Some ty, _) -> f ty
@@ -174,7 +178,6 @@ let generalize_ty tbl level =
         Types.Poly (readable tbl (Poly tag))
     | Types.Higher (t, name) ->
         Types.Higher (f t, name)
-    | x -> failwith @@ Printf.sprintf "generalize unimplemented %s" @@ Types.show x
     in f
 
 let rec generalize_pat tbl level =
@@ -204,6 +207,9 @@ let generalize tbl level =
         LetRec (List.map (fun (name, ty, def) -> (name, generalize_ty tbl level ty, f def)) defs, f expr)
     | If (cond, e1, e2) ->
         If (f cond, f e1, f e2)
+    | Ctor (name, t) -> Ctor (name, generalize_ty tbl level t)
+    | CtorApp (name, e, t) -> CtorApp (name, f e, generalize_ty tbl level t)
+    | Never -> Never
     in f
 
 type env_t = (id_t * Types.t) list
@@ -218,6 +224,7 @@ let rec pat_ty level = function
         List.concat names, Types.Tuple tys, PTuple (ps, tys)
     | _ -> failwith @@ "unsupported pattern"
 
+(* TODO: confirm one variable only bound once *)
 let rec g env level =
     let (venv, tenv, cenv) = env in
     function
@@ -283,6 +290,22 @@ let rec g env level =
         let e1, e1_ty = g env level e1 in
         let e2, e2_ty = g env level e2 in
         If (cond, e1, e2), unify e1_ty e2_ty
+    | Ast.Never -> Never, Types.Tuple []
+    | Ast.Ctor name -> begin match instantiate level @@ lookup name cenv with
+        | Types.Higher (_, _) as t ->
+            let t = instantiate level t in
+            Ctor (name, t), t
+        | Types.Variant name as t ->
+            Ctor (name, t), t
+        | t -> failwith @@ Printf.sprintf "Ctor must not have invalid type %s" @@ Types.show t
+    end
+    | Ast.CtorApp (name, arg) -> begin match instantiate level @@ lookup name cenv with
+        | Types.Fun([t], ret_ty) ->
+            let arg, arg_ty = g env level arg in
+            unify t arg_ty |> ignore;
+            CtorApp (name, arg, ret_ty), ret_ty
+        | _ -> failwith "CtorApp must take only one argment"
+    end
     | t -> failwith @@ Printf.sprintf "unimplemented: %s" @@ Ast.show t
 
 let f ast =

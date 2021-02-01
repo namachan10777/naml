@@ -7,13 +7,12 @@ type t =
     | Bool
     | Fun of t list * t
     | Tuple of t list
-    | Array of t
     (* 不明の型。最初のintはlevelで2つめのintはデバッグ用のタグ *)
     | Unknown of unknown_t ref ref
     (* 多相型。intはタグ *)
     | Poly of int
+    | Variant of string list
     | Higher of t * string list
-    | Ref of t
 and unknown_t = U of int * int * unk_payload_t * unknown_t ref list
 [@printer fun fmt (level, tag, t, refs) ->
     fprintf fmt "(%d, %d, %s, %s)" level tag (show_unk_payload_t t) (refs |> List.map (fun r -> 2 * Obj.magic r) |> show_addresses_t)
@@ -40,7 +39,6 @@ let rec eq a b = match a, b with
         Util.zip ts ts' |> List.for_all (fun (a, b) -> eq a b)
     | Poly t, Poly t' -> t = t'
     | Higher (t, name), Higher (t', name') -> (eq t t') && name = name'
-    | Ref t, Ref t' -> eq t t'
     | _ -> false
 
 let unit_ty = Tuple []
@@ -59,8 +57,8 @@ let pervasive_vals = [
     ["."], Fun ([Higher (Poly 0, ["array"]); Int], Poly 0);
     ["<neg>"], Fun ([Int], Int);
     ["not"], Fun ([Bool], Bool);
-    ["ref"], Fun ([Poly 0], Ref (Poly 0));
-    [":="], Fun ([Ref (Poly 0); Poly 0], unit_ty);
+    ["ref"], Fun ([Poly 0], Higher (Poly 0, ["ref"]));
+    [":="], Fun ([Higher (Poly 0, ["ref"]); Poly 0], unit_ty);
     ["[]"], Higher (Poly 0, ["list"]);
 ]
 

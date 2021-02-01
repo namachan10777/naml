@@ -31,6 +31,7 @@ type t =
     | Bool of bool
     | Var of string list
     | Ctor of string list
+    | CtorApp of string list * t
     | Tuple of t list
     | If of t * t * t
     | Let of (pat_t * t) list * t
@@ -67,6 +68,7 @@ let rec of_parser_t = function
     | Parser.Bool i -> Bool i
     | Parser.Var i -> Var i
     | Parser.Ctor i -> Ctor i
+    | Parser.App (Parser.Ctor n, [t]) -> CtorApp (n, of_parser_t t)
     | Parser.Emp -> Var ["[]"]
     | Parser.Add (lhr, rhr) -> op "+" lhr rhr
     | Parser.Sub (lhr, rhr) -> op "-" lhr rhr

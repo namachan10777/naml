@@ -42,6 +42,7 @@ type t =
     | Fun of id_t list * t
     | Match of t * (pat_t * t * t) list
     | App of t * t list
+    | CtorApp of id_t * t
     | ArrayAssign of t * t * t
 [@@deriving show]
 
@@ -132,6 +133,7 @@ let rec of_expr env =
     | Ast.Bool b -> Bool b
     | Ast.Int i -> Int i
     | Ast.App (f, arg) -> App (of_expr env f, List.map (of_expr env) arg)
+    | Ast.CtorApp (id, arg) -> CtorApp (lookup id venv, of_expr env arg)
     | Ast.Tuple ts -> Tuple (List.map (of_expr env) ts)
     | Ast.If (cond, e1, e2) -> If (of_expr env cond, of_expr env e1, of_expr env e2)
     | Ast.Fun (args, body) ->

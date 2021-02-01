@@ -1,6 +1,8 @@
 type addresses_t = int list
 [@@deriving show]
 
+ 
+
 type t =
     | Int
     | Str
@@ -11,8 +13,10 @@ type t =
     | Var of var_t ref ref
     (* 多相型。intはタグ *)
     | Poly of int
-    | Variant of string list
-    | Higher of t * string list
+    | Variant of variant_t * string list
+and variant_t =
+    | Higher of t
+    | Mono
 [@@deriving show]
 and var_t =
     | Unknown of int * int * var_t ref list
@@ -44,7 +48,7 @@ let rec eq a b = match a, b with
     | Tuple ts, Tuple ts' ->
         Util.zip ts ts' |> List.for_all (fun (a, b) -> eq a b)
     | Poly t, Poly t' -> t = t'
-    | Higher (t, name), Higher (t', name') -> (eq t t') && name = name'
+    | Variant (Higher t, name), Variant (Higher t', name') -> (eq t t') && name = name'
     | _ -> false
 
 let unit_ty = Tuple []
@@ -59,31 +63,31 @@ let pervasive_vals = [
     ["<"], Fun ([Int; Int], Bool);
     ["="], Fun ([Poly 0; Poly 0], Bool);
     [";"], Fun ([Poly 0], Poly 1);
-    ["::"], Fun ([Poly 0; Higher (Poly 0, ["list"])], Higher (Poly 0, ["list"]));
-    ["."], Fun ([Higher (Poly 0, ["array"]); Int], Poly 0);
+    ["::"], Fun ([Poly 0; Variant (Higher (Poly 0), ["list"])], Variant (Higher (Poly 0), ["list"]));
+    ["."], Fun ([Variant (Higher (Poly 0), ["array"]); Int], Poly 0);
     ["<neg>"], Fun ([Int], Int);
     ["not"], Fun ([Bool], Bool);
-    ["ref"], Fun ([Poly 0], Higher (Poly 0, ["ref"]));
-    [":="], Fun ([Higher (Poly 0, ["ref"]); Poly 0], unit_ty);
-    ["[]"], Higher (Poly 0, ["list"]);
+    ["ref"], Fun ([Poly 0], Variant (Higher (Poly 0), ["ref"]));
+    [":="], Fun ([Variant (Higher (Poly 0), ["ref"]); Poly 0], unit_ty);
+    ["[]"], Variant (Higher (Poly 0), ["list"]);
 ]
 
 let pervasive_types = [
     ["int"], Int;
     ["bool"], Bool;
-    ["option"], Higher (Poly 0, ["option"]);
+    ["option"], Variant (Higher (Poly 0), ["option"]);
 ]
 
+type ctor_t =
+    | Tag of variant_t * string list
+    | TakeValue of t * variant_t * string list
+
 let pervasive_ctors = [
-    ["Some"], Fun ([Poly 0], Higher (Poly 0, ["option"]));
-    ["None"], Higher (Poly 0, ["option"]);
+    ["Some"], TakeValue (Poly 0,  Higher (Poly 0), ["option"]);
+    ["None"], Tag (Higher (Poly 0), ["option"]);
 ]
 
 let ids = List.mapi (fun i (id, _) -> (id, i))
-let types = List.mapi (fun i (_, ty) -> (i, ty))
 let pervasive_val_ids = ids pervasive_vals
-let pervasive_val_types = types pervasive_vals
 let pervasive_type_ids = ids pervasive_types
-let pervasive_type_types = types pervasive_types
-let pervasive_ctor_ids = ids pervasive_ctors
-let pervasive_ctor_types = types pervasive_ctors
+let pervasive_ctor_ids = List.mapi (fun i (id, _) -> (id, i)) pervasive_ctors

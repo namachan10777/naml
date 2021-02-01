@@ -35,8 +35,7 @@ let init () =
 let fresh level =
     count := !count + 1; Types.Var (ref @@ ref @@ Types.Unknown (level, !count, []))
 
-let rec instantiate level =
-    let env = ref [] in
+let rec instantiate env level =
     let lookup i =
         let rec f = function
         | (x, y) :: remain -> if i = x then y else f remain
@@ -55,8 +54,8 @@ let rec instantiate level =
             lookup i
         | Types.Tuple ts ->
             Types.Tuple (List.map f ts)
-        | Types.Higher (ty, name) ->
-            Types.Higher (f ty, name)
+        | Types.Variant (Types.Higher ty, name) ->
+            Types.Variant (Types.Higher (f ty), name)
         | _ -> failwith "instantiate unimplemented"
     in f
 
@@ -67,7 +66,8 @@ let rec occur_check id =
     | Types.Str -> ()
     | Types.Poly _ -> ()
     | Types.Tuple ts -> List.map f ts |> ignore
-    | Types.Higher (t, _) -> f t
+    | Types.Variant (Types.Higher t, _) -> f t
+    | Types.Variant (Types.Mono, _) -> ()
     | Types.Fun (args, ret) -> List.map f args|>ignore; f ret
     | Types.Var u -> begin match ! ! u with
         | Types.Unknown (_, id', _) ->
@@ -76,7 +76,6 @@ let rec occur_check id =
             else ()
         | Types.Just (t, _) -> f t
     end
-    | Types.Variant names -> ()
     in f
 
 let rec unify a b =
@@ -110,9 +109,13 @@ let rec unify a b =
         | Types.Fun (as', r) -> Types.Fun ((unify a1 a2) :: as', r)
         | _ -> failwith "cannot unify fun"
         end
-    | Types.Higher (t, name), Types.Higher (t', name') ->
+    | Types.Variant (Types.Higher t, name), Types.Variant (Types.Higher t', name') ->
         if name = name'
-        then Types.Higher (unify t t', name)
+        then Types.Variant (Types.Higher (unify t t'), name)
+        else failwith @@ "cannot unify higher type"
+    | Types.Variant (Mono, name), Types.Variant (Mono, name') ->
+        if name = name'
+        then Types.Variant (Mono, name)
         else failwith @@ "cannot unify higher type"
     | Types.Tuple ts1, Types.Tuple ts2 ->
         Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
@@ -171,7 +174,8 @@ let generalize_ty tbl level =
     | Types.Int -> Types.Int
     | Types.Bool -> Types.Bool
     | Types.Str -> Types.Str
-    | Types.Variant name -> Types.Variant name
+    | Types.Variant (Types.Higher t, name) -> Types.Variant (Types.Higher (f t), name)
+    | Types.Variant (Mono, name) -> Types.Variant (Mono, name)
     | Types.Var u as ty ->
         begin match ! !u with
         | Types.Just (ty, _) -> f ty
@@ -186,8 +190,6 @@ let generalize_ty tbl level =
         Types.Tuple (List.map f ts)
     | Types.Poly tag ->
         Types.Poly (readable tbl (Poly tag))
-    | Types.Higher (t, name) ->
-        Types.Higher (f t, name)
     in f
 
 let rec generalize_pat tbl level =
@@ -243,11 +245,11 @@ let rec g env level =
     | Ast.Var id -> Var id, lookup id venv
     | Ast.App (f, args) -> 
         let args, arg_tys = Util.unzip @@ List.map (g env level) args in
-        let arg_tys = List.map (instantiate level) arg_tys in
+        let arg_tys = List.map (instantiate (ref []) level) arg_tys in
         let f, f_ty = g env level f in
         let f_ty' = Types.Fun (arg_tys, fresh level) in
-        let f_ty = instantiate level f_ty in
-        let f_ty = unify (instantiate level f_ty) f_ty' in
+        let f_ty = instantiate (ref []) level f_ty in
+        let f_ty = unify (instantiate (ref []) level f_ty) f_ty' in
         begin match f_ty with
         | Types.Fun (params, ret_ty) ->
             if (List.length params) > (List.length args)
@@ -301,19 +303,21 @@ let rec g env level =
         let e2, e2_ty = g env level e2 in
         If (cond, e1, e2), unify e1_ty e2_ty
     | Ast.Never -> Never, Types.Tuple []
-    | Ast.Ctor name -> begin match instantiate level @@ lookup name cenv with
-        | Types.Higher (_, _) as t ->
-            let t = instantiate level t in
-            Ctor (name, t), t
-        | Types.Variant name as t ->
-            Ctor (name, t), t
-        | t -> failwith @@ Printf.sprintf "Ctor must not have invalid type %s" @@ Types.show t
+    | Ast.Ctor name -> begin match lookup name cenv with
+        | Types.Tag (t, name) ->
+            let ty = instantiate (ref []) level (Types.Variant (t, name)) in
+            Var name, ty
+        | t -> failwith @@ Printf.sprintf "Ctor must not have invalid type"
     end
-    | Ast.CtorApp (name, arg) -> begin match instantiate level @@ lookup name cenv with
-        | Types.Fun([t], ret_ty) ->
+    | Ast.CtorApp (name, arg) -> begin match lookup name cenv with
+        | Types.TakeValue (t, variant, name) ->
             let arg, arg_ty = g env level arg in
+            let arg_ty = instantiate (ref []) level arg_ty in
+            let env = ref [] in
+            let t = instantiate env level t in
+            let variant_ty = instantiate env level @@ Types.Variant (variant, name) in
             unify t arg_ty |> ignore;
-            CtorApp (name, arg, ret_ty), ret_ty
+            CtorApp (name, arg, variant_ty), variant_ty
         | _ -> failwith "CtorApp must take only one argment"
     end
     | t -> failwith @@ Printf.sprintf "unimplemented: %s" @@ Ast.show t

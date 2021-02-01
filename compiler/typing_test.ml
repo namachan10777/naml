@@ -137,10 +137,10 @@ let () =
     test "let f x = [x] in f 1; f true"
     (T.Let (
         [
-            T.PVar ("f", Ty.Fun ([Ty.Poly 0], Ty.Higher (Ty.Poly 0, ["list"]))),
+            T.PVar ("f", Ty.Fun ([Ty.Poly 0], Ty.Variant (Ty.Higher (Ty.Poly 0), ["list"]))),
             T.Fun (["x", Ty.Poly 0],
                 T.App (T.Var ["::"], [T.Var ["x"]; T.Var ["[]"]]),
-                Ty.Higher (Ty.Poly 0, ["list"])
+                Ty.Variant (Ty.Higher (Ty.Poly 0), ["list"])
             )
         ],
         T.App (T.Var [";"], [

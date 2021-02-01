@@ -97,6 +97,31 @@ let () =
             )
         ],
         T.Var ["f"]
+    ));
+    test "let rec fact n = if n = 1 then 1 else n * fact (n-1) in fact 5"
+    (T.LetRec (
+        [["fact"],
+            Ty.Fun ([Ty.Int], Ty.Int),
+            T.Fun (
+                ["n", Ty.Int],
+                T.If (
+                    T.App (T.Var ["="], [T.Var ["n"]; T.Int 1]),
+                    T.Int 1,
+                    T.App (
+                        T.Var ["*"],
+                        [
+                            T.Var ["n"];
+                            T.App (
+                                T.Var ["fact"],
+                                [T.App (T.Var ["-"], [T.Var ["n"]; T.Int 1])]
+                            )
+                        ]
+                    )
+                ),
+                Ty.Int
+            )
+        ],
+        T.App (T.Var ["fact"], [T.Int 5])
     ))
 
 let () =

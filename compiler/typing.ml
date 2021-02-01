@@ -12,6 +12,8 @@ type t =
     | Var of id_t
     | App of t * t list
     | Let of (pat_t * t) list * t
+    | LetRec of (string list * Types.t * t) list * t
+    | If of t * t * t
     | Fun of (string * Types.t) list * t * Types.t
     | Tuple of t list * Types.t list
 [@@deriving show]
@@ -187,6 +189,10 @@ let generalize tbl level =
         Tuple (List.map f vals, List.map (generalize_ty tbl level) types)
     | Let (defs, expr) ->
         Let (List.map (fun (pat, def) -> (generalize_pat tbl level pat, f def)) defs, f expr)
+    | LetRec (defs, expr) ->
+        LetRec (List.map (fun (name, ty, def) -> (name, generalize_ty tbl level ty, f def)) defs, f expr)
+    | If (cond, e1, e2) ->
+        If (f cond, f e1, f e2)
     in f
 
 type env_t = (id_t * Types.t) list
@@ -224,6 +230,13 @@ let rec g env level =
         let def, def_ty = generalize tbl level def, generalize_ty tbl level def_ty in
         let expr, ty = g (([name], def_ty) :: venv, tenv, cenv) level expr in
         Let ([PVar (name, def_ty), def], expr), ty
+    | Ast.LetRec ([name, def], expr) ->
+        let env = (name, fresh (level+1)) :: venv, tenv, cenv in
+        let def, def_ty = g env (level + 1) def in
+        let tbl = ref [] in
+        let def, def_ty = generalize tbl level def, generalize_ty tbl level def_ty in
+        let expr, ty = g env level expr in
+        LetRec ([name, def_ty, def], expr), ty
     | Ast.Fun (args, body) ->
         let args = List.map (fun arg -> arg, fresh level) args in
         let arg_as_vars = List.map (fun (arg, ty) -> [arg], ty) args in
@@ -232,6 +245,12 @@ let rec g env level =
     | Ast.Tuple tp ->
         let elems, types = Util.unzip @@ List.map (g env level) tp in
         Tuple (elems, types), Types.Tuple types
+    | Ast.If (cond, e1, e2) ->
+        let cond, cond_ty = g env level cond in
+        unify cond_ty Types.Bool |> ignore;
+        let e1, e1_ty = g env level e1 in
+        let e2, e2_ty = g env level e2 in
+        If (cond, e1, e2), unify e1_ty e2_ty
     | t -> failwith @@ Printf.sprintf "unimplemented: %s" @@ Ast.show t
 
 let f ast =

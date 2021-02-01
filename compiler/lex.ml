@@ -76,7 +76,7 @@ let match_alph_char s i =
     then None
     else
         let code = Char.code s.[i] in
-        if code >= 0x41 && code <= 0x5a || code >= 61 && code <= 0x7a
+        if code >= 0x41 && code <= 0x5a || code >= 0x61 && code <= 0x7a
         then Some(i+1)
         else None
 

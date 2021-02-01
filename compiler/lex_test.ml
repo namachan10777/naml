@@ -47,6 +47,7 @@ let () =
     Test.assert_eq "lex ident and space" (lex "aaa bbb" (initial_pos "test.ml"))  [Lex.LIdent "aaa"; Lex.LIdent "bbb"; Lex.Eof];
     Test.assert_eq "'a' '\\''" (lex "'a' '\\''" (initial_pos "test.ml")) [Lex.Char 'a'; Lex.Char '\''; Lex.Eof];
     Test.assert_eq "tvar 'a " (lex "'a" (initial_pos "test.ml")) [Lex.TVar "a"; Lex.Eof];
+    Test.assert_eq "lex [x]" (lex "[x]" (initial_pos "test.ml")) [Lex.LB; Lex.LIdent "x"; Lex.RB; Lex.Eof];
     try (lex "let rec fib n = if n = 1 || n = 0 then 1 else (fib (n-1)) + fib (n-2) in fib 5"  (initial_pos "test.ml")) |> ignore with
         | LexException p -> Printf.printf "%s\n" @@ Lex.show_pos_t p;
     Test.assert_eq "lex fib" (lex "let rec fib n = if n = 1 || n = 0 then 1 else (fib (n-1)) + fib (n-2) in fib 5"  (initial_pos "test.ml"))

@@ -244,23 +244,31 @@ let rec g env level =
                 failwith "too much argument"
         | _ -> failwith "unmatched app"
         end
-    | Ast.Let ([pat, def], expr) ->
-        let def, def_ty = g env (level + 1) def in
-        let pat_vars, pat_ty, pat = pat_ty (level + 1) pat in
-        unify pat_ty def_ty |> ignore;
+    | Ast.Let (defs, expr) ->
+        let pat_vars, defs = Util.unzip @@ List.map (fun (pat, def) ->
+            let def, def_ty = g env (level + 1) def in
+            let pat_vars, pat_ty, pat = pat_ty (level + 1) pat in
+            unify pat_ty def_ty |> ignore;
+            let tbl = ref [] in
+            let def, def_ty = generalize tbl level def, generalize_ty tbl level def_ty in
+            let pat, pat_ty = generalize_pat tbl level pat, generalize_ty tbl level pat_ty in
+            let pat_vars = List.map (fun (name, ty) -> name, generalize_ty tbl level ty) pat_vars in
+            pat_vars, (pat, def)
+        ) defs in
+        let expr, ty = g ((List.concat pat_vars) @ venv @ venv, tenv, cenv) level expr in
+        Let (defs, expr), ty
+    | Ast.LetRec (defs, expr) ->
+        let vars = List.map (fun (name, _) -> (name, fresh (level+1))) defs in
+        let defs = List.map snd defs in
+        let env = (vars @ venv, tenv, cenv) in
         let tbl = ref [] in
-        let def, def_ty = generalize tbl level def, generalize_ty tbl level def_ty in
-        let pat, pat_ty = generalize_pat tbl level pat, generalize_ty tbl level pat_ty in
-        let pat_vars = List.map (fun (name, ty) -> name, generalize_ty tbl level ty) pat_vars in
-        let expr, ty = g (pat_vars @ venv, tenv, cenv) level expr in
-        Let ([pat, def], expr), ty
-    | Ast.LetRec ([name, def], expr) ->
-        let env = (name, fresh (level+1)) :: venv, tenv, cenv in
-        let def, def_ty = g env (level + 1) def in
-        let tbl = ref [] in
-        let def, def_ty = generalize tbl level def, generalize_ty tbl level def_ty in
+        let defs = Util.zip vars defs
+            |> List.map (fun ((name, ty), def) ->
+                let def, def_ty = g env (level + 1) def in
+                name, unify ty def_ty, def) in
+        let defs = List.map (fun (name, ty, def) -> name, generalize_ty tbl level ty, generalize tbl level def) defs in
         let expr, ty = g env level expr in
-        LetRec ([name, def_ty, def], expr), ty
+        LetRec (defs, expr), ty
     | Ast.Fun (args, body) ->
         let args = List.map (fun arg -> arg, fresh level) args in
         let arg_as_vars = List.map (fun (arg, ty) -> [arg], ty) args in

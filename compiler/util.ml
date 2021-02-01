@@ -14,6 +14,12 @@ let rec unzip = function
         let a', b' = unzip remain in
         a :: a', b :: b'
 
+let rec unzip3 = function
+    | [] -> [], [], []
+    | (a, b, c) :: remain ->
+        let a', b', c' = unzip3 remain in
+        a :: a', b :: b', c :: c'
+
 let rec drop n l = match n, l with
     | 0, l -> l
     | n, h :: l -> drop (n-1) l

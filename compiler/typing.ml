@@ -3,7 +3,9 @@
 type id_t = Ast.id_t
 [@@deriving show]
 
-type pat_t = PVar of string * Types.t
+type pat_t =
+    | PVar of string * Types.t
+    | PTuple of pat_t list * (Types.t list)
 [@@deriving show]
 
 type t =
@@ -152,7 +154,7 @@ let generalize_ty tbl level =
     | Types.Bool -> Types.Bool
     | Types.Unknown u as ty ->
         begin match ! !u with
-        | Types.U (_, _, Some ty, _) -> ty
+        | Types.U (_, _, Some ty, _) -> f ty
         | Types.U (level', tag, None, _) ->
             if level' > level
             then Types.Poly (readable tbl (Unknown tag))
@@ -170,6 +172,7 @@ let generalize_ty tbl level =
 let rec generalize_pat tbl level =
     let rec f = function
     | PVar (id, ty) -> PVar (id, generalize_ty tbl level ty)
+    | PTuple (ps, ty) -> PTuple (List.map f ps, List.map (generalize_ty tbl level) ty)
     in f
 
 let generalize tbl level =
@@ -198,6 +201,15 @@ let generalize tbl level =
 type env_t = (id_t * Types.t) list
 [@@deriving show]
 
+let rec pat_ty level = function
+    | Ast.PVar name ->
+        let ty = fresh level in
+        [[name], ty], ty, PVar (name, ty)
+    | Ast.PTuple ts ->
+        let names, tys, ps = Util.unzip3 @@ List.map (pat_ty level) ts in
+        List.concat names, Types.Tuple tys, PTuple (ps, tys)
+    | _ -> failwith @@ "unsupported pattern"
+
 let rec g env level =
     let (venv, tenv, cenv) = env in
     function
@@ -224,12 +236,16 @@ let rec g env level =
                 failwith "too much argument"
         | _ -> failwith "unmatched app"
         end
-    | Ast.Let ([Ast.PVar name, def], expr) ->
+    | Ast.Let ([pat, def], expr) ->
         let def, def_ty = g env (level + 1) def in
+        let pat_vars, pat_ty, pat = pat_ty (level + 1) pat in
+        unify pat_ty def_ty |> ignore;
         let tbl = ref [] in
         let def, def_ty = generalize tbl level def, generalize_ty tbl level def_ty in
-        let expr, ty = g (([name], def_ty) :: venv, tenv, cenv) level expr in
-        Let ([PVar (name, def_ty), def], expr), ty
+        let pat, pat_ty = generalize_pat tbl level pat, generalize_ty tbl level pat_ty in
+        let pat_vars = List.map (fun (name, ty) -> name, generalize_ty tbl level ty) pat_vars in
+        let expr, ty = g (pat_vars @ venv, tenv, cenv) level expr in
+        Let ([pat, def], expr), ty
     | Ast.LetRec ([name, def], expr) ->
         let env = (name, fresh (level+1)) :: venv, tenv, cenv in
         let def, def_ty = g env (level + 1) def in

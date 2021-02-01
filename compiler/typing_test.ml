@@ -122,6 +122,17 @@ let () =
             )
         ],
         T.App (T.Var ["fact"], [T.Int 5])
+    ));
+    test "let x, y = 1, 2 in x"
+    (T.Let (
+        [
+            T.PTuple ([
+                T.PVar ("x", Ty.Int);
+                T.PVar ("y", Ty.Int);
+            ], [Ty.Int; Ty.Int]),
+            T.Tuple ([T.Int 1; T.Int 2], [Ty.Int; Ty.Int])
+        ],
+        T.Var ["x"]
     ))
 
 let () =

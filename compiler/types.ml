@@ -55,12 +55,13 @@ let pervasive_vals = [
     ["<"], Fun ([Int; Int], Bool);
     ["="], Fun ([Poly 0; Poly 0], Bool);
     [";"], Fun ([Poly 0], Poly 1);
-    ["::"], Fun ([Poly 0], Higher (Poly 0, ["list"]));
+    ["::"], Fun ([Poly 0; Higher (Poly 0, ["list"])], Higher (Poly 0, ["list"]));
     ["."], Fun ([Higher (Poly 0, ["array"]); Int], Poly 0);
     ["<neg>"], Fun ([Int], Int);
     ["not"], Fun ([Bool], Bool);
     ["ref"], Fun ([Poly 0], Ref (Poly 0));
     [":="], Fun ([Ref (Poly 0); Poly 0], unit_ty);
+    ["[]"], Higher (Poly 0, ["list"]);
 ]
 
 let pervasive_types = [

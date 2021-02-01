@@ -52,6 +52,8 @@ let rec instantiate level =
             lookup i
         | Types.Tuple ts ->
             Types.Tuple (List.map f ts)
+        | Types.Higher (ty, name) ->
+            Types.Higher (f ty, name)
         | _ -> failwith "instantiate unimplemented"
     in f
 
@@ -106,6 +108,10 @@ let rec unify a b =
         | Types.Fun (as', r) -> Types.Fun ((unify a1 a2) :: as', r)
         | _ -> failwith "cannot unify fun"
         end
+    | Types.Higher (t, name), Types.Higher (t', name') ->
+        if name = name'
+        then Types.Higher (unify t t', name)
+        else failwith @@ "cannot unify higher type"
     | Types.Tuple ts1, Types.Tuple ts2 ->
         Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
     | Types.Unknown u1, Types.Unknown u2 ->
@@ -166,6 +172,8 @@ let generalize_ty tbl level =
         Types.Tuple (List.map f ts)
     | Types.Poly tag ->
         Types.Poly (readable tbl (Poly tag))
+    | Types.Higher (t, name) ->
+        Types.Higher (f t, name)
     | x -> failwith @@ Printf.sprintf "generalize unimplemented %s" @@ Types.show x
     in f
 

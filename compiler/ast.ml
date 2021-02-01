@@ -27,7 +27,6 @@ type tydef_t =
 
 type t =
     | Never
-    | Emp
     | Int of int
     | Bool of bool
     | Var of string list
@@ -68,7 +67,7 @@ let rec of_parser_t = function
     | Parser.Bool i -> Bool i
     | Parser.Var i -> Var i
     | Parser.Ctor i -> Ctor i
-    | Parser.Emp -> Emp
+    | Parser.Emp -> Var ["[]"]
     | Parser.Add (lhr, rhr) -> op "+" lhr rhr
     | Parser.Sub (lhr, rhr) -> op "-" lhr rhr
     | Parser.Mul (lhr, rhr) -> op "*" lhr rhr

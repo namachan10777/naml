@@ -133,6 +133,20 @@ let () =
             T.Tuple ([T.Int 1; T.Int 2], [Ty.Int; Ty.Int])
         ],
         T.Var ["x"]
+    ));
+    test "let f x = [x] in f 1; f true"
+    (T.Let (
+        [
+            T.PVar ("f", Ty.Fun ([Ty.Poly 0], Ty.Higher (Ty.Poly 0, ["list"]))),
+            T.Fun (["x", Ty.Poly 0],
+                T.App (T.Var ["::"], [T.Var ["x"]; T.Var ["[]"]]),
+                Ty.Higher (Ty.Poly 0, ["list"])
+            )
+        ],
+        T.App (T.Var [";"], [
+            T.App (T.Var ["f"], [T.Int 1]);
+            T.App (T.Var ["f"], [T.Bool true]);
+        ])
     ))
 
 let () =

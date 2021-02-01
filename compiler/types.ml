@@ -8,27 +8,33 @@ type t =
     | Fun of t list * t
     | Tuple of t list
     (* 不明の型。最初のintはlevelで2つめのintはデバッグ用のタグ *)
-    | Unknown of unknown_t ref ref
+    | Var of var_t ref ref
     (* 多相型。intはタグ *)
     | Poly of int
     | Variant of string list
     | Higher of t * string list
-and unknown_t = U of int * int * unk_payload_t * unknown_t ref list
-[@printer fun fmt (level, tag, t, refs) ->
-    fprintf fmt "(%d, %d, %s, %s)" level tag (show_unk_payload_t t) (refs |> List.map (fun r -> 2 * Obj.magic r) |> show_addresses_t)
-]
-and unk_payload_t = t option
 [@@deriving show]
+and var_t =
+    | Unknown of int * int * var_t ref list
+    | Just of t * var_t ref list
+[@@printer fun fmt -> function
+    | Unknown (level, tag, refs) -> fprintf fmt "Unknown (%d, %d, %s)" level tag (refs |> List.map (fun r -> 2 * Obj.magic r) |> show_addresses_t)
+    | Just (t, refs) -> fprintf fmt "Just (%s, %s)" (show t) (refs |> List.map (fun r -> 2 * Obj.magic r) |> show_addresses_t)
+]
 
 let rec eq a b = match a, b with
-    | Unknown u, Unknown u' ->
-        let U (level, tag, t, refs) = ! !u in
-        let U (level', tag', t', refs') = ! !u' in
-        let addr_conv = List.map (fun r -> 2 * Obj.magic r) in
-        level = level' &&
-        tag = tag' &&
-        t = t' &&
-        (addr_conv refs) = (addr_conv refs')
+    | Var v, Var v' -> begin match ! !v, ! !v' with
+        | Unknown (level, tag, refs), Unknown (level', tag', refs') ->
+            let addr_conv = List.map (fun r -> 2 * Obj.magic r) in
+            level = level' &&
+            tag = tag' &&
+            (addr_conv refs) = (addr_conv refs')
+        | Just (t, refs), Just (t', refs') ->
+            let addr_conv = List.map (fun r -> 2 * Obj.magic r) in
+            (addr_conv refs) = (addr_conv refs') &&
+            eq t t'
+        | _ -> false
+    end
     | Int, Int -> true
     | Str, Str -> true
     | Bool, Bool -> true

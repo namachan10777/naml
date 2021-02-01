@@ -33,7 +33,7 @@ let init () =
     count := 99
 
 let fresh level =
-    count := !count + 1; Types.Unknown (ref @@ ref @@ Types.U (level, !count, None, []))
+    count := !count + 1; Types.Var (ref @@ ref @@ Types.Unknown (level, !count, []))
 
 let rec instantiate level =
     let env = ref [] in
@@ -50,7 +50,7 @@ let rec instantiate level =
         | Types.Int -> Types.Int
         | Types.Bool -> Types.Bool
         | Types.Fun (args, ret) -> Types.Fun (List.map f args, f ret)
-        | Types.Unknown _ as t -> t
+        | Types.Var _ as t -> t
         | Types.Poly i ->
             lookup i
         | Types.Tuple ts ->
@@ -69,29 +69,29 @@ let rec occur_check id =
     | Types.Tuple ts -> List.map f ts |> ignore
     | Types.Higher (t, _) -> f t
     | Types.Fun (args, ret) -> List.map f args|>ignore; f ret
-    | Types.Unknown u -> begin match ! ! u with
-        | Types.U (_, id', None, _) ->
+    | Types.Var u -> begin match ! ! u with
+        | Types.Unknown (_, id', _) ->
             if id = id'
             then failwith "cyclic type"
             else ()
-        | Types.U (_, _, Some t, _) -> f t
+        | Types.Just (t, _) -> f t
     end
     | Types.Variant names -> ()
     in f
 
 let rec unify a b =
-    let unify_unk_and_t u t =
+    let unify_u_and_t u t =
         match !u with
-        | Types.U (level, tag, None, refs) ->
+        | Types.Unknown (level, tag, refs) ->
             occur_check tag t;
             let refs = u :: refs in
-            let u = Types.U (level, tag, Some t, refs) in
+            let u = Types.Just (t, refs) in
             List.map (fun r -> r := u) refs |> ignore;
             t
-        | Types.U (level, tag, Some t', refs) ->
+        | Types.Just (t', refs) ->
             let refs = u :: refs in
             let t = unify t t' in
-            let u = Types.U (level, tag, Some t, refs) in
+            let u = Types.Just (t, refs) in
             List.map (fun r -> r := u) refs |> ignore;
             t
     in
@@ -116,26 +116,36 @@ let rec unify a b =
         else failwith @@ "cannot unify higher type"
     | Types.Tuple ts1, Types.Tuple ts2 ->
         Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
-    | Types.Unknown u1, Types.Unknown u2 ->
-        let unify_u_and_u level tag u1 u2 refs1 refs2 t =
-            let refs = u1 :: u2 :: refs1 @ refs2 in
-            let u = Types.U (level, tag, t, refs) in
-            List.map (fun r -> r := u) refs |> ignore;
-            Types.Unknown (ref u1)
-        in begin match ! !u1, ! !u2 with
-            | Types.U (level, tag, None, refs1), Types.U (level', _, None, refs2) when level < level' ->
-                unify_u_and_u level tag !u1 !u2 refs1 refs2 None
-            | Types.U (_, _, None, refs1), Types.U (level, tag, None, refs2) ->
-                unify_u_and_u level tag !u1 !u2 refs1 refs2 None
-            | Types.U (level, tag, Some t, refs1), Types.U (_, _, Some t', refs2) ->
-                unify_u_and_u level tag !u1 !u2 refs1 refs2 (Some (unify t t'))
-            | Types.U (_, _, None, refs1), Types.U (level, tag, Some t, refs2) ->
-                unify_u_and_u level tag !u1 !u2 refs1 refs2 (Some t)
-            | Types.U (level, tag, Some t, refs1), Types.U (_, _, None, refs2) ->
-                unify_u_and_u level tag !u1 !u2 refs1 refs2 (Some t)
+    | Types.Var u1, Types.Var u2 ->
+        begin match ! !u1, ! !u2 with
+            | Types.Unknown (level, tag, refs1), Types.Unknown (level', _, refs2) when level < level' ->
+                let refs = !u1 :: !u2 :: refs1 @ refs2 in
+                !u1 := Types.Unknown (level, tag, refs);
+                List.map (fun r -> r := ! !u1) refs |> ignore;
+                Types.Var u1
+            | Types.Unknown (_, _, refs1), Types.Unknown (level, tag, refs2) ->
+                let refs = !u1 :: !u2 :: refs1 @ refs2 in
+                !u1 := Types.Unknown (level, tag, refs);
+                List.map (fun r -> r := ! !u1) refs |> ignore;
+                Types.Var u1
+            | Types.Just (t, refs1), Types.Just (t', refs2) ->
+                let refs = !u1 :: !u2 :: refs1 @ refs2 in
+                !u1 := Types.Just (unify t t', refs);
+                List.map (fun r -> r := ! !u1) refs |> ignore;
+                Types.Var u1
+            | Types.Unknown (_, _, refs1), Types.Just (t, refs2) ->
+                let refs = !u1 :: !u2 :: refs1 @ refs2 in
+                !u1 := Types.Just (t, refs);
+                List.map (fun r -> r := ! !u1) refs |> ignore;
+                Types.Var u1
+            | Types.Just (t, refs1), Types.Unknown (_, _, refs2) ->
+                let refs = !u1 :: !u2 :: refs1 @ refs2 in
+                !u1 := Types.Just (t, refs);
+                List.map (fun r -> r := ! !u1) refs |> ignore;
+                Types.Var u1
         end
-    | Types.Unknown u, t -> unify_unk_and_t !u t
-    | t, Types.Unknown u -> unify_unk_and_t !u t
+    | Types.Var u, t -> unify_u_and_t !u t
+    | t, Types.Var u -> unify_u_and_t !u t
     | a, b -> failwith @@ Printf.sprintf "cannot unify %s, %s" (Types.show a) (Types.show b)
 
 type poly_map_t =
@@ -162,10 +172,10 @@ let generalize_ty tbl level =
     | Types.Bool -> Types.Bool
     | Types.Str -> Types.Str
     | Types.Variant name -> Types.Variant name
-    | Types.Unknown u as ty ->
+    | Types.Var u as ty ->
         begin match ! !u with
-        | Types.U (_, _, Some ty, _) -> f ty
-        | Types.U (level', tag, None, _) ->
+        | Types.Just (ty, _) -> f ty
+        | Types.Unknown (level', tag, _) ->
             if level' > level
             then Types.Poly (readable tbl (Unknown tag))
             else ty

@@ -39,7 +39,6 @@ type t =
     | Fun of string list * t
     | Match of t * (pat_t * t * t) list
     | App of t * t list
-    | ArrayAssign of t * t * t
     | Type of (string * string list * tydef_t) list * t
 [@@deriving show]
 
@@ -87,7 +86,7 @@ let rec of_parser_t = function
     | Parser.Index (lhr, rhr) -> op "." lhr rhr
     | Parser.Neg e -> App (Var ["<neg>"], [of_parser_t e])
     | Parser.Assign (lhr, rhr) -> op ":=" lhr rhr
-    | Parser.ArrayAssign (arr, idx, rhr) -> ArrayAssign (of_parser_t arr, of_parser_t idx, of_parser_t rhr)
+    | Parser.ArrayAssign (arr, idx, rhr) -> App (Var ["<arrayassign>"], [of_parser_t arr; of_parser_t idx; of_parser_t rhr])
     | Parser.Pipeline (arg, f) -> App(of_parser_t f, [of_parser_t arg])
     | Parser.Tuple elem -> Tuple (List.map of_parser_t elem)
     | Parser.If (cond, e1, e2) -> If (of_parser_t cond, of_parser_t e1, of_parser_t e2)

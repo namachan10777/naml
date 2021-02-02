@@ -19,6 +19,7 @@ type t =
     | If of t * t * t
     | Fun of (string * Types.t) list * t * Types.t
     | Tuple of t list * Types.t list
+    | Match of t * Types.t * (pat_t * t) list * Types.t
     | Ctor of string list * Types.t
     | CtorApp of string list * t list * Types.t
 [@@deriving show]
@@ -213,6 +214,13 @@ let generalize tbl level =
         LetRec (List.map (fun (name, ty, def) -> (name, generalize_ty tbl level ty, f def)) defs, f expr)
     | If (cond, e1, e2) ->
         If (f cond, f e1, f e2)
+    | Match (target, target_ty, arms, ty) ->
+        Match (
+            f target,
+            generalize_ty tbl level target_ty,
+            List.map (fun (pat, expr) -> (generalize_pat tbl level pat, f expr)) arms,
+            generalize_ty tbl level ty
+        )
     | Ctor (name, t) -> Ctor (name, generalize_ty tbl level t)
     | CtorApp (name, e, t) -> CtorApp (name, List.map f e, generalize_ty tbl level t)
     | Never -> Never
@@ -323,7 +331,27 @@ let rec g env level =
             Util.zip arg_tys arg_tys' |> List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') |> ignore;
             CtorApp (name, args, variant_ty), variant_ty
     end
-    | t -> failwith @@ Printf.sprintf "unimplemented: %s" @@ Ast.show t
+    | Ast.Match (target, arms) ->
+        let target, target_ty = g env level target in
+        let pats, guards, exprs = Util.unzip3 @@ List.map (fun (pat, guard, expr) ->
+            let tbl = ref [] in
+            let pat_vars, pat_ty, pat = pat_ty level pat in
+            let pat_vars = List.map (fun (name, ty) -> name, instantiate tbl level ty) pat_vars in
+            let pat_ty = instantiate tbl level pat_ty in
+            let venv = pat_vars @ venv in
+            let env = venv, tenv, cenv in
+            let expr, expr_ty = g env level expr in
+            let guard, guard_ty = g env level guard in
+            (pat_vars, pat, pat_ty), (guard, guard_ty), (expr, expr_ty)
+        ) arms in
+        let pat_vars, pats, pat_tys = Util.unzip3 pats in
+        let guards, guard_tys = Util.unzip guards in
+        let exprs, expr_tys = Util.unzip exprs in
+        let target_ty = (List.fold_left (fun t t' -> unify t t') target_ty pat_tys) in
+        let t = List.fold_left (fun t t' -> unify t t') (fresh level) expr_tys in
+        List.map (fun t -> unify t Types.Bool) guard_tys |> ignore;
+        Match (target, target_ty, Util.zip pats exprs, t), t
+    | Ast.Type _ -> failwith "unimplemented type"
 
 let f ast =
     fst @@ g (

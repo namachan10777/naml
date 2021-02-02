@@ -63,6 +63,7 @@ let pervasive_vals = [
     [";"], Fun ([Poly 0], Poly 1);
     ["."], Fun ([Variant ([Poly 0], ["array"]); Int], Poly 0);
     ["<neg>"], Fun ([Int], Int);
+    ["<arrayassign>"], Fun ([Variant ([Poly 0], ["array"]); Int; Poly 0], Tuple []);
     ["not"], Fun ([Bool], Bool);
     ["ref"], Fun ([Poly 0], Variant ([Poly 0], ["ref"]));
     [":="], Fun ([Variant ([Poly 0], ["ref"]); Poly 0], unit_ty);

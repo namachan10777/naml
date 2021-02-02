@@ -1,6 +1,7 @@
 let test src expected =
     Printf.printf "testing \"%s\"..." src;
-    let s, _ = Parser.parse_expr @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
+    let lexed = Lex.lex src @@ Lex.initial_pos "test.ml" in
+    let s, _ = Parser.parse_expr lexed in
     let ast = Ast.of_parser_t s in
     let typed = Typing.f ast in
     if typed = expected
@@ -152,6 +153,28 @@ let () =
             T.App (T.Var ["f"], [T.Int 1]);
             T.App (T.Var ["f"], [T.Bool true]);
         ])
+    ));
+    test "let x = match (1, 2) with (x, y) -> x + y in x"
+    (T.Let (
+        [
+            T.PVar ("x", Ty.Int),
+            T.Match (
+                T.Tuple ([T.Int 1; T.Int 2], [Ty.Int; Ty.Int]),
+                Ty.Tuple [Ty.Int; Ty.Int],
+                [
+                    T.PTuple ([
+                        T.PVar ("x", Ty.Int);
+                        T.PVar ("y", Ty.Int);
+                    ], [
+                        Ty.Int;
+                        Ty.Int;
+                    ]),
+                    T.App (T.Var ["+"], [T.Var ["x"]; T.Var ["y"]])
+                ],
+                Ty.Int
+            )
+        ],
+        T.Var ["x"]
     ))
 
 let () =

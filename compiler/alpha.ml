@@ -145,7 +145,6 @@ let rec of_expr env =
             (pat, of_expr env guard, of_expr env expr)
         ) arms in
         Match (of_expr env target, arms)
-    | ArrayAssign (target, idx, value) -> ArrayAssign (of_expr env target, of_expr env idx, of_expr env value)
     | Ast.LetRec (defs, expr) ->
         let ids = List.map fst defs in
         let exprs = List.map snd defs in

@@ -13,10 +13,7 @@ type t =
     | Var of var_t ref ref
     (* 多相型。intはタグ *)
     | Poly of int
-    | Variant of variant_t * string list
-and variant_t =
-    | Higher of t
-    | Mono
+    | Variant of t list * string list
 [@@deriving show]
 and var_t =
     | Unknown of int * int * var_t ref list
@@ -48,7 +45,8 @@ let rec eq a b = match a, b with
     | Tuple ts, Tuple ts' ->
         Util.zip ts ts' |> List.for_all (fun (a, b) -> eq a b)
     | Poly t, Poly t' -> t = t'
-    | Variant (Higher t, name), Variant (Higher t', name') -> (eq t t') && name = name'
+    | Variant (targs, name), Variant (targs', name') ->
+        List.for_all (fun (t, t') -> eq t t') (Util.zip targs targs') && name = name'
     | _ -> false
 
 let unit_ty = Tuple []
@@ -63,28 +61,26 @@ let pervasive_vals = [
     ["<"], Fun ([Int; Int], Bool);
     ["="], Fun ([Poly 0; Poly 0], Bool);
     [";"], Fun ([Poly 0], Poly 1);
-    ["::"], Fun ([Poly 0; Variant (Higher (Poly 0), ["list"])], Variant (Higher (Poly 0), ["list"]));
-    ["."], Fun ([Variant (Higher (Poly 0), ["array"]); Int], Poly 0);
+    ["::"], Fun ([Poly 0; Variant ([Poly 0], ["list"])], Variant ([Poly 0], ["list"]));
+    ["."], Fun ([Variant ([Poly 0], ["array"]); Int], Poly 0);
     ["<neg>"], Fun ([Int], Int);
     ["not"], Fun ([Bool], Bool);
-    ["ref"], Fun ([Poly 0], Variant (Higher (Poly 0), ["ref"]));
-    [":="], Fun ([Variant (Higher (Poly 0), ["ref"]); Poly 0], unit_ty);
-    ["[]"], Variant (Higher (Poly 0), ["list"]);
+    ["ref"], Fun ([Poly 0], Variant ([Poly 0], ["ref"]));
+    [":="], Fun ([Variant ([Poly 0], ["ref"]); Poly 0], unit_ty);
+    ["[]"], Variant ([Poly 0], ["list"]);
 ]
 
 let pervasive_types = [
     ["int"], Int;
     ["bool"], Bool;
-    ["option"], Variant (Higher (Poly 0), ["option"]);
+    ["option"], Variant ([Poly 0], ["option"]);
 ]
 
-type ctor_t =
-    | Tag of variant_t * string list
-    | TakeValue of t list * variant_t * string list
+type ctor_t = t list * t list * string list
 
 let pervasive_ctors = [
-    ["Some"], TakeValue ([Poly 0],  Higher (Poly 0), ["option"]);
-    ["None"], Tag (Higher (Poly 0), ["option"]);
+    ["Some"], ([Poly 0], [Poly 0], ["option"]);
+    ["None"], ([], [Poly 0], ["option"]);
 ]
 
 let ids = List.mapi (fun i (id, _) -> (id, i))

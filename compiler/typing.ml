@@ -54,8 +54,8 @@ let rec instantiate env level =
             lookup i
         | Types.Tuple ts ->
             Types.Tuple (List.map f ts)
-        | Types.Variant (Types.Higher ty, name) ->
-            Types.Variant (Types.Higher (f ty), name)
+        | Types.Variant (targs, name) ->
+            Types.Variant (List.map f targs, name)
         | _ -> failwith "instantiate unimplemented"
     in f
 
@@ -66,8 +66,7 @@ let rec occur_check id =
     | Types.Str -> ()
     | Types.Poly _ -> ()
     | Types.Tuple ts -> List.map f ts |> ignore
-    | Types.Variant (Types.Higher t, _) -> f t
-    | Types.Variant (Types.Mono, _) -> ()
+    | Types.Variant (targs, _) -> List.map f targs |> ignore
     | Types.Fun (args, ret) -> List.map f args|>ignore; f ret
     | Types.Var u -> begin match ! ! u with
         | Types.Unknown (_, id', _) ->
@@ -109,13 +108,9 @@ let rec unify a b =
         | Types.Fun (as', r) -> Types.Fun ((unify a1 a2) :: as', r)
         | _ -> failwith "cannot unify fun"
         end
-    | Types.Variant (Types.Higher t, name), Types.Variant (Types.Higher t', name') ->
+    | Types.Variant (targs, name), Types.Variant (targs', name') ->
         if name = name'
-        then Types.Variant (Types.Higher (unify t t'), name)
-        else failwith @@ "cannot unify higher type"
-    | Types.Variant (Mono, name), Types.Variant (Mono, name') ->
-        if name = name'
-        then Types.Variant (Mono, name)
+        then Types.Variant (List.map (fun (t, t') -> unify t t') (Util.zip targs targs'), name)
         else failwith @@ "cannot unify higher type"
     | Types.Tuple ts1, Types.Tuple ts2 ->
         Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
@@ -174,8 +169,7 @@ let generalize_ty tbl level =
     | Types.Int -> Types.Int
     | Types.Bool -> Types.Bool
     | Types.Str -> Types.Str
-    | Types.Variant (Types.Higher t, name) -> Types.Variant (Types.Higher (f t), name)
-    | Types.Variant (Mono, name) -> Types.Variant (Mono, name)
+    | Types.Variant (targs, name) -> Types.Variant (List.map f targs, name)
     | Types.Var u as ty ->
         begin match ! !u with
         | Types.Just (ty, _) -> f ty
@@ -304,28 +298,28 @@ let rec g env level =
         If (cond, e1, e2), unify e1_ty e2_ty
     | Ast.Never -> Never, Types.Tuple []
     | Ast.Ctor name -> begin match lookup name cenv with
-        | Types.Tag (t, name) ->
-            let ty = instantiate (ref []) level (Types.Variant (t, name)) in
+        | ([], targs, name) ->
+            let ty = instantiate (ref []) level (Types.Variant (targs, name)) in
             Var name, ty
         | t -> failwith @@ Printf.sprintf "Ctor must not have invalid type"
     end
     | Ast.CtorApp (name, args) -> begin match lookup name cenv with
-        | Types.TakeValue ([Types.Tuple arg_tys'], variant, name) ->
+        | ([Types.Tuple arg_tys'], targs, name) ->
             let args, arg_tys = Util.unzip @@ List.map (g env level) args in
             let tbl = ref [] in
             let arg_tys = List.map (instantiate tbl level) arg_tys in
             let tbl = ref [] in
             let arg_tys' = List.map (instantiate tbl level) arg_tys' in
-            let variant_ty = instantiate tbl level @@ Types.Variant (variant, name) in
+            let variant_ty = instantiate tbl level @@ Types.Variant (targs, name) in
             Util.zip arg_tys arg_tys' |> List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') |> ignore;
             CtorApp (name, [Tuple (args, arg_tys)], variant_ty), variant_ty
-        | Types.TakeValue (arg_tys', variant, name) ->
+        | (arg_tys', targs, name) ->
             let args, arg_tys = Util.unzip @@ List.map (g env level) args in
             let tbl = ref [] in
             let arg_tys = List.map (instantiate tbl level) arg_tys in
             let tbl = ref [] in
             let arg_tys' = List.map (instantiate tbl level) arg_tys' in
-            let variant_ty = instantiate tbl level @@ Types.Variant (variant, name) in
+            let variant_ty = instantiate tbl level @@ Types.Variant (arg_tys', name) in
             Util.zip arg_tys arg_tys' |> List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') |> ignore;
             CtorApp (name, args, variant_ty), variant_ty
         | _ -> failwith "CtorApp must take only one argment"

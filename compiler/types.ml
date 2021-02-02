@@ -80,10 +80,10 @@ let pervasive_types = [
 
 type ctor_t =
     | Tag of variant_t * string list
-    | TakeValue of t * variant_t * string list
+    | TakeValue of t list * variant_t * string list
 
 let pervasive_ctors = [
-    ["Some"], TakeValue (Poly 0,  Higher (Poly 0), ["option"]);
+    ["Some"], TakeValue ([Poly 0],  Higher (Poly 0), ["option"]);
     ["None"], Tag (Higher (Poly 0), ["option"]);
 ]
 

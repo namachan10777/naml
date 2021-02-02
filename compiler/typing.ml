@@ -20,7 +20,7 @@ type t =
     | Fun of (string * Types.t) list * t * Types.t
     | Tuple of t list * Types.t list
     | Ctor of string list * Types.t
-    | CtorApp of string list * t * Types.t
+    | CtorApp of string list * t list * Types.t
 [@@deriving show]
 
 let rec lookup x = function
@@ -220,7 +220,7 @@ let generalize tbl level =
     | If (cond, e1, e2) ->
         If (f cond, f e1, f e2)
     | Ctor (name, t) -> Ctor (name, generalize_ty tbl level t)
-    | CtorApp (name, e, t) -> CtorApp (name, f e, generalize_ty tbl level t)
+    | CtorApp (name, e, t) -> CtorApp (name, List.map f e, generalize_ty tbl level t)
     | Never -> Never
     in f
 
@@ -309,15 +309,25 @@ let rec g env level =
             Var name, ty
         | t -> failwith @@ Printf.sprintf "Ctor must not have invalid type"
     end
-    | Ast.CtorApp (name, arg) -> begin match lookup name cenv with
-        | Types.TakeValue (t, variant, name) ->
-            let arg, arg_ty = g env level arg in
-            let arg_ty = instantiate (ref []) level arg_ty in
-            let env = ref [] in
-            let t = instantiate env level t in
-            let variant_ty = instantiate env level @@ Types.Variant (variant, name) in
-            unify t arg_ty |> ignore;
-            CtorApp (name, arg, variant_ty), variant_ty
+    | Ast.CtorApp (name, args) -> begin match lookup name cenv with
+        | Types.TakeValue ([Types.Tuple arg_tys'], variant, name) ->
+            let args, arg_tys = Util.unzip @@ List.map (g env level) args in
+            let tbl = ref [] in
+            let arg_tys = List.map (instantiate tbl level) arg_tys in
+            let tbl = ref [] in
+            let arg_tys' = List.map (instantiate tbl level) arg_tys' in
+            let variant_ty = instantiate tbl level @@ Types.Variant (variant, name) in
+            Util.zip arg_tys arg_tys' |> List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') |> ignore;
+            CtorApp (name, [Tuple (args, arg_tys)], variant_ty), variant_ty
+        | Types.TakeValue (arg_tys', variant, name) ->
+            let args, arg_tys = Util.unzip @@ List.map (g env level) args in
+            let tbl = ref [] in
+            let arg_tys = List.map (instantiate tbl level) arg_tys in
+            let tbl = ref [] in
+            let arg_tys' = List.map (instantiate tbl level) arg_tys' in
+            let variant_ty = instantiate tbl level @@ Types.Variant (variant, name) in
+            Util.zip arg_tys arg_tys' |> List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') |> ignore;
+            CtorApp (name, args, variant_ty), variant_ty
         | _ -> failwith "CtorApp must take only one argment"
     end
     | t -> failwith @@ Printf.sprintf "unimplemented: %s" @@ Ast.show t

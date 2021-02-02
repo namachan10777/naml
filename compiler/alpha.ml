@@ -24,7 +24,7 @@ type ty_t = | TId of id_t
 [@@deriving show]
 
 type tydef_t =
-    | Variant of (id_t * ty_t option) list
+    | Variant of (id_t * ty_t list) list
     | Alias of ty_t
 [@@deriving show]
 
@@ -92,7 +92,7 @@ let of_tydef env =
     | Ast.Alias ty -> Alias (of_ty env ty), env
     | Ast.Variant arms ->
         let names = List.map (fun arm -> type_id [fst arm]) arms in
-        let ty = List.map (fun (_, ty) -> Option.map (of_ty env) ty) arms in
+        let ty = List.map (fun (_, ty) -> List.map (of_ty env) ty) arms in
         Variant (Util.zip names ty), (venv, tenv, names @ cenv)
 
 let rec of_pat env =

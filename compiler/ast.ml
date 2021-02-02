@@ -21,7 +21,7 @@ type ty_t =
 [@@deriving show]
 
 type tydef_t =
-    | Variant of (string * ty_t option) list
+    | Variant of (string * ty_t list) list
     | Alias of ty_t
 [@@deriving show]
 
@@ -102,7 +102,8 @@ let rec of_parser_t = function
     | Parser.Type (defs, expr) -> Type (
         List.map (
             function
-            | (id, targs, Parser.Variant pairs) -> (id, targs, Variant (List.map (fun (name, ty) -> (name, Option.map of_parser_ty_t ty)) pairs))
+            | (id, targs, Parser.Variant pairs) ->
+                (id, targs, Variant (List.map (fun (name, tys) -> (name, List.map of_parser_ty_t tys)) pairs))
             | (id, targs, Parser.Alias ty) ->id, targs, Alias (of_parser_ty_t ty)
         )
     defs, of_parser_t expr)

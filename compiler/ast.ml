@@ -70,7 +70,7 @@ let rec of_parser_t = function
     | Parser.Ctor i -> Ctor i
     | Parser.App (Parser.Ctor n, [Parser.Tuple args]) -> CtorApp (n, List.map of_parser_t args)
     | Parser.App (Parser.Ctor n, [t]) -> CtorApp (n, [of_parser_t t])
-    | Parser.Emp -> Var ["[]"]
+    | Parser.Emp -> Ctor ["[]"]
     | Parser.Add (lhr, rhr) -> op "+" lhr rhr
     | Parser.Sub (lhr, rhr) -> op "-" lhr rhr
     | Parser.Mul (lhr, rhr) -> op "*" lhr rhr
@@ -81,7 +81,7 @@ let rec of_parser_t = function
     | Parser.Eq (lhr, rhr) -> op "=" lhr rhr
     | Parser.Neq (lhr, rhr) -> op "<>" lhr rhr
     | Parser.Seq (lhr, rhr) -> op ";" lhr rhr
-    | Parser.Cons (lhr, rhr) -> op "::" lhr rhr
+    | Parser.Cons (lhr, rhr) -> CtorApp (["::"], [of_parser_t lhr; of_parser_t rhr])
     | Parser.Gret (lhr, rhr) -> op ">" lhr rhr
     | Parser.Less (lhr, rhr) -> op "<" lhr rhr
     | Parser.Index (lhr, rhr) -> op "." lhr rhr

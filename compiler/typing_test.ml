@@ -138,8 +138,13 @@ let () =
     (T.Let (
         [
             T.PVar ("f", Ty.Fun ([Ty.Poly 0], Ty.Variant ([Ty.Poly 0], ["list"]))),
-            T.Fun (["x", Ty.Poly 0],
-                T.App (T.Var ["::"], [T.Var ["x"]; T.Var ["[]"]]),
+            T.Fun (
+                ["x", Ty.Poly 0],
+                T.CtorApp (
+                    ["::"],
+                    [T.Var ["x"]; T.Ctor (["[]"], Ty.Variant ([Ty.Poly 0], ["list"]))],
+                    Ty.Variant ([Ty.Poly 0], ["list"])
+                ),
                 Ty.Variant ([Ty.Poly 0], ["list"])
             )
         ],

@@ -61,13 +61,11 @@ let pervasive_vals = [
     ["<"], Fun ([Int; Int], Bool);
     ["="], Fun ([Poly 0; Poly 0], Bool);
     [";"], Fun ([Poly 0], Poly 1);
-    ["::"], Fun ([Poly 0; Variant ([Poly 0], ["list"])], Variant ([Poly 0], ["list"]));
     ["."], Fun ([Variant ([Poly 0], ["array"]); Int], Poly 0);
     ["<neg>"], Fun ([Int], Int);
     ["not"], Fun ([Bool], Bool);
     ["ref"], Fun ([Poly 0], Variant ([Poly 0], ["ref"]));
     [":="], Fun ([Variant ([Poly 0], ["ref"]); Poly 0], unit_ty);
-    ["[]"], Variant ([Poly 0], ["list"]);
 ]
 
 let pervasive_types = [
@@ -81,6 +79,8 @@ type ctor_t = t list * t list * string list
 let pervasive_ctors = [
     ["Some"], ([Poly 0], [Poly 0], ["option"]);
     ["None"], ([], [Poly 0], ["option"]);
+    ["::"], ([Poly 0; Variant ([Poly 0], ["list"])], [Poly 0], ["list"]);
+    ["[]"], ([], [Poly 0], ["list"]);
 ]
 
 let ids = List.mapi (fun i (id, _) -> (id, i))

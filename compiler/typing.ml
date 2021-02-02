@@ -298,31 +298,30 @@ let rec g env level =
         If (cond, e1, e2), unify e1_ty e2_ty
     | Ast.Never -> Never, Types.Tuple []
     | Ast.Ctor name -> begin match lookup name cenv with
-        | ([], targs, name) ->
-            let ty = instantiate (ref []) level (Types.Variant (targs, name)) in
-            Var name, ty
+        | ([], targs, variant_name) ->
+            let ty = instantiate (ref []) level (Types.Variant (targs, variant_name)) in
+            Ctor (name, ty), ty
         | t -> failwith @@ Printf.sprintf "Ctor must not have invalid type"
     end
     | Ast.CtorApp (name, args) -> begin match lookup name cenv with
-        | ([Types.Tuple arg_tys'], targs, name) ->
+        | ([Types.Tuple arg_tys'], targs, variant_name) ->
             let args, arg_tys = Util.unzip @@ List.map (g env level) args in
             let tbl = ref [] in
             let arg_tys = List.map (instantiate tbl level) arg_tys in
             let tbl = ref [] in
             let arg_tys' = List.map (instantiate tbl level) arg_tys' in
-            let variant_ty = instantiate tbl level @@ Types.Variant (targs, name) in
+            let variant_ty = instantiate tbl level @@ Types.Variant (targs, variant_name) in
             Util.zip arg_tys arg_tys' |> List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') |> ignore;
             CtorApp (name, [Tuple (args, arg_tys)], variant_ty), variant_ty
-        | (arg_tys', targs, name) ->
+        | (arg_tys', targs, variant_name) ->
             let args, arg_tys = Util.unzip @@ List.map (g env level) args in
             let tbl = ref [] in
             let arg_tys = List.map (instantiate tbl level) arg_tys in
             let tbl = ref [] in
             let arg_tys' = List.map (instantiate tbl level) arg_tys' in
-            let variant_ty = instantiate tbl level @@ Types.Variant (arg_tys', name) in
+            let variant_ty = instantiate tbl level @@ Types.Variant (targs, variant_name) in
             Util.zip arg_tys arg_tys' |> List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') |> ignore;
             CtorApp (name, args, variant_ty), variant_ty
-        | _ -> failwith "CtorApp must take only one argment"
     end
     | t -> failwith @@ Printf.sprintf "unimplemented: %s" @@ Ast.show t
 

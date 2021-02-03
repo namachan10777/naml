@@ -1,2 +1,1 @@
-let () =
-    Lex.test ()
+let () = Lex.test ()

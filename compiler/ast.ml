@@ -1,5 +1,4 @@
-type id_t = string list
-[@@deriving show]
+type id_t = string list [@@deriving show]
 
 type pat_t =
     | PEmp
@@ -22,9 +21,7 @@ type ty_t =
     | TApp of ty_t list * string list
 [@@deriving show]
 
-type tydef_t =
-    | Variant of (string * ty_t list) list
-    | Alias of ty_t
+type tydef_t = Variant of (string * ty_t list) list | Alias of ty_t
 [@@deriving show]
 
 type t =
@@ -71,7 +68,8 @@ let rec of_parser_t = function
     | Parser.Bool i -> Bool i
     | Parser.Var i -> Var i
     | Parser.Ctor i -> Ctor i
-    | Parser.App (Parser.Ctor n, [Parser.Tuple args]) -> CtorApp (n, List.map of_parser_t args)
+    | Parser.App (Parser.Ctor n, [Parser.Tuple args]) ->
+        CtorApp (n, List.map of_parser_t args)
     | Parser.App (Parser.Ctor n, [t]) -> CtorApp (n, [of_parser_t t])
     | Parser.Emp -> Ctor ["[]"]
     | Parser.Add (lhr, rhr) -> op "+" lhr rhr
@@ -84,33 +82,58 @@ let rec of_parser_t = function
     | Parser.Eq (lhr, rhr) -> op "=" lhr rhr
     | Parser.Neq (lhr, rhr) -> op "<>" lhr rhr
     | Parser.Seq (lhr, rhr) -> op ";" lhr rhr
-    | Parser.Cons (lhr, rhr) -> CtorApp (["::"], [of_parser_t lhr; of_parser_t rhr])
+    | Parser.Cons (lhr, rhr) ->
+        CtorApp (["::"], [of_parser_t lhr; of_parser_t rhr])
     | Parser.Gret (lhr, rhr) -> op ">" lhr rhr
     | Parser.Less (lhr, rhr) -> op "<" lhr rhr
     | Parser.Index (lhr, rhr) -> op "." lhr rhr
     | Parser.Neg e -> App (Var ["<neg>"], [of_parser_t e])
     | Parser.Assign (lhr, rhr) -> op ":=" lhr rhr
-    | Parser.ArrayAssign (arr, idx, rhr) -> App (Var ["<arrayassign>"], [of_parser_t arr; of_parser_t idx; of_parser_t rhr])
-    | Parser.Pipeline (arg, f) -> App(of_parser_t f, [of_parser_t arg])
+    | Parser.ArrayAssign (arr, idx, rhr) ->
+        App
+          ( Var ["<arrayassign>"]
+          , [of_parser_t arr; of_parser_t idx; of_parser_t rhr] )
+    | Parser.Pipeline (arg, f) -> App (of_parser_t f, [of_parser_t arg])
     | Parser.Tuple elem -> Tuple (List.map of_parser_t elem)
-    | Parser.If (cond, e1, e2) -> If (of_parser_t cond, of_parser_t e1, of_parser_t e2)
+    | Parser.If (cond, e1, e2) ->
+        If (of_parser_t cond, of_parser_t e1, of_parser_t e2)
     | Parser.Let (defs, expr) ->
-        Let (List.map (fun (pat, def) -> (of_parser_pat_t pat, of_parser_t def)) defs, of_parser_t expr)
+        Let
+          ( List.map
+              (fun (pat, def) -> (of_parser_pat_t pat, of_parser_t def))
+              defs
+          , of_parser_t expr )
     | Parser.LetRec (defs, expr) ->
-        LetRec (List.map (fun (id, def) -> (id, of_parser_t def)) defs, of_parser_t expr)
+        LetRec
+          ( List.map (fun (id, def) -> (id, of_parser_t def)) defs
+          , of_parser_t expr )
     | Parser.Fun (params, expr) -> Fun (params, of_parser_t expr)
     | Parser.App (f, arg) -> App (of_parser_t f, List.map of_parser_t arg)
     | Parser.Paren e -> of_parser_t e
     | Parser.Match (target, arms) ->
-        Match (of_parser_t target, List.map (fun (pat, when_e, expr) -> (of_parser_pat_t pat, of_parser_t when_e, of_parser_t expr)) arms)
-    | Parser.Type (defs, expr) -> Type (
-        List.map (
-            function
-            | (id, targs, Parser.Variant pairs) ->
-                (id, targs, Variant (List.map (fun (name, tys) -> (name, List.map of_parser_ty_t tys)) pairs))
-            | (id, targs, Parser.Alias ty) ->id, targs, Alias (of_parser_ty_t ty)
-        )
-    defs, of_parser_t expr)
+        Match
+          ( of_parser_t target
+          , List.map
+              (fun (pat, when_e, expr) ->
+                (of_parser_pat_t pat, of_parser_t when_e, of_parser_t expr))
+              arms )
+    | Parser.Type (defs, expr) ->
+        Type
+          ( List.map
+              (function
+                | id, targs, Parser.Variant pairs ->
+                    ( id
+                    , targs
+                    , Variant
+                        (List.map
+                           (fun (name, tys) ->
+                             (name, List.map of_parser_ty_t tys))
+                           pairs) )
+                | id, targs, Parser.Alias ty ->
+                    (id, targs, Alias (of_parser_ty_t ty)))
+              defs
+          , of_parser_t expr )
+
 and op id lhr rhr = App (Var [id], [of_parser_t lhr; of_parser_t rhr])
 
 let f fname src = of_parser_t @@ Parser.f fname src

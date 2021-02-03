@@ -1,10 +1,11 @@
-type pos_t = string * int * int * int
-[@@deriving show]
+type pos_t = string * int * int * int [@@deriving show]
+
 let initial_pos fname = (fname, 1, 1, 0)
 
 type t =
     | Str of string
-    | Int of int | UIdent of string
+    | Int of int
+    | UIdent of string
     | Char of char
     | LIdent of string
     | TVar of string
@@ -60,134 +61,128 @@ type t =
 
 let count_newline s =
     let rec cnt acc i_begin i_end =
-        if i_begin == i_end
-        then acc
-        else if s.[i_begin] = '\n'
-        then cnt (acc+1) (i_begin+1) i_end
-        else cnt acc (i_begin+1) i_end
-    in cnt 0
+        if i_begin == i_end then acc
+        else if s.[i_begin] = '\n' then cnt (acc + 1) (i_begin + 1) i_end
+        else cnt acc (i_begin + 1) i_end
+    in
+    cnt 0
 
 let match_space_char s i =
-    if i >= String.length s
-    then None
-    else if s.[i] = ' ' || s.[i] = '\t' || s.[i] = '\n' || s.[i] = '\r'
-    then Some (i+1)
+    if i >= String.length s then None
+    else if s.[i] = ' ' || s.[i] = '\t' || s.[i] = '\n' || s.[i] = '\r' then
+      Some (i + 1)
     else None
 
 let match_alph_char s i =
-    if i >= String.length s
-    then None
+    if i >= String.length s then None
     else
-        let code = Char.code s.[i] in
-        if code >= 0x41 && code <= 0x5a || code >= 0x61 && code <= 0x7a
-        then Some(i+1)
-        else None
+      let code = Char.code s.[i] in
+      if (code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a) then
+        Some (i + 1)
+      else None
 
 let match_alph_lower_char s i =
-    if i >= String.length s
-    then None
+    if i >= String.length s then None
     else
-        let code = Char.code s.[i] in
-        if code >= 0x61 && code <= 0x7a
-        then Some(i+1)
-        else None
+      let code = Char.code s.[i] in
+      if code >= 0x61 && code <= 0x7a then Some (i + 1) else None
 
 let match_alph_upper_char s i =
-    if i >= String.length s
-    then None
+    if i >= String.length s then None
     else
-        let code = Char.code s.[i] in
-        if code >= 0x41 && code <= 0x5a
-        then Some(i+1)
-        else None
+      let code = Char.code s.[i] in
+      if code >= 0x41 && code <= 0x5a then Some (i + 1) else None
 
 let match_num_char s i =
-    if i >= String.length s
-    then None
+    if i >= String.length s then None
     else
-        let code = Char.code s.[i] in
-        if code >= 0x30 && code <= 0x39
-        then Some(i+1)
-        else None
+      let code = Char.code s.[i] in
+      if code >= 0x30 && code <= 0x39 then Some (i + 1) else None
 
 let match_hexnum_char s i =
-    if i >= String.length s
-    then None
+    if i >= String.length s then None
     else
-        let code = Char.code s.[i] in
-        if (code >= 0x30 && code <= 0x39) || (code >= 0x41 && code <= 0x46) || (code >= 0x61 && code <= 0x66)
-        then Some(i+1)
-        else None
+      let code = Char.code s.[i] in
+      if
+        (code >= 0x30 && code <= 0x39)
+        || (code >= 0x41 && code <= 0x46)
+        || (code >= 0x61 && code <= 0x66)
+      then Some (i + 1)
+      else None
 
 let match_char c s i =
-    if i >= String.length s
-    then None
-    else
-        if c = s.[i]
-        then Some(i+1)
-        else None
+    if i >= String.length s then None
+    else if c = s.[i] then Some (i + 1)
+    else None
 
 let match_str pat s i =
-    if (i + String.length pat) > String.length s
-    then None
-    else
-        if  pat  = String.sub s i (String.length pat)
-        then Some(i+String.length pat)
-        else None
+    if i + String.length pat > String.length s then None
+    else if pat = String.sub s i (String.length pat) then
+      Some (i + String.length pat)
+    else None
 
 let opt pat s =
-    let rec f acc i = match (acc, pat s i) with
-        | (_, Some res) -> f (Some res) (i+1)
-        | (before, None) -> before
-    in f None 
+    let rec f acc i =
+        match (acc, pat s i) with
+        | _, Some res -> f (Some res) (i + 1)
+        | before, None -> before
+    in
+    f None
 
 let star pat s i =
-    let rec f acc i = match (acc, pat s i) with
-        | (_, Some res) -> f (Some res) (i+1)
-        | (before, None) -> before
-    in f (Some i) i
+    let rec f acc i =
+        match (acc, pat s i) with
+        | _, Some res -> f (Some res) (i + 1)
+        | before, None -> before
+    in
+    f (Some i) i
 
-let comb_or pat1 pat2 s i = match pat1 s i with
-    | Some(i) -> Some(i)
-    | None -> pat2 s i
+let comb_or pat1 pat2 s i =
+    match pat1 s i with Some i -> Some i | None -> pat2 s i
 
 let match_strlit s i =
     let rec f i =
-        if i >= String.length s
-        then None
-        else if (i+1 < String.length s) && s.[i] = '\\' && s.[i+1] = '\"'
-        then f (i+2)
-        else if s.[i] = '"'
-        then Some(i+1)
-        else f (i+1)
+        if i >= String.length s then None
+        else if i + 1 < String.length s && s.[i] = '\\' && s.[i + 1] = '\"' then
+          f (i + 2)
+        else if s.[i] = '"' then Some (i + 1)
+        else f (i + 1)
     in
-    if i+1 >= String.length s
-    then None
-    else if s.[i] = '"'
-    then f (i+1)
+    if i + 1 >= String.length s then None
+    else if s.[i] = '"' then f (i + 1)
     else None
 
 let match_charlit s i =
-    if i + 3 < String.length s && s.[i] = '\'' && s.[i+1] == '\\' && s.[i+3] == '\''
-    then Some (i+4)
-    else if i + 2 < String.length s && s.[i] = '\'' && s.[i+2] == '\''
-    then Some (i+3)
+    if
+      i + 3 < String.length s
+      && s.[i] = '\''
+      && s.[i + 1] == '\\'
+      && s.[i + 3] == '\''
+    then Some (i + 4)
+    else if i + 2 < String.length s && s.[i] = '\'' && s.[i + 2] == '\'' then
+      Some (i + 3)
     else None
 
 let chain pat1 pat2 s i =
-    match pat1 s i with
-    | Some i -> pat2 s i
-    | None -> None
+    match pat1 s i with Some i -> pat2 s i | None -> None
 
 let match_space = opt match_space_char
-let match_lower_ident = chain match_alph_lower_char @@ star (comb_or match_alph_char (comb_or match_num_char (match_char '_')))
-let match_upper_ident = chain match_alph_upper_char @@ star (comb_or match_alph_char (comb_or match_num_char (match_char '_')))
+
+let match_lower_ident =
+    chain match_alph_lower_char
+    @@ star (comb_or match_alph_char (comb_or match_num_char (match_char '_')))
+
+let match_upper_ident =
+    chain match_alph_upper_char
+    @@ star (comb_or match_alph_char (comb_or match_num_char (match_char '_')))
+
 let match_tvar = chain (match_char '\'') match_lower_ident
+
 let match_int = opt match_num_char
+
 let match_hexint = chain (match_str "0x") (opt match_hexnum_char)
 
-let update_pos s (fname, line, col, _) i =
-    (fname, line, col, i)
+let update_pos s (fname, line, col, _) i = (fname, line, col, i)
 
 exception LexException of pos_t
 
@@ -294,5 +289,6 @@ let rec lex s pos =
             | ident -> LIdent ident :: lex s (update_pos s pos i)
         end
         | None -> raise (LexException pos)
+[@@ocamlformat "disable"]
 
 let f fname src = lex src @@ initial_pos fname

@@ -11,14 +11,13 @@ RUN useradd coins -m
 USER coins
 
 RUN opam init --compiler=4.11.1 --disable-sandboxing
-RUN eval $(opan env)
 RUN opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git && \
 	opam repository add satyrographos https://github.com/na4zagin3/satyrographos-repo.git && \
 	opam update
 
 RUN opam install -y opam-depext && \
 	opam depext satysfi satysfi-dist satyrographos && \
-	opam pin add -y 0.15.0 && \
+	opam pin add -y ocamlformat 0.15.0 && \
 	opam install -y satysfi satysfi-dist satyrographos \
 					dune ppx_deriving sedlex menhir core oUnit ocamlfind ocamlformat
 

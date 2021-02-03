@@ -50,65 +50,47 @@ let test_less _ =
     assert_equal (exec insts) (Bool false)
 
 let test_closure_apply _ =
-    let insts = [
-        Ldi 1;
-        Closure [
-            Access 0;
-            Ldi 1;
-            Add;
-            Return;
-        ];
-        Apply;
-        Ldi 1;
-        Add;
-    ] in
+    let insts =
+        [Ldi 1; Closure [Access 0; Ldi 1; Add; Return]; Apply; Ldi 1; Add]
+    in
     assert_equal (exec insts) (Int 3)
 
 let test_test _ =
-    let insts = [
-        Ldb true;
-        Test (
-            [Ldi 1],
-            [Ldi 2]
-        );
-    ] in
+    let insts = [Ldb true; Test ([Ldi 1], [Ldi 2])] in
     assert_equal (exec insts) (Int 1)
 
 let test_sum_to_10 _ =
-    let insts = [
-        Closure [
-            Ldi 1;
-            Access 0;
-            Eq;
-            Test (
-                [Ldi 1],
-                [Ldi (-1); Access 0; Add; Access 1; Apply; Access 0; Add]
-            );
-            Return
-        ];
-        Let;
-        Ldi 10;
-        Access 0;
-        Apply;
-        EndLet
-    ] in assert_equal (exec insts) (Int (1+2+3+4+5+6+7+8+9+10))
-
+    let insts =
+        [ Closure
+            [ Ldi 1
+            ; Access 0
+            ; Eq
+            ; Test
+                ( [Ldi 1]
+                , [Ldi (-1); Access 0; Add; Access 1; Apply; Access 0; Add] )
+            ; Return ]
+        ; Let
+        ; Ldi 10
+        ; Access 0
+        ; Apply
+        ; EndLet ]
+    in
+    assert_equal (exec insts) (Int (1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10))
 
 let suite =
-    "Cam" >::: [
-        "add"           >:: test_add;
-        "sub"           >:: test_sub;
-        "mul"           >:: test_mul;
-        "div"           >:: test_div;
-        "mod"           >:: test_mod;
-        "and"           >:: test_and;
-        "or"           >:: test_or;
-        "not"           >:: test_not;
-        "gret"           >:: test_gret;
-        "less"           >:: test_less;
-        "access"        >:: test_access;
-        "bool"          >:: test_bool;
-        "closure_apply" >:: test_closure_apply;
-        "test"          >:: test_test;
-        "sum_to_10"     >:: test_sum_to_10;
-    ]
+    "Cam"
+    >::: [ "add" >:: test_add
+         ; "sub" >:: test_sub
+         ; "mul" >:: test_mul
+         ; "div" >:: test_div
+         ; "mod" >:: test_mod
+         ; "and" >:: test_and
+         ; "or" >:: test_or
+         ; "not" >:: test_not
+         ; "gret" >:: test_gret
+         ; "less" >:: test_less
+         ; "access" >:: test_access
+         ; "bool" >:: test_bool
+         ; "closure_apply" >:: test_closure_apply
+         ; "test" >:: test_test
+         ; "sum_to_10" >:: test_sum_to_10 ]

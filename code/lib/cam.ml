@@ -45,8 +45,8 @@ type cam_inst_t =
     | Neq
     | Not
 [@@deriving show]
-and code_t = cam_inst_t list
-[@@deriving show]
+
+and code_t = cam_inst_t list [@@deriving show]
 
 type value_t =
     | Int of int
@@ -55,53 +55,65 @@ type value_t =
     | ClosureVal of code_t * value_t list
 [@@deriving show]
 
-type stack_t = value_t list
-[@@deriving show]
-type env_t = value_t list
-[@@deriving show]
+type stack_t = value_t list [@@deriving show]
+
+type env_t = value_t list [@@deriving show]
 
 let exec insts =
     let rec exec env stack =
         let binop_int_int op rest = function
-            | Int lhr :: Int rhr :: stack -> exec env (Int (op lhr rhr) :: stack) rest
-            | _ -> failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+            | Int lhr :: Int rhr :: stack ->
+                exec env (Int (op lhr rhr) :: stack) rest
+            | _ ->
+                failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
         in
         let binop_bool_bool op rest = function
-            | Bool lhr :: Bool rhr :: stack -> exec env (Bool (op lhr rhr) :: stack) rest
-            | _ -> failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+            | Bool lhr :: Bool rhr :: stack ->
+                exec env (Bool (op lhr rhr) :: stack) rest
+            | _ ->
+                failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
         in
         let binop_int_bool op rest = function
-            | Int lhr :: Int rhr :: stack -> exec env (Bool (op lhr rhr) :: stack) rest
-            | _ -> failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+            | Int lhr :: Int rhr :: stack ->
+                exec env (Bool (op lhr rhr) :: stack) rest
+            | _ ->
+                failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
         in
         function
         | [] -> List.hd stack
-        | Ldi(n) :: rest -> exec env ((Int n) :: stack) rest
-        | Ldb(b) :: rest -> exec env ((Bool b) :: stack) rest
-        | Lds(s) :: rest -> exec env ((Str s) :: stack) rest
-        | Access(addr) :: rest -> exec env ((List.nth env addr) :: stack) rest
-        | Closure(c) :: rest -> exec env ((ClosureVal (c, env)) :: stack) rest
-        | Apply :: rest -> begin match stack with
-            | ClosureVal (code, env') :: v :: stack -> exec (v :: ClosureVal (code, env') :: env') (ClosureVal (rest, env) :: stack) code
-            | _ -> failwith @@ Printf.sprintf "cannot apply function %s" @@ show_stack_t stack
-        end
-        | Return :: _ -> begin match stack with
-            | v :: ClosureVal (code, env') :: stack -> exec env' (v :: stack) code
-            | _ -> failwith "cannot return"
-        end
-        | Let :: rest -> begin match stack with
-            | v :: stack -> exec (v :: env) stack rest
-            | _ -> failwith "cannot let"
-        end
-        | EndLet :: rest -> begin match env with
-            | _ :: env -> exec env stack rest
-            | _ -> failwith "cannot endlet"
-        end
-        | Test(c1, c2) :: rest -> begin match stack with
-            | Bool true :: stack -> exec env stack (c1 @ rest)
-            | Bool false :: stack -> exec env stack (c2 @ rest)
-            | _ -> failwith "cannot test"
-        end
+        | Ldi n :: rest -> exec env (Int n :: stack) rest
+        | Ldb b :: rest -> exec env (Bool b :: stack) rest
+        | Lds s :: rest -> exec env (Str s :: stack) rest
+        | Access addr :: rest -> exec env (List.nth env addr :: stack) rest
+        | Closure c :: rest -> exec env (ClosureVal (c, env) :: stack) rest
+        | Apply :: rest -> (
+          match stack with
+          | ClosureVal (code, env') :: v :: stack ->
+              exec
+                (v :: ClosureVal (code, env') :: env')
+                (ClosureVal (rest, env) :: stack)
+                code
+          | _ ->
+              failwith
+              @@ Printf.sprintf "cannot apply function %s"
+              @@ show_stack_t stack )
+        | Return :: _ -> (
+          match stack with
+          | v :: ClosureVal (code, env') :: stack -> exec env' (v :: stack) code
+          | _ -> failwith "cannot return" )
+        | Let :: rest -> (
+          match stack with
+          | v :: stack -> exec (v :: env) stack rest
+          | _ -> failwith "cannot let" )
+        | EndLet :: rest -> (
+          match env with
+          | _ :: env -> exec env stack rest
+          | _ -> failwith "cannot endlet" )
+        | Test (c1, c2) :: rest -> (
+          match stack with
+          | Bool true :: stack -> exec env stack (c1 @ rest)
+          | Bool false :: stack -> exec env stack (c2 @ rest)
+          | _ -> failwith "cannot test" )
         | Add :: rest -> binop_int_int ( + ) rest stack
         | Sub :: rest -> binop_int_int ( - ) rest stack
         | Mul :: rest -> binop_int_int ( * ) rest stack
@@ -111,18 +123,23 @@ let exec insts =
         | Less :: rest -> binop_int_bool ( < ) rest stack
         | And :: rest -> binop_bool_bool ( && ) rest stack
         | Or :: rest -> binop_bool_bool ( || ) rest stack
-        | Not :: rest -> begin match stack with
-            | Bool b :: stack -> exec env (Bool (not b) :: stack) rest
-            | _ -> failwith "cannot not"
-        end
-        | Eq :: rest -> begin match stack with
-            | Int lhr :: Int rhr :: stack -> exec env (Bool (lhr = rhr) :: stack) rest
-            | Bool lhr :: Bool rhr :: stack -> exec env (Bool (lhr = rhr) :: stack) rest
-            | _ -> failwith "cannot add"
-        end
-        | Neq :: rest -> begin match stack with
-            | Int lhr :: Int rhr :: stack -> exec env (Bool (lhr = rhr) :: stack) rest
-            | Bool lhr :: Bool rhr :: stack -> exec env (Bool (lhr = rhr) :: stack) rest
-            | _ -> failwith "cannot add"
-        end
-    in exec [] [] insts
+        | Not :: rest -> (
+          match stack with
+          | Bool b :: stack -> exec env (Bool (not b) :: stack) rest
+          | _ -> failwith "cannot not" )
+        | Eq :: rest -> (
+          match stack with
+          | Int lhr :: Int rhr :: stack ->
+              exec env (Bool (lhr = rhr) :: stack) rest
+          | Bool lhr :: Bool rhr :: stack ->
+              exec env (Bool (lhr = rhr) :: stack) rest
+          | _ -> failwith "cannot add" )
+        | Neq :: rest -> (
+          match stack with
+          | Int lhr :: Int rhr :: stack ->
+              exec env (Bool (lhr = rhr) :: stack) rest
+          | Bool lhr :: Bool rhr :: stack ->
+              exec env (Bool (lhr = rhr) :: stack) rest
+          | _ -> failwith "cannot add" )
+    in
+    exec [] [] insts

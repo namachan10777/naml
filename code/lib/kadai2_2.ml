@@ -8,7 +8,8 @@ type exp =
     | Divide of exp * exp
 
 (* Eというexp型の式を受けてPlus(e, IntLit 2)を返す関数 *)
-let f e = Plus(e, IntLit 2)
+let f e = Plus (e, IntLit 2)
+
 (* 整数リテラルを全てその絶対値の整数リテラルで置き換える関数 *)
 let rec g = function
     | IntLit n -> IntLit (abs n)
@@ -20,11 +21,9 @@ let rec g = function
 (* 課題2-3 *)
 let rec eval = function
     | IntLit n -> n
-    | Plus (a, b) -> (eval a) + (eval b)
-    | Times (a, b) -> (eval a) * (eval b)
-    | Subtract (a, b) -> (eval a) - (eval b)
+    | Plus (a, b) -> eval a + eval b
+    | Times (a, b) -> eval a * eval b
+    | Subtract (a, b) -> eval a - eval b
     | Divide (a, b) ->
         let divider = eval b in
-        if divider = 0
-        then failwith "divided by 0"
-        else (eval a) / divider
+        if divider = 0 then failwith "divided by 0" else eval a / divider

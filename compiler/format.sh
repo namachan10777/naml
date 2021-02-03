@@ -1,5 +1,3 @@
 #!/bin/sh
 
-for f in *.ml; do
-	ocamlformat -i $f
-done
+find . -type f -name '*.ml' | xargs ocamlformat -i $f

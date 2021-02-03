@@ -3,21 +3,22 @@ let parse f lexbuf =
     let lexer () =
         let ante_position = lexbuf.pos in
         let token = lex lexbuf in
-        let post_position = lexbuf.pos
-        in (token, ante_position, post_position) in
-    let parser =
-        MenhirLib.Convert.Simplified.traditional2revised f
+        let post_position = lexbuf.pos in
+        (token, ante_position, post_position)
     in
+    let parser = MenhirLib.Convert.Simplified.traditional2revised f in
     parser lexer
 
 let parse_repl_string s =
-    let buf = K7lex.create_lexbuf ~file:"no file"
-        @@ Sedlexing.Utf8.from_string s in
+    let buf =
+        K7lex.create_lexbuf ~file:"no file" @@ Sedlexing.Utf8.from_string s
+    in
     parse K7parser.repl buf
 
 let parse_string s =
-    let buf = K7lex.create_lexbuf ~file:"no file"
-        @@ Sedlexing.Utf8.from_string s in
+    let buf =
+        K7lex.create_lexbuf ~file:"no file" @@ Sedlexing.Utf8.from_string s
+    in
     parse K7parser.main buf
 
 let eval_string s =

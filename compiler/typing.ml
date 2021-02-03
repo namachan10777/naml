@@ -7,6 +7,16 @@ type pat_t = PVar of string * Types.t | PTuple of pat_t list * Types.t list
 
 type tydef_t = Abbr of Types.t | Variant of (string * Types.t list) list
 
+exception UnsupportedFunction of string
+
+exception CyclicType
+
+exception Internal
+
+exception UnboundIdentifier of string
+
+exception TypeError of string
+
 type t =
     | Never
     | Int of int
@@ -25,7 +35,7 @@ type t =
 
 let rec lookup x = function
     | (y, ty) :: remain -> if x = y then ty else lookup x remain
-    | _ -> failwith @@ Printf.sprintf "notfound %s" @@ Ast.show_id_t x
+    | _ -> raise @@ UnboundIdentifier (Ast.show_id_t x)
 
 let count = ref 0
 
@@ -49,12 +59,12 @@ let rec instantiate env level =
     let rec f = function
         | Types.Int -> Types.Int
         | Types.Bool -> Types.Bool
+        | Types.Str -> Types.Str
         | Types.Fun (args, ret) -> Types.Fun (List.map f args, f ret)
         | Types.Var _ as t -> t
         | Types.Poly i -> lookup i
         | Types.Tuple ts -> Types.Tuple (List.map f ts)
         | Types.Variant (targs, name) -> Types.Variant (List.map f targs, name)
-        | _ -> failwith "instantiate unimplemented"
     in
     f
 
@@ -72,7 +82,7 @@ let rec occur_check id =
         | Types.Var u -> (
           match !(!u) with
           | Types.Unknown (_, id', _) ->
-              if id = id' then failwith "cyclic type" else ()
+              if id = id' then raise CyclicType else ()
           | Types.Just (t, _) -> f t )
     in
     f
@@ -96,7 +106,7 @@ let rec unify a b =
     match (a, b) with
     | Types.Int, Types.Int -> Types.Int
     | Types.Bool, Types.Bool -> Types.Bool
-    | Types.Fun ([], _), Types.Fun ([], _) -> failwith "unreachable"
+    | Types.Fun ([], _), Types.Fun ([], _) -> raise Internal
     | Types.Fun ([], r), b -> unify r b
     | a, Types.Fun ([], r) -> unify r a
     | Types.Fun ([a1], r1), Types.Fun ([a2], r2) ->
@@ -104,12 +114,12 @@ let rec unify a b =
     | Types.Fun (a1 :: as1, r1), Types.Fun (a2 :: as2, r2) -> (
       match unify (Types.Fun (as1, r1)) (Types.Fun (as2, r2)) with
       | Types.Fun (as', r) -> Types.Fun (unify a1 a2 :: as', r)
-      | _ -> failwith "cannot unify fun" )
+      | _ -> raise @@ TypeError "cannot unify function" )
     | Types.Variant (targs, name), Types.Variant (targs', name') ->
         if name = name' then
           Types.Variant
             (List.map (fun (t, t') -> unify t t') (Util.zip targs targs'), name)
-        else failwith @@ "cannot unify higher type"
+        else raise @@ TypeError "cannot unify variant type"
     | Types.Tuple ts1, Types.Tuple ts2 ->
         Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
     | Types.Var u1, Types.Var u2 -> (
@@ -143,8 +153,10 @@ let rec unify a b =
     | Types.Var u, t -> unify_u_and_t !u t
     | t, Types.Var u -> unify_u_and_t !u t
     | a, b ->
-        failwith
-        @@ Printf.sprintf "cannot unify %s, %s" (Types.show a) (Types.show b)
+        raise
+        @@ TypeError
+             (Printf.sprintf "cannot unify %s, %s" (Types.show a)
+                (Types.show b))
 
 type poly_map_t = Unknown of int | Poly of int
 
@@ -240,7 +252,7 @@ let rec pat_ty level = function
     | Ast.PTuple ts ->
         let names, tys, ps = Util.unzip3 @@ List.map (pat_ty level) ts in
         (List.concat names, Types.Tuple tys, PTuple (ps, tys))
-    | _ -> failwith @@ "unsupported pattern"
+    | _ -> raise @@ UnsupportedFunction "pattern"
 
 let rec canonical_type_def tenv co_def (name, targs, def) =
     (* envはtarg -> Types.tの写像*)
@@ -249,8 +261,8 @@ let rec canonical_type_def tenv co_def (name, targs, def) =
         if List.for_all (fun n -> n <> name) hist then
           match tydef with
           | Ast.Alias ty -> f_ty (name :: hist) targs ty
-          | Ast.Variant ctors -> failwith "unimplemented"
-        else failwith "recursive definition"
+          | Ast.Variant ctors -> raise Internal
+        else raise CyclicType
     (* Ast.ty_t -> Types.t *)
     and f_ty hist env = function
         | Ast.TVar id -> map_to_ty id env
@@ -281,7 +293,7 @@ let rec canonical_type_def tenv co_def (name, targs, def) =
         let rec map i = function
             | (i', ty) :: _ when i = i' -> ty
             | _ :: remain -> map i remain
-            | [] -> failwith @@ "oops!"
+            | [] -> raise Internal
         in
         function
         | Types.Str -> Types.Str
@@ -291,17 +303,17 @@ let rec canonical_type_def tenv co_def (name, targs, def) =
         | Types.Tuple ts -> Types.Tuple (List.map (reassoc_ty env) ts)
         | Types.Fun (args, ret) ->
             Types.Fun (List.map (reassoc_ty env) args, reassoc_ty env ret)
-        | Types.Var _ -> failwith "oops!"
+        | Types.Var _ -> raise Internal
         | Types.Variant (args, name) ->
             Types.Variant (List.map (reassoc_ty env) args, name)
     and map_to_ty id = function
         | (id', ty) :: _ when id = id' -> ty
         | _ :: remain -> map_to_ty id remain
-        | [] -> failwith @@ "undefined tvar '" ^ id
+        | [] -> raise @@ UnboundIdentifier ("'" ^ id)
     and lookup_from_tenv id = function
         | (id', tydef) :: _ when id = id' -> tydef
         | _ :: remain -> lookup_from_tenv id remain
-        | [] -> failwith @@ "undefined type" ^ Ast.show_id_t id
+        | [] -> raise @@ UnboundIdentifier ("undefined type" ^ Ast.show_id_t id)
     and lookup_from_co_def id = function
         | (id', targs, ty) :: _ when id = id' -> Some (targs, ty)
         | _ :: remain -> lookup_from_co_def id remain
@@ -342,8 +354,8 @@ let rec g env level =
               (App (f, args), Types.Fun (param_tys, ret_ty))
             else if List.length params = List.length args then
               (App (f, args), ret_ty)
-            else failwith "too much argument"
-        | _ -> failwith "unmatched app" )
+            else raise @@ TypeError "too much argument"
+        | _ -> raise @@ TypeError "unmatched app" )
     | Ast.Let (defs, expr) ->
         let pat_vars, defs =
             Util.unzip
@@ -413,7 +425,10 @@ let rec g env level =
               instantiate (ref []) level (Types.Variant (targs, variant_name))
           in
           (Ctor (name, ty), ty)
-      | t -> failwith @@ Printf.sprintf "Ctor must not have invalid type" )
+      | _ ->
+          raise
+          @@ TypeError ("Ctor " ^ Ast.show_id_t name ^ " takes some arguments")
+      )
     | Ast.CtorApp (name, args) -> (
       match lookup name cenv with
       | [Types.Tuple arg_tys'], targs, variant_name ->

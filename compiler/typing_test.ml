@@ -208,8 +208,7 @@ let () =
         Typing.canonical_type_def [] [def1; def2] def1 |> ignore ;
         failwith "test failure"
       with
-    | Failure msg ->
-        Test.assert_eq "recursive detection" msg "recursive definition"
+    | T.CyclicType -> ()
     | e -> raise e ) ;
     let def1 =
         ( ["t1"]

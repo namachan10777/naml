@@ -123,7 +123,7 @@ and parse_tid = function
     | Lex.UIdent id :: Lex.Dot :: remain ->
         let last, remain = parse_tid remain in
         (id :: last, remain)
-    | _ -> failwith "syntax error while reading type id"
+    | _ -> raise @@ SyntaxError "syntax error while reading type id"
 
 and parse_tapp_arg =
     let rec parse_tapp_args input =
@@ -139,13 +139,13 @@ and parse_tapp_arg =
       | _, Lex.Mul :: _ -> (
         match parse_ty_tuple inner with
         | ty, Lex.RP :: remain -> ([TParen ty], remain)
-        | _ -> failwith "syntax error" )
+        | _ -> raise @@ SyntaxError "syntax error" )
       | _, Lex.Comma :: _ -> (
         match parse_tapp_args inner with
         | tys, Lex.RP :: remain -> (tys, remain)
-        | _ -> failwith "syntax error" )
+        | _ -> raise @@ SyntaxError "syntax error" )
       | ty, Lex.RP :: remain -> ([ty], remain)
-      | _ -> failwith "syntax error" )
+      | _ -> raise @@ SyntaxError "syntax error" )
     | input ->
         let ty, remain = parse_ty_term input in
         ([ty], remain)
@@ -169,7 +169,7 @@ and parse_tapp input =
         let id, remain = parse_tid remain in
         f (TApp (ts, id)) remain
     | [t], remain -> (t, remain)
-    | _ -> failwith "syntax error"
+    | _ -> raise @@ SyntaxError "syntax error"
 
 and parse_ty_term = function
     | Lex.TVar id :: remain -> (TVar id, remain)

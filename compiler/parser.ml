@@ -1,9 +1,8 @@
 type ty_t =
     | TParen of ty_t
-    | TId of string list
     | TVar of string
     | TTuple of ty_t list
-    | TApp of ty_t * string list
+    | TApp of ty_t list * string list
 [@@deriving show]
 
 type tydef_t =
@@ -113,40 +112,43 @@ and parse_variant_right input = match parse_tapp input with
         let rhr, remain = parse_variant_right remain in
         lhr :: rhr, remain
     | (t, remain) -> [t], remain
-and parse_tapp input = match parse_ty_term input with
+and parse_tid = function
+    | Lex.LIdent id :: remain -> [id], remain
+    | Lex.UIdent id :: Lex.Dot :: remain ->
+        let last, remain = parse_tid remain in
+        id :: last, remain
+    | _ -> failwith "syntax error while reading type id"
+and parse_tapp input =
+    let rec f t input = match t, input with
+    | (TParen (TTuple ts), (Lex.LIdent _ :: _ as remain)) ->
+        let id, remain = parse_tid remain in
+        f (TApp (ts, id)) remain
+    | (TParen (TTuple ts), (Lex.UIdent _ :: _ as remain)) ->
+        let id, remain = parse_tid remain in
+        f (TApp (ts, id)) remain
     | (t, (Lex.LIdent _ :: _ as remain)) ->
-        let (higher_types, remain) = take_tids remain in
-        (List.fold_left (fun t higher_type -> TApp (t, higher_type)) t higher_types, remain)
+        let id, remain = parse_tid remain in
+        f (TApp ([t], id)) remain
     | (t, (Lex.UIdent _ :: _ as remain)) ->
-        let (higher_types, remain) = take_tids remain in
-        (List.fold_left (fun t higher_type -> TApp (t, higher_type)) t higher_types, remain)
-    | t -> t
-and take_tids input = match parse_tid input with
-    | (tid, (Lex.LIdent _ :: _ as remain)) ->
-        let (tids, remain) = take_tids remain in
-        tid :: tids, remain
-    | (tid, (Lex.UIdent _ :: _ as remain)) ->
-        let (tids, remain) = take_tids remain in
-        tid :: tids, remain
-    | (tid, remain) -> [tid], remain
+        let id, remain = parse_tid remain in
+        f (TApp ([t], id)) remain
+    | r -> r
+    in
+    let t, remain = parse_ty_term input in
+    f t remain
 and parse_ty_term = function
     | Lex.TVar id :: remain -> TVar id, remain
-    | Lex.LIdent id :: remain -> TId [id], remain
-    | Lex.UIdent _ :: _ as remain ->
-        let (tid, remain) = parse_tid remain in TId tid, remain
+    | Lex.LIdent _ :: _  as input ->
+        let id, remain = parse_tid input in
+        TApp ([], id), remain
+    | Lex.UIdent _ :: _ as input ->
+        let id, remain = parse_tid input in
+        TApp ([], id), remain
     | Lex.LP :: inner -> begin match parse_ty inner with
         | (inner, RP :: remain) -> TParen inner, remain
         | _ -> raise @@ SyntaxError "paren is not balanced in type"
     end
     | t -> raise @@ SyntaxError (Printf.sprintf "ty_term %s" @@ show_input_t t)
-and parse_tid = function
-    | Lex.LIdent id :: remain -> [id], remain
-    | Lex.UIdent m_id :: Lex.Dot :: Lex.LIdent id :: remain -> [m_id; id], remain
-    | Lex.UIdent m_id :: Lex.Dot :: (Lex.UIdent _ :: _ as remain) ->
-        let (child, remain) = parse_tid remain in
-        (m_id :: child), remain
-    | i -> raise @@ SyntaxError (Printf.sprintf "type id %s" @@ show_input_t i)
-
 let rec parse_ty_variant = function
     | Lex.VBar :: Lex.UIdent name :: Lex.Of :: remain -> begin match parse_variant_right remain with
         | (t, Lex.VBar :: arms) -> begin match parse_ty_variant arms with

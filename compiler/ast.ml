@@ -14,10 +14,9 @@ type pat_t =
 [@@deriving show]
 
 type ty_t =
-    | TId of string list
     | TVar of string
     | TTuple of ty_t list
-    | TApp of ty_t * string list
+    | TApp of ty_t list * string list
 [@@deriving show]
 
 type tydef_t =
@@ -44,10 +43,9 @@ type t =
 
 let rec of_parser_ty_t = function
     | Parser.TParen t -> of_parser_ty_t t
-    | Parser.TId id -> TId id
     | Parser.TVar id -> TVar id
     | Parser.TTuple ts -> TTuple (List.map of_parser_ty_t ts)
-    | Parser.TApp (t, higher) -> TApp (of_parser_ty_t t, higher)
+    | Parser.TApp (ts, higher) -> TApp (List.map of_parser_ty_t ts, higher)
 
 let rec of_parser_pat_t = function
     | Parser.PEmp -> PEmp

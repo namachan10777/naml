@@ -246,12 +246,12 @@ let () =
     test "dot array assign" "X.y.(1) <- 1 + 1"
         (P.ArrayAssign (P.Var ["X"; "y"], P.Int 1, P.Add (P.Int 1, P.Int 1)));
     test "unit" "let () = () in ()" (P.Let ([P.PTuple [], P.Tuple []], P.Tuple[]));
-    test_ty "tuple1" "t * t" (P.TTuple [P.TId ["t"]; P.TId ["t"]]);
-    test_ty "tuple2" "t * (t * t)" (P.TTuple [P.TId ["t"]; P.TParen (P.TTuple [P.TId ["t"]; P.TId ["t"]])]);
-    test_ty "tid" "M1.t * M2.t" (P.TTuple [P.TId ["M1"; "t"]; P.TId ["M2"; "t"]]);
-    test_ty "higher type" "t list list" (P.TApp (P.TApp (P.TId ["t"], ["list"]), ["list"]));
-    test_ty "tapp2" "(a * a) list" (P.TApp (P.TParen (P.TTuple [P.TId ["a"];P.TId ["a"]]), ["list"]));
-    test_ty "tvar" "'a list" (P.TApp (P.TVar "a", ["list"]));
+    test_ty "tuple1" "t * t" (P.TTuple [P.TApp ([],  ["t"]); P.TApp ([], ["t"])]);
+    test_ty "tuple2" "t * (t * t)" (P.TTuple [P.TApp ([],  ["t"]); P.TParen (P.TTuple [P.TApp ([],  ["t"]); P.TApp ([],  ["t"])])]);
+    test_ty "tid" "M1.t * M2.t" (P.TTuple [P.TApp ([],  ["M1"; "t"]); P.TApp ([],  ["M2"; "t"])]);
+    test_ty "higher type" "t list list" (P.TApp ([P.TApp ([P.TApp ([], ["t"])], ["list"])], ["list"]));
+    test_ty "tapp2" "(a * a) list" (P.TApp ([P.TApp ([],  ["a"]); P.TApp ([],  ["a"])], ["list"]));
+    test_ty "tvar" "'a list" (P.TApp ([P.TVar "a"], ["list"]));
     test_stmts "let stmt" "let x = 1" (P.Let ([P.PVar "x", P.Int 1], P.Never));
     test_stmts "letfun stmt" "let add x y = x + y"
     (P.Let ([P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"]))], P.Never));
@@ -287,17 +287,17 @@ let () =
     test_stmts "type variant" "type t = Leaf of int | Node of t * t"
         (P.Type ([
             "t", [], P.Variant [
-                "Leaf", [P.TId ["int"]];
-                "Node", [P.TId ["t"]; P.TId ["t"]];
+                "Leaf", [P.TApp ([], ["int"])];
+                "Node", [P.TApp ([],  ["t"]); P.TApp ([],  ["t"])];
             ]
         ], P.Never));
     test_stmts "type variant and" "type t = Leaf of int | Node of t * t and 'a a_t = int"
         (P.Type ([
             "t", [], P.Variant [
-                "Leaf", [P.TId ["int"]];
-                "Node", [P.TId ["t"]; P.TId ["t"]];
+                "Leaf", [P.TApp ([], ["int"])];
+                "Node", [P.TApp ([], ["t"]); P.TApp ([], ["t"])];
             ];
-            "a_t", ["a"], P.Alias (P.TId ["int"]);
+            "a_t", ["a"], P.Alias (P.TApp ([], ["int"]));
         ], P.Never));
     test_stmts "type option" "type 'a t = Some of 'a | None"
         (P.Type ([

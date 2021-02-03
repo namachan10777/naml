@@ -16,10 +16,10 @@ type pat_t =
     | PCtor of id_t
 [@@deriving show]
 
-type ty_t = | TId of id_t
+type ty_t =
     | TForall of tvar_t
     | TTuple of ty_t list
-    | TApp of ty_t * id_t
+    | TApp of ty_t list * id_t
     | TVar of string
 [@@deriving show]
 
@@ -82,9 +82,8 @@ let rec of_ty env =
     let venv, tenv, cenv = env in
     function
     | Ast.TTuple ts -> TTuple (List.map (of_ty env) ts)
-    | Ast.TId id -> TId (lookup id tenv)
     | Ast.TVar v -> TVar v
-    | Ast.TApp (t, id) -> TApp (of_ty env t, lookup id tenv)
+    | Ast.TApp (ts, id) -> TApp (List.map (of_ty env) ts, lookup id tenv)
 
 let of_tydef env =
     let venv, tenv, cenv = env in

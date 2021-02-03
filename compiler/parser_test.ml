@@ -250,7 +250,8 @@ let () =
     test_ty "tuple2" "t * (t * t)" (P.TTuple [P.TApp ([],  ["t"]); P.TParen (P.TTuple [P.TApp ([],  ["t"]); P.TApp ([],  ["t"])])]);
     test_ty "tid" "M1.t * M2.t" (P.TTuple [P.TApp ([],  ["M1"; "t"]); P.TApp ([],  ["M2"; "t"])]);
     test_ty "higher type" "t list list" (P.TApp ([P.TApp ([P.TApp ([], ["t"])], ["list"])], ["list"]));
-    test_ty "tapp2" "(a * a) list" (P.TApp ([P.TApp ([],  ["a"]); P.TApp ([],  ["a"])], ["list"]));
+    test_ty "tapp2" "(a * a) list" (P.TApp ([P.TParen (P.TTuple [P.TApp ([],  ["a"]); P.TApp ([],  ["a"])])], ["list"]));
+    test_ty "tapp2" "(a, a) list" (P.TApp ([P.TApp ([],  ["a"]); P.TApp ([],  ["a"])], ["list"]));
     test_ty "tvar" "'a list" (P.TApp ([P.TVar "a"], ["list"]));
     test_stmts "let stmt" "let x = 1" (P.Let ([P.PVar "x", P.Int 1], P.Never));
     test_stmts "letfun stmt" "let add x y = x + y"

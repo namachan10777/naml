@@ -121,14 +121,31 @@ and parse_tid = function
         let last, remain = parse_tid remain in
         id :: last, remain
     | _ -> failwith "syntax error while reading type id"
+and parse_tapp_arg =
+    let rec parse_tapp_args input = match parse_ty_term input with
+        | (lhr, Lex.Comma :: remain) ->
+            let rhr, remain = parse_tapp_args remain in
+            lhr :: rhr, remain
+        | t, remain -> [t], remain
+    in
+    function
+    | Lex.LP :: inner -> begin match parse_ty_term inner with
+        | _, Lex.Mul :: _ -> begin match parse_ty_tuple inner with
+            | ty, Lex.RP :: remain -> [TParen ty], remain
+            | _ -> failwith "syntax error"
+            end
+        | _, Lex.Comma :: _ -> begin match parse_tapp_args inner with
+            | tys, Lex.RP :: remain -> tys, remain
+            | _ -> failwith "syntax error"
+            end
+        | ty, Lex.RP :: remain -> [ty], remain
+        | _ -> failwith "syntax error"
+        end
+    | input ->
+        let ty, remain = parse_ty_term input in
+        [ty], remain
 and parse_tapp input =
     let rec f t input = match t, input with
-    | (TParen (TTuple ts), (Lex.LIdent _ :: _ as remain)) ->
-        let id, remain = parse_tid remain in
-        f (TApp (ts, id)) remain
-    | (TParen (TTuple ts), (Lex.UIdent _ :: _ as remain)) ->
-        let id, remain = parse_tid remain in
-        f (TApp (ts, id)) remain
     | (t, (Lex.LIdent _ :: _ as remain)) ->
         let id, remain = parse_tid remain in
         f (TApp ([t], id)) remain
@@ -137,8 +154,15 @@ and parse_tapp input =
         f (TApp ([t], id)) remain
     | r -> r
     in
-    let t, remain = parse_ty_term input in
-    f t remain
+    match parse_tapp_arg input with
+    | (ts, (Lex.LIdent _ :: _ as remain)) ->
+        let id, remain = parse_tid remain in
+        f (TApp (ts, id)) remain
+    | (ts, (Lex.UIdent _ :: _ as remain)) ->
+        let id, remain = parse_tid remain in
+        f (TApp (ts, id)) remain
+    | [t], remain -> t, remain
+    | _ -> failwith "syntax error"
 and parse_ty_term = function
     | Lex.TVar id :: remain -> TVar id, remain
     | Lex.TInt :: remain -> TInt, remain

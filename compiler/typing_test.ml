@@ -219,4 +219,60 @@ let () =
     let u1 = T.fresh 0 in
     let u2 = u1 in
     T.unify u1 Ty.Int |> ignore;
-    unify_test "unify 6" u2 Ty.Int;
+    unify_test "unify 6" u2 Ty.Int
+
+let () =
+    let def1 = (["t1"], [], Ast.Alias (Ast.TTuple [Ast.TInt; Ast.TInt])) in
+    let def2 = (["t2"], [], Ast.Alias (Ast.TApp ([], ["t1"]))) in
+    let def = Typing.canonical_type_def [] [def1; def2] def1 in
+    Test.assert_eq "simple conv" def ([], Types.Tuple [Types.Int; Types.Int]);
+    let def = Typing.canonical_type_def [] [def1; def2] def2 in
+    Test.assert_eq "chain" def ([], Types.Tuple [Types.Int; Types.Int]);
+    let def1 = (["t1"], ["a"], Ast.Alias (Ast.TTuple [Ast.TVar "a"; Ast.TVar "a"])) in
+    let def2 = (["t2"], [], Ast.Alias (Ast.TTuple [Ast.TApp ([Ast.TInt], ["t1"]);Ast.TApp ([Ast.TInt], ["t1"])])) in
+    let def = Typing.canonical_type_def [] [def1; def2] def1 in
+    Test.assert_eq "higher alias" def ([], Types.Tuple [Poly 0; Poly 0]);
+    let def = Typing.canonical_type_def [] [def1; def2] def2 in
+    Test.assert_eq "higher alias" def ([], Types.Tuple [Types.Tuple [Types.Int; Types.Int]; Types.Tuple [Types.Int; Types.Int]]);
+    let def1 = (["t1"], [], Ast.Alias (Ast.TApp ([], ["t1"]))) in
+    begin try
+        Typing.canonical_type_def [] [def1; def2] def1 |> ignore;
+        failwith "test failure"
+    with
+    | Failure msg ->
+        Test.assert_eq "recursive detection" msg "recursive definition"
+    | e -> raise e
+    end;
+    let def1 = (
+        ["t1"],
+        ["a"; "b"],
+        Ast.Alias (
+            Ast.TTuple [
+                Ast.TApp ([Ast.TVar "a"], ["list"]);
+                Ast.TApp ([Ast.TVar "b"], ["list"]);
+            ]
+        )
+    ) in
+    let def2 = (
+        ["t2"],
+        ["a"],
+        Ast.Alias (
+            Ast.TApp ([Ast.TInt; Ast.TVar "a"], ["t1"])
+        )
+    ) in
+    let def = Typing.canonical_type_def Types.pervasive_types [def1; def2] def2 in
+    Test.assert_eq "chain to defined type" def ([], Types.Tuple [Types.Variant ([Types.Int], ["list"]); Types.Variant ([Types.Poly 0], ["list"])]);
+    let def1 = (["t1"], ["a"], Ast.Variant [
+        "A", [Ast.TVar "a"];
+        "B", [Ast.TApp ([Ast.TInt], ["t2"])]
+    ]) in
+    let def2 = (["t2"], ["a"], Ast.Alias (Ast.TApp ([Ast.TVar "a"], ["t1"]))) in
+    let def = Typing.canonical_type_def Types.pervasive_types [def1; def2] def1 in
+    Test.assert_eq "matual recursive variatn" def
+    (
+        [
+            ["A"], ([Poly 0], [Poly 0], ["t1"]);
+            ["B"], ([Types.Variant ([Types.Int], ["t1"])], [Poly 0], ["t1"]);
+        ],
+        Types.Variant ([Poly 0], ["t1"])
+    )

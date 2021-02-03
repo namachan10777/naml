@@ -287,17 +287,17 @@ let () =
     test_stmts "type variant" "type t = Leaf of int | Node of t * t"
         (P.Type ([
             "t", [], P.Variant [
-                "Leaf", [P.TApp ([], ["int"])];
+                "Leaf", [P.TInt];
                 "Node", [P.TApp ([],  ["t"]); P.TApp ([],  ["t"])];
             ]
         ], P.Never));
     test_stmts "type variant and" "type t = Leaf of int | Node of t * t and 'a a_t = int"
         (P.Type ([
             "t", [], P.Variant [
-                "Leaf", [P.TApp ([], ["int"])];
+                "Leaf", [P.TInt];
                 "Node", [P.TApp ([], ["t"]); P.TApp ([], ["t"])];
             ];
-            "a_t", ["a"], P.Alias (P.TApp ([], ["int"]));
+            "a_t", ["a"], P.Alias (P.TInt);
         ], P.Never));
     test_stmts "type option" "type 'a t = Some of 'a | None"
         (P.Type ([

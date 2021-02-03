@@ -8,6 +8,10 @@ type pat_t =
     | PTuple of pat_t list * (Types.t list)
 [@@deriving show]
 
+type tydef_t =
+    | Abbr of Types.t
+    | Variant of (string * Types.t list) list
+
 type t =
     | Never
     | Int of int
@@ -238,6 +242,78 @@ let rec pat_ty level = function
         List.concat names, Types.Tuple tys, PTuple (ps, tys)
     | _ -> failwith @@ "unsupported pattern"
 
+let rec canonical_type_def tenv co_def (name, targs, def) =
+    (* envはtarg -> Types.tの写像*)
+    (* Ast.typdef -> tydef_t *)
+    let rec f_tydef hist (name, targs, tydef) =
+        if List.for_all (fun n -> n <> name) hist
+        then
+            match tydef with
+            | Ast.Alias ty -> f_ty (name :: hist) targs ty
+            | Ast.Variant ctors -> failwith "unimplemented"
+        else
+            failwith "recursive definition"
+    (* Ast.ty_t -> Types.t *)
+    and f_ty hist env = function
+        | Ast.TVar id -> map_to_ty id env
+        | Ast.TApp (tys, name) -> begin match lookup_from_co_def name co_def with
+            | Some (targs, Ast.Variant _) ->
+                (* TODO 型引数の長さを チェック *)
+                Types.Variant (List.map (f_ty hist env) tys, name)
+            | Some (targs, Ast.Alias alias) ->
+                let targs = Util.zip targs tys |> List.map (fun (targ, ty) -> (targ, f_ty hist env ty)) in
+                f_tydef hist (name, targs, Ast.Alias alias)
+            | None ->
+                let higher = lookup_from_tenv name tenv in
+                (* TODO 型引数の長さを チェック *)
+                reassoc_ty (List.mapi (fun i ty -> (i, f_ty hist env ty)) tys) higher
+        end
+        | Ast.TInt -> Types.Int
+        | Ast.TBool -> Types.Bool
+        | Ast.TString -> Types.Str
+        | Ast.TTuple ts ->
+            Types.Tuple (List.map (f_ty hist env) ts)
+    (* AbbreviationについてPolyを呼び出し元の型で置換 *)
+    (* ここのenvはint -> Types.t *)
+    and reassoc_ty env =
+        let rec map i = function
+        | (i', ty) :: _ when i = i' -> ty
+        | _ :: remain -> map i remain
+        | [] -> failwith @@ "oops!"
+        in
+        function
+        | Types.Str -> Types.Str
+        | Types.Int -> Types.Int
+        | Types.Bool -> Types.Bool
+        | Types.Poly i -> map i env
+        | Types.Tuple ts -> Types.Tuple (List.map (reassoc_ty env) ts)
+        | Types.Fun (args, ret) ->
+            Types.Fun (List.map (reassoc_ty env) args, reassoc_ty env ret)
+        | Types.Var _ -> failwith "oops!"
+        | Types.Variant (args, name) -> Types.Variant (List.map (reassoc_ty env) args, name)
+    and map_to_ty id = function
+        | (id', ty) :: _ when id = id' -> ty
+        | _ :: remain -> map_to_ty id remain
+        | [] -> failwith @@ "undefined tvar '" ^ id
+    and lookup_from_tenv id = function
+        | (id', tydef) :: _ when id = id' -> tydef
+        | _ :: remain -> lookup_from_tenv id remain
+        | [] -> failwith @@ "undefined type" ^ (Ast.show_id_t id)
+    and lookup_from_co_def id = function
+        | (id', targs, ty) :: _ when id = id' -> Some (targs, ty)
+        | _ :: remain -> lookup_from_co_def id remain
+        | [] -> None
+    in
+    (* 先頭の型引数から順にPolyのIdを振る *)
+    let targs = List.mapi (fun i targ -> (targ, Types.Poly i)) targs in
+    match def with
+    | Ast.Alias ty -> [], f_tydef [] (name, targs, Ast.Alias ty)
+    | Ast.Variant ctors ->
+        let ctors = List.map (fun (ctor_name, args) ->
+            [ctor_name], (List.map (f_ty [] targs) args, List.map snd targs, name))
+        ctors in
+        ctors, Types.Variant (List.map snd targs, name)
+
 (* TODO: confirm one variable only bound once *)
 let rec g env level =
     let (venv, tenv, cenv) = env in
@@ -351,7 +427,15 @@ let rec g env level =
         let t = List.fold_left (fun t t' -> unify t t') (fresh level) expr_tys in
         List.map (fun t -> unify t Types.Bool) guard_tys |> ignore;
         Match (target, target_ty, Util.zip pats exprs, t), t
-    | Ast.Type _ -> failwith "unimplemented type"
+    | Ast.Type (defs, expr) -> 
+        let names = List.map (fun (name, _, _) -> [name]) defs in
+        let defs = List.map (fun (name, targs, tydef) -> [name], targs, tydef) defs in
+        let defs = List.map (canonical_type_def tenv defs) defs in
+        let ctors, tydefs = Util.unzip defs in
+        let tydefs = Util.zip names tydefs in
+        let ctors = List.concat ctors in
+        let env = (venv, tydefs @ tenv, ctors @ cenv) in
+        g env level expr
 
 let f ast =
     fst @@ g (

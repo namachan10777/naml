@@ -8,6 +8,9 @@ type t =
     | Char of char
     | LIdent of string
     | TVar of string
+    | TInt
+    | TBool
+    | TString
     | Type
     | Of
     | Dot
@@ -271,6 +274,9 @@ let rec lex s pos =
             | "type" -> Type :: lex s (update_pos s pos i)
             | "of" -> Of :: lex s (update_pos s pos i)
             | "as" -> As :: lex s (update_pos s pos i)
+            | "int" -> TInt :: lex s (update_pos s pos i)
+            | "bool" -> TBool :: lex s (update_pos s pos i)
+            | "string" -> TString :: lex s (update_pos s pos i)
             | "true" -> True :: lex s (update_pos s pos i)
             | "false" -> False :: lex s (update_pos s pos i)
             | "if" -> If :: lex s (update_pos s pos i)

@@ -17,6 +17,9 @@ type pat_t =
 [@@deriving show]
 
 type ty_t =
+    | TInt
+    | TBool
+    | TString
     | TForall of tvar_t
     | TTuple of ty_t list
     | TApp of ty_t list * id_t
@@ -81,6 +84,9 @@ let unimplemented () = raise @@ Failure "unimplemented"
 let rec of_ty env =
     let venv, tenv, cenv = env in
     function
+    | Ast.TInt -> TInt
+    | Ast.TBool -> TBool
+    | Ast.TString -> TString
     | Ast.TTuple ts -> TTuple (List.map (of_ty env) ts)
     | Ast.TVar v -> TVar v
     | Ast.TApp (ts, id) -> TApp (List.map (of_ty env) ts, lookup id tenv)

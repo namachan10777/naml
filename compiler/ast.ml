@@ -14,6 +14,9 @@ type pat_t =
 [@@deriving show]
 
 type ty_t =
+    | TInt
+    | TBool
+    | TString
     | TVar of string
     | TTuple of ty_t list
     | TApp of ty_t list * string list
@@ -42,6 +45,9 @@ type t =
 [@@deriving show]
 
 let rec of_parser_ty_t = function
+    | Parser.TInt -> TInt
+    | Parser.TBool -> TBool
+    | Parser.TString -> TString
     | Parser.TParen t -> of_parser_ty_t t
     | Parser.TVar id -> TVar id
     | Parser.TTuple ts -> TTuple (List.map of_parser_ty_t ts)

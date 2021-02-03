@@ -73,6 +73,7 @@ let pervasive_types = [
     ["int"], Int;
     ["bool"], Bool;
     ["option"], Variant ([Poly 0], ["option"]);
+    ["list"], Variant ([Poly 0], ["list"]);
 ]
 
 type ctor_t = t list * t list * string list

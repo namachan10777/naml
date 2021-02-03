@@ -1,4 +1,7 @@
 type ty_t =
+    | TInt
+    | TBool
+    | TString
     | TParen of ty_t
     | TVar of string
     | TTuple of ty_t list
@@ -138,6 +141,9 @@ and parse_tapp input =
     f t remain
 and parse_ty_term = function
     | Lex.TVar id :: remain -> TVar id, remain
+    | Lex.TInt :: remain -> TInt, remain
+    | Lex.TBool :: remain -> TBool, remain
+    | Lex.TString :: remain -> TString, remain
     | Lex.LIdent _ :: _  as input ->
         let id, remain = parse_tid input in
         TApp ([], id), remain

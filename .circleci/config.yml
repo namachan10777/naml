@@ -22,6 +22,14 @@ jobs:
           command: eval $(opam env) && make test -C compiler
 
       - run:
+          name: format test for codes
+          command: eval $(opam env) && ./code/format-check.sh
+
+      - run:
+          name: format test for compiler
+          command: eval $(opam env) && ./compiler/format-check.sh
+
+      - run:
           name: build document
           command: eval $(opam env) && make all
 

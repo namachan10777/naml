@@ -16,12 +16,8 @@ type t =
 and var_t = Unknown of int * int * var_t ref list | Just of t * var_t ref list
 [@@printer
     fun fmt -> function
-      | Unknown (level, tag, refs) ->
-          fprintf fmt "Unknown (%d, %d, %s)" level tag
-            (refs |> List.map (fun r -> 2 * Obj.magic r) |> show_addresses_t)
-      | Just (t, refs) ->
-          fprintf fmt "Just (%s, %s)" (show t)
-            (refs |> List.map (fun r -> 2 * Obj.magic r) |> show_addresses_t)]
+      | Unknown (level, tag, refs) -> fprintf fmt "Unknown (%d, %d)" level tag
+      | Just (t, refs) -> fprintf fmt "Just (%s)" (show t)]
 
 let rec eq a b =
     match (a, b) with
@@ -59,7 +55,7 @@ let pervasive_vals =
     ; ([">"], Fun ([Int; Int], Bool))
     ; (["<"], Fun ([Int; Int], Bool))
     ; (["="], Fun ([Poly 0; Poly 0], Bool))
-    ; ([";"], Fun ([Poly 0], Poly 1))
+    ; ([";"], Fun ([Poly 0; Poly 1], Poly 1))
     ; (["."], Fun ([Variant ([Poly 0], ["array"]); Int], Poly 0))
     ; (["<neg>"], Fun ([Int], Int))
     ; ( ["<arrayassign>"]

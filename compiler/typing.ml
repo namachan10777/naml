@@ -87,6 +87,22 @@ let rec occur_check id =
     in
     f
 
+let rec deref_ty = function
+    | Types.Var u as t -> (
+      match !(!u) with Types.Just (t, _) -> deref_ty t | _ -> t )
+    | Types.Fun (args, (Types.Fun _ as r)) -> (
+      match deref_ty r with
+      | Types.Fun (args', r) ->
+          Types.Fun (List.map deref_ty (args @ args'), deref_ty r)
+      | _ -> raise Internal )
+    | Types.Fun (args, ret) -> Types.Fun(List.map deref_ty args, deref_ty ret)
+    | Types.Int -> Types.Int
+    | Types.Bool -> Types.Bool
+    | Types.Str -> Types.Str
+    | Types.Tuple ts -> Types.Tuple (List.map deref_ty ts)
+    | Types.Poly i -> Types.Poly i
+    | Types.Variant (ts, name) -> Types.Variant (List.map deref_ty ts, name)
+
 let rec unify a b =
     let unify_u_and_t u t =
         match !u with
@@ -94,62 +110,53 @@ let rec unify a b =
             occur_check tag t ;
             let refs = u :: refs in
             let u = Types.Just (t, refs) in
-            List.map (fun r -> r := u) refs |> ignore ;
-            t
+            List.map (fun r -> r := u) refs |> ignore
         | Types.Just (t', refs) ->
             let refs = u :: refs in
-            let t = unify t t' in
+            unify t t' ;
             let u = Types.Just (t, refs) in
-            List.map (fun r -> r := u) refs |> ignore ;
-            t
+            List.map (fun r -> r := u) refs |> ignore
     in
     match (a, b) with
-    | Types.Int, Types.Int -> Types.Int
-    | Types.Bool, Types.Bool -> Types.Bool
+    | Types.Int, Types.Int -> ()
+    | Types.Bool, Types.Bool -> ()
     | Types.Fun ([], _), Types.Fun ([], _) -> raise Internal
     | Types.Fun ([], r), b -> unify r b
     | a, Types.Fun ([], r) -> unify r a
-    | Types.Fun ([a1], r1), Types.Fun ([a2], r2) ->
-        Types.Fun ([unify a1 a2], unify r1 r2)
-    | Types.Fun (a1 :: as1, r1), Types.Fun (a2 :: as2, r2) -> (
-      match unify (Types.Fun (as1, r1)) (Types.Fun (as2, r2)) with
-      | Types.Fun (as', r) -> Types.Fun (unify a1 a2 :: as', r)
-      | _ -> raise @@ TypeError "cannot unify function" )
+    | Types.Fun ([a1], r1), Types.Fun ([a2], r2) -> unify a1 a2 ; unify r1 r2
+    | Types.Fun (a1 :: as1, r1), Types.Fun (a2 :: as2, r2) ->
+        unify (Types.Fun (as1, r1)) (Types.Fun (as2, r2)) ;
+        unify a1 a2
     | Types.Variant (targs, name), Types.Variant (targs', name') ->
         if name = name' then
-          Types.Variant
-            (List.map (fun (t, t') -> unify t t') (Util.zip targs targs'), name)
+          List.map (fun (t, t') -> unify t t') (Util.zip targs targs') |> ignore
         else raise @@ TypeError "cannot unify variant type"
     | Types.Tuple ts1, Types.Tuple ts2 ->
-        Types.Tuple (Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2))
+        Util.zip ts1 ts2 |> List.map (fun (e1, e2) -> unify e1 e2) |> ignore
     | Types.Var u1, Types.Var u2 -> (
       match (!(!u1), !(!u2)) with
       | Types.Unknown (level, tag, refs1), Types.Unknown (level', _, refs2)
         when level < level' ->
           let refs = (!u1 :: !u2 :: refs1) @ refs2 in
           !u1 := Types.Unknown (level, tag, refs) ;
-          List.map (fun r -> r := !(!u1)) refs |> ignore ;
-          Types.Var u1
+          List.map (fun r -> r := !(!u1)) refs |> ignore
       | Types.Unknown (_, _, refs1), Types.Unknown (level, tag, refs2) ->
           let refs = (!u1 :: !u2 :: refs1) @ refs2 in
           !u1 := Types.Unknown (level, tag, refs) ;
-          List.map (fun r -> r := !(!u1)) refs |> ignore ;
-          Types.Var u1
+          List.map (fun r -> r := !(!u1)) refs |> ignore
       | Types.Just (t, refs1), Types.Just (t', refs2) ->
           let refs = (!u1 :: !u2 :: refs1) @ refs2 in
-          !u1 := Types.Just (unify t t', refs) ;
-          List.map (fun r -> r := !(!u1)) refs |> ignore ;
-          Types.Var u1
+          unify t t' ;
+          !u1 := Types.Just (deref_ty t, refs) ;
+          List.map (fun r -> r := !(!u1)) refs |> ignore
       | Types.Unknown (_, _, refs1), Types.Just (t, refs2) ->
           let refs = (!u1 :: !u2 :: refs1) @ refs2 in
           !u1 := Types.Just (t, refs) ;
-          List.map (fun r -> r := !(!u1)) refs |> ignore ;
-          Types.Var u1
+          List.map (fun r -> r := !(!u1)) refs |> ignore
       | Types.Just (t, refs1), Types.Unknown (_, _, refs2) ->
           let refs = (!u1 :: !u2 :: refs1) @ refs2 in
           !u1 := Types.Just (t, refs) ;
-          List.map (fun r -> r := !(!u1)) refs |> ignore ;
-          Types.Var u1 )
+          List.map (fun r -> r := !(!u1)) refs |> ignore )
     | Types.Var u, t -> unify_u_and_t !u t
     | t, Types.Var u -> unify_u_and_t !u t
     | a, b ->
@@ -345,16 +352,20 @@ let rec g env level =
         let arg_tys = List.map (instantiate (ref []) level) arg_tys in
         let f, f_ty = g env level f in
         let f_ty' = Types.Fun (arg_tys, fresh level) in
-        let f_ty = instantiate (ref []) level f_ty in
-        let f_ty = unify (instantiate (ref []) level f_ty) f_ty' in
-        match f_ty with
+        let f_ty =  instantiate (ref []) level f_ty in
+        unify f_ty f_ty' ;
+        match deref_ty f_ty with
         | Types.Fun (params, ret_ty) ->
-            if List.length params > List.length args then
+            if List.length params > List.length args then begin
               let param_tys = Util.drop (List.length arg_tys) params in
               (App (f, args), Types.Fun (param_tys, ret_ty))
+            end
             else if List.length params = List.length args then
               (App (f, args), ret_ty)
-            else raise @@ TypeError "too much argument"
+            else
+              raise
+              @@ TypeError
+                   (Printf.sprintf "too much argument %s" @@ Types.show @@ deref_ty f_ty)
         | _ -> raise @@ TypeError "unmatched app" )
     | Ast.Let (defs, expr) ->
         let pat_vars, defs =
@@ -363,12 +374,13 @@ let rec g env level =
                  (fun (pat, def) ->
                    let def, def_ty = g env (level + 1) def in
                    let pat_vars, pat_ty, pat = pat_ty (level + 1) pat in
-                   unify pat_ty def_ty |> ignore ;
+                   unify pat_ty def_ty ;
+                   let def_ty = deref_ty def_ty in
                    let tbl = ref [] in
                    let def, def_ty =
                        (generalize tbl level def, generalize_ty tbl level def_ty)
                    in
-                   let pat, pat_ty =
+                   let pat, def_ty =
                        ( generalize_pat tbl level pat
                        , generalize_ty tbl level pat_ty )
                    in
@@ -393,7 +405,8 @@ let rec g env level =
             Util.zip vars defs
             |> List.map (fun ((name, ty), def) ->
                    let def, def_ty = g env (level + 1) def in
-                   (name, unify ty def_ty, def))
+                   unify ty def_ty ;
+                   (name, deref_ty ty, def))
         in
         let defs =
             List.map
@@ -413,10 +426,11 @@ let rec g env level =
         (Tuple (elems, types), Types.Tuple types)
     | Ast.If (cond, e1, e2) ->
         let cond, cond_ty = g env level cond in
-        unify cond_ty Types.Bool |> ignore ;
+        unify cond_ty Types.Bool ;
         let e1, e1_ty = g env level e1 in
         let e2, e2_ty = g env level e2 in
-        (If (cond, e1, e2), unify e1_ty e2_ty)
+        unify e1_ty e2_ty ;
+        (If (cond, e1, e2), deref_ty e1_ty)
     | Ast.Never -> (Never, Types.Tuple [])
     | Ast.Ctor name -> (
       match lookup name cenv with
@@ -482,10 +496,14 @@ let rec g env level =
         let guards, guard_tys = Util.unzip guards in
         let exprs, expr_tys = Util.unzip exprs in
         let target_ty =
-            List.fold_left (fun t t' -> unify t t') target_ty pat_tys
+            List.fold_left
+              (fun t t' -> unify t t' ; deref_ty t)
+              target_ty pat_tys
         in
         let t =
-            List.fold_left (fun t t' -> unify t t') (fresh level) expr_tys
+            List.fold_left
+              (fun t t' -> unify t t' ; deref_ty t)
+              (fresh level) expr_tys
         in
         List.map (fun t -> unify t Types.Bool) guard_tys |> ignore ;
         (Match (target, target_ty, Util.zip pats exprs, t), t)

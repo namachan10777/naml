@@ -15,10 +15,9 @@ clean:
 	rm -f *.pp.ml
 
 .PHONY: test
-test: lex_test parser_test typing_test alpha_test
+test: lex_test parser_test typing_test
 	./lex_test
 	./parser_test
-	./alpha_test
 	./typing_test
 
 test.cmx: test.ml
@@ -39,38 +38,32 @@ lex_test: test.cmx lex.cmx lex_test.cmx
 parser_test.cmx: parser_test.ml parser.cmx lex.cmx
 	$(OCAMLOPT) $< -c
 
+id.cmx: id.ml
+	$(OCAMLOPT) $< -c
+
 parser.cmx: parser.ml lex.cmx
 	$(OCAMLOPT) $< -c
 
 parser_test: lex.cmx test.cmx parser.cmx parser_test.cmx 
 	$(OCAMLOPT) $^ -o $@
 
-alpha_test.cmx: alpha_test.ml alpha.cmx util.cmx
-	$(OCAMLOPT) $< -c
-
-alpha_test: lex.cmx parser.cmx ast.cmx util.cmx  types.cmx alpha.cmx alpha_test.cmx
-	$(OCAMLOPT) $^ -o $@
-
-typing.cmx: typing.ml util.cmx alpha.cmx
+typing.cmx: typing.ml util.cmx types.cmx
 	$(OCAMLOPT) $< -c
 
 typing_test.cmx: typing_test.ml util.cmx typing.cmx util.cmx ast.cmx
 	$(OCAMLOPT) $< -c
 
-typing_test: lex.cmx parser.cmx ast.cmx util.cmx types.cmx typing.cmx test.cmx typing_test.cmx util.cmx types.cmx alpha.cmx
+typing_test: lex.cmx parser.cmx ast.cmx util.cmx id.cmx types.cmx typing.cmx test.cmx typing_test.cmx util.cmx
 	$(OCAMLOPT) $^ -o $@
 
-alpha.cmx: alpha.ml ast.cmx types.cmx util.cmx
-	$(OCAMLOPT) $< -c
-
-main.cmx: main.ml alpha.cmx parser.cmx lex.cmx
+main.cmx: main.ml parser.cmx lex.cmx
 	$(OCAMLOPT) $< -c
 
 util.cmx: util.ml
 	$(OCAMLOPT) $< -c
 
-types.cmx: types.ml util.cmx 
+types.cmx: types.ml util.cmx id.cmx
 	$(OCAMLOPT) $< -c
 
-compiler1st: util.cmx lex.cmx parser.cmx ast.cmx types.cmx alpha.cmx main.cmx
+compiler1st: util.cmx lex.cmx parser.cmx ast.cmx types.cmx main.cmx
 	ocamlopt $^ -o $@

@@ -1,16 +1,44 @@
 type addresses_t = int list [@@deriving show]
 
 type t =
-    | Int
-    | Str
-    | Bool
+    | Int [@printer fun fmt _ -> fprintf fmt "Int"]
+    | Str [@printer fun fmt _ -> fprintf fmt "Str"]
+    | Bool [@printer fun fmt _ -> fprintf fmt "Bool"]
     | Fun of t list * t
+        [@printer
+            fun fmt (args, t) ->
+              fprintf fmt "%s"
+                (List.fold_left
+                   (fun acc t -> show t ^ " -> " ^ acc)
+                   (show t) (List.rev args))]
     | Tuple of t list
+        [@printer
+            fun fmt -> function
+              | [] -> fprintf fmt "()"
+              | [t] -> fprintf fmt "(%s)" (show t)
+              | ts ->
+                  fprintf fmt "(%s)"
+                    (List.fold_left
+                       (fun acc t -> acc ^ " * " ^ show t)
+                       (show (List.hd ts))
+                       (List.tl ts))]
     (* 不明の型。最初のintはlevelで2つめのintはデバッグ用のタグ *)
     | Var of var_t ref ref
+        [@printer fun fmt v -> fprintf fmt "%s" @@ show_var_t !(!v)]
     (* 多相型。intはタグ *)
-    | Poly of int
+    | Poly of int [@printer fun fmt i -> fprintf fmt "'(%d)" i]
     | Variant of t list * string list
+        [@printer
+            fun fmt -> function
+              | [], name -> fprintf fmt "%s" @@ Id.show name
+              | [t], name -> fprintf fmt "%s %s" (show t) @@ Id.show name
+              | ts, name ->
+                  fprintf fmt "(%s) %s"
+                    (List.fold_left
+                       (fun acc t -> acc ^ "," ^ show t)
+                       (show @@ List.hd ts)
+                       (List.tl ts))
+                    (Id.show name)]
 [@@deriving show]
 
 and var_t = Unknown of int * int * var_t ref list | Just of t * var_t ref list

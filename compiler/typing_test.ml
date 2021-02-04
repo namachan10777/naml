@@ -131,7 +131,30 @@ let () =
                          , [Ty.Int; Ty.Int] )
                      , T.App (T.Var ["+"], [T.Var ["x"]; T.Var ["y"]]) ) ]
                  , Ty.Int ) ) ]
-         , T.Var ["x"] ))
+         , T.Var ["x"] )) ;
+    test
+      "let rec length l = match l with [] -> 0 | x :: [] -> 1 + length l in ()"
+      (T.LetRec
+         ( [ ( ["length"]
+             , Ty.Fun ([Ty.Variant ([Ty.Poly 0], ["list"])], Ty.Int)
+             , T.Fun
+                 ( [("l", Ty.Variant ([Ty.Poly 0], ["list"]))]
+                 , T.Match
+                     ( T.Var ["l"]
+                     , Ty.Variant ([Ty.Poly 0], ["list"])
+                     , [ (T.PCtor ([], [Ty.Poly 0], ["list"]), T.Int 0)
+                       ; ( T.PCtor
+                             ( [ T.PVar ("x", Ty.Poly 0)
+                               ; T.PCtor ([], [Ty.Poly 0], ["list"]) ]
+                             , [Ty.Poly 0]
+                             , ["list"] )
+                         , T.App
+                             ( T.Var ["+"]
+                             , [T.Int 1; T.App (T.Var ["length"], [T.Var ["l"]])]
+                             ) ) ]
+                     , Ty.Int )
+                 , Ty.Int ) ) ]
+         , T.Tuple ([], []) ))
 
 let () =
     let t1 = Types.Int in

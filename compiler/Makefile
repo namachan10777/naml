@@ -65,5 +65,5 @@ util.cmx: util.ml
 types.cmx: types.ml util.cmx id.cmx
 	$(OCAMLOPT) $< -c
 
-compiler1st: util.cmx lex.cmx parser.cmx ast.cmx types.cmx main.cmx
+compiler1st: util.cmx lex.cmx parser.cmx ast.cmx id.cmx types.cmx main.cmx
 	ocamlopt $^ -o $@

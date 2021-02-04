@@ -3,4 +3,4 @@ let () =
     else
       let ic = open_in Sys.argv.(1) in
       let src = really_input_string ic (in_channel_length ic) in
-      print_endline @@ Alpha.show @@ Alpha.f Sys.argv.(1) src
+      print_endline @@ Parser.show @@ Parser.f Sys.argv.(1) src

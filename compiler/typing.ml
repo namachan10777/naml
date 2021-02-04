@@ -2,7 +2,14 @@
 
 type id_t = Ast.id_t [@@deriving show]
 
-type pat_t = PVar of string * Types.t | PTuple of pat_t list * Types.t list
+type pat_t =
+    | PVar of string * Types.t
+    | PTuple of pat_t list * Types.t list
+    | PCtor of pat_t list * Types.t list * string list
+    | PInt of int
+    | PBool of bool
+    | PStr of string
+    | As of pat_t list
 [@@deriving show]
 
 type tydef_t = Abbr of Types.t | Variant of (string * Types.t list) list
@@ -95,7 +102,7 @@ let rec deref_ty = function
       | Types.Fun (args', r) ->
           Types.Fun (List.map deref_ty (args @ args'), deref_ty r)
       | _ -> raise Internal )
-    | Types.Fun (args, ret) -> Types.Fun(List.map deref_ty args, deref_ty ret)
+    | Types.Fun (args, ret) -> Types.Fun (List.map deref_ty args, deref_ty ret)
     | Types.Int -> Types.Int
     | Types.Bool -> Types.Bool
     | Types.Str -> Types.Str
@@ -203,6 +210,12 @@ let rec generalize_pat tbl level =
         | PVar (id, ty) -> PVar (id, generalize_ty tbl level ty)
         | PTuple (ps, ty) ->
             PTuple (List.map f ps, List.map (generalize_ty tbl level) ty)
+        | PCtor (ps, targs, name) ->
+            PCtor (List.map f ps, List.map (generalize_ty tbl level) targs, name)
+        | PInt i -> PInt i
+        | PBool b -> PBool b
+        | PStr s -> PStr s
+        | As ps -> As (List.map f ps)
     in
     f
 
@@ -252,14 +265,66 @@ let generalize tbl level =
 
 type env_t = (id_t * Types.t) list [@@deriving show]
 
-let rec pat_ty level = function
-    | Ast.PVar name ->
-        let ty = fresh level in
-        ([([name], ty)], ty, PVar (name, ty))
-    | Ast.PTuple ts ->
-        let names, tys, ps = Util.unzip3 @@ List.map (pat_ty level) ts in
-        (List.concat names, Types.Tuple tys, PTuple (ps, tys))
-    | _ -> raise @@ UnsupportedFunction "pattern"
+(* TODO: 同じ名前が無いかチェック *)
+let pat_ty cenv level =
+    let rec lookup_ctor name = function
+        | (name', v) :: _ when name = name' -> v
+        | _ :: remain -> lookup_ctor name remain
+        | [] ->
+            raise
+            @@ UnboundIdentifier ("Unbound constructor " ^ Ast.show_id_t name)
+    in
+    let rec f = function
+        | Ast.PVar name ->
+            let ty = fresh level in
+            ([([name], ty)], ty, PVar (name, ty))
+        | Ast.PTuple ts ->
+            let names, tys, ps = Util.unzip3 @@ List.map f ts in
+            (List.concat names, Types.Tuple tys, PTuple (ps, tys))
+        | Ast.PEmp ->
+            let tvar = fresh level in
+            let ty = Types.Variant ([tvar], ["list"]) in
+            ([], ty, PCtor ([], [tvar], ["list"]))
+        | Ast.PCons (value, list) ->
+            let value_ty' = fresh level in
+            let list_ty' = Types.Variant ([value_ty'], ["list"]) in
+            let value_names, value_ty, value = f value in
+            let list_names, list_ty, list = f list in
+            unify value_ty' value_ty |> ignore ;
+            unify list_ty' list_ty |> ignore ;
+            ( value_names @ list_names
+            , list_ty
+            , PCtor ([value; list], [deref_ty value_ty], ["list"]) )
+        | Ast.PInt i -> ([], Types.Int, PInt i)
+        | Ast.PBool b -> ([], Types.Bool, PBool b)
+        | Ast.As ps ->
+            let names, tys, ps = Util.unzip3 @@ List.map f ps in
+            let t = fresh level in
+            List.map (fun t' -> unify t t') tys |> ignore ;
+            (List.concat names, deref_ty t, As ps)
+        | Ast.PCtor name -> (
+          match lookup_ctor name cenv with
+          | [], targs, name ->
+              ([], Types.Variant (targs, name), PCtor ([], targs, name))
+          | _ -> raise @@ TypeError "ctor takes some values" )
+        | Ast.PCtorApp (name, args) -> (
+            let names, tys, args = Util.unzip3 @@ List.map f args in
+            match lookup_ctor name cenv with
+            | [Types.Tuple ts'], targs, name ->
+                let tbl = ref [] in
+                let ts' = List.map (instantiate tbl level) ts' in
+                let targs = List.map (instantiate tbl level) targs in
+                List.map (fun (t, t') -> unify t t') @@ Util.zip ts' tys
+                |> ignore ;
+                let variant_ty =
+                    Types.Variant (List.map deref_ty targs, name)
+                in
+                ( List.concat names
+                , variant_ty
+                , PCtor (args, List.map deref_ty targs, name) )
+            | _ -> raise @@ TypeError "ctor takes some values" )
+    in
+    f
 
 let rec canonical_type_def tenv co_def (name, targs, def) =
     (* envはtarg -> Types.tの写像*)
@@ -352,20 +417,20 @@ let rec g env level =
         let arg_tys = List.map (instantiate (ref []) level) arg_tys in
         let f, f_ty = g env level f in
         let f_ty' = Types.Fun (arg_tys, fresh level) in
-        let f_ty =  instantiate (ref []) level f_ty in
+        let f_ty = instantiate (ref []) level f_ty in
         unify f_ty f_ty' ;
         match deref_ty f_ty with
         | Types.Fun (params, ret_ty) ->
-            if List.length params > List.length args then begin
+            if List.length params > List.length args then
               let param_tys = Util.drop (List.length arg_tys) params in
               (App (f, args), Types.Fun (param_tys, ret_ty))
-            end
             else if List.length params = List.length args then
               (App (f, args), ret_ty)
             else
               raise
               @@ TypeError
-                   (Printf.sprintf "too much argument %s" @@ Types.show @@ deref_ty f_ty)
+                   ( Printf.sprintf "too much argument %s"
+                   @@ Types.show @@ deref_ty f_ty )
         | _ -> raise @@ TypeError "unmatched app" )
     | Ast.Let (defs, expr) ->
         let pat_vars, defs =
@@ -373,7 +438,7 @@ let rec g env level =
             @@ List.map
                  (fun (pat, def) ->
                    let def, def_ty = g env (level + 1) def in
-                   let pat_vars, pat_ty, pat = pat_ty (level + 1) pat in
+                   let pat_vars, pat_ty, pat = pat_ty cenv (level + 1) pat in
                    unify pat_ty def_ty ;
                    let def_ty = deref_ty def_ty in
                    let tbl = ref [] in
@@ -478,7 +543,7 @@ let rec g env level =
             @@ List.map
                  (fun (pat, guard, expr) ->
                    let tbl = ref [] in
-                   let pat_vars, pat_ty, pat = pat_ty level pat in
+                   let pat_vars, pat_ty, pat = pat_ty cenv level pat in
                    let pat_vars =
                        List.map
                          (fun (name, ty) -> (name, instantiate tbl level ty))

@@ -284,7 +284,7 @@ let pat_ty cenv level =
         | Ast.PEmp ->
             let tvar = fresh level in
             let ty = Types.Variant ([tvar], ["list"]) in
-            ([], ty, PCtor ([], [tvar], ["list"]))
+            ([], ty, PCtor ([], [tvar], ["[]"]))
         | Ast.PCons (value, list) ->
             let value_ty' = fresh level in
             let list_ty' = Types.Variant ([value_ty'], ["list"]) in
@@ -294,7 +294,7 @@ let pat_ty cenv level =
             unify list_ty' list_ty |> ignore ;
             ( value_names @ list_names
             , list_ty
-            , PCtor ([value; list], [deref_ty value_ty], ["list"]) )
+            , PCtor ([value; list], [deref_ty value_ty], ["::"]) )
         | Ast.PInt i -> ([], Types.Int, PInt i)
         | Ast.PBool b -> ([], Types.Bool, PBool b)
         | Ast.As ps ->
@@ -302,26 +302,26 @@ let pat_ty cenv level =
             let t = fresh level in
             List.map (fun t' -> unify t t') tys |> ignore ;
             (List.concat names, deref_ty t, As ps)
-        | Ast.PCtor name -> (
-          match lookup_ctor name cenv with
-          | [], targs, name ->
-              ([], Types.Variant (targs, name), PCtor ([], targs, name))
+        | Ast.PCtor cname -> (
+          match lookup_ctor cname cenv with
+          | [], targs, tname ->
+              ([], Types.Variant (targs, tname), PCtor ([], targs, cname))
           | _ -> raise @@ TypeError "ctor takes some values" )
-        | Ast.PCtorApp (name, args) -> (
+        | Ast.PCtorApp (cname, args) -> (
             let names, tys, args = Util.unzip3 @@ List.map f args in
-            match lookup_ctor name cenv with
-            | [Types.Tuple ts'], targs, name ->
+            match lookup_ctor cname cenv with
+            | [Types.Tuple ts'], targs, tname ->
                 let tbl = ref [] in
                 let ts' = List.map (instantiate tbl level) ts' in
                 let targs = List.map (instantiate tbl level) targs in
                 List.map (fun (t, t') -> unify t t') @@ Util.zip ts' tys
                 |> ignore ;
                 let variant_ty =
-                    Types.Variant (List.map deref_ty targs, name)
+                    Types.Variant (List.map deref_ty targs, tname)
                 in
                 ( List.concat names
                 , variant_ty
-                , PCtor (args, List.map deref_ty targs, name) )
+                , PCtor (args, List.map deref_ty targs, cname) )
             | _ -> raise @@ TypeError "ctor takes some values" )
     in
     f

@@ -142,12 +142,12 @@ let () =
                  , T.Match
                      ( T.Var ["l"]
                      , Ty.Variant ([Ty.Poly 0], ["list"])
-                     , [ (T.PCtor ([], [Ty.Poly 0], ["list"]), T.Int 0)
+                     , [ (T.PCtor ([], [Ty.Poly 0], ["[]"]), T.Int 0)
                        ; ( T.PCtor
                              ( [ T.PVar ("x", Ty.Poly 0)
-                               ; T.PCtor ([], [Ty.Poly 0], ["list"]) ]
+                               ; T.PCtor ([], [Ty.Poly 0], ["[]"]) ]
                              , [Ty.Poly 0]
-                             , ["list"] )
+                             , ["::"] )
                          , T.App
                              ( T.Var ["+"]
                              , [T.Int 1; T.App (T.Var ["length"], [T.Var ["l"]])]

@@ -1,51 +1,47 @@
 type addresses_t = int list [@@deriving show]
 
 type t =
-    | Int [@printer fun fmt _ -> fprintf fmt "Int"]
-    | Str [@printer fun fmt _ -> fprintf fmt "Str"]
-    | Bool [@printer fun fmt _ -> fprintf fmt "Bool"]
+    | Int
+    | Str
+    | Bool
     | Fun of t list * t
-        [@printer
-            fun fmt (args, t) ->
-              fprintf fmt "%s"
-                (List.fold_left
-                   (fun acc t -> show t ^ " -> " ^ acc)
-                   (show t) (List.rev args))]
     | Tuple of t list
-        [@printer
-            fun fmt -> function
-              | [] -> fprintf fmt "()"
-              | [t] -> fprintf fmt "(%s)" (show t)
-              | ts ->
-                  fprintf fmt "(%s)"
-                    (List.fold_left
-                       (fun acc t -> acc ^ " * " ^ show t)
-                       (show (List.hd ts))
-                       (List.tl ts))]
     (* 不明の型。最初のintはlevelで2つめのintはデバッグ用のタグ *)
     | Var of var_t ref ref
-        [@printer fun fmt v -> fprintf fmt "%s" @@ show_var_t !(!v)]
     (* 多相型。intはタグ *)
-    | Poly of int [@printer fun fmt i -> fprintf fmt "'(%d)" i]
+    | Poly of int
     | Variant of t list * string list
-        [@printer
-            fun fmt -> function
-              | [], name -> fprintf fmt "%s" @@ Id.show name
-              | [t], name -> fprintf fmt "%s %s" (show t) @@ Id.show name
-              | ts, name ->
-                  fprintf fmt "(%s) %s"
-                    (List.fold_left
-                       (fun acc t -> acc ^ "," ^ show t)
-                       (show @@ List.hd ts)
-                       (List.tl ts))
-                    (Id.show name)]
-[@@deriving show]
 
 and var_t = Unknown of int * int * var_t ref list | Just of t * var_t ref list
-[@@printer
-    fun fmt -> function
-      | Unknown (level, tag, refs) -> fprintf fmt "Unknown (%d, %d)" level tag
-      | Just (t, refs) -> fprintf fmt "Just (%s)" (show t)]
+
+let rec show = function
+    | Int -> "Int"
+    | Bool -> "Bool"
+    | Str -> "Str"
+    | Fun ([], ret) -> show ret
+    | Fun ([arg], ret) -> show arg ^ " -> " ^ show ret
+    | Fun (args, ret) ->
+        List.fold_left
+          (fun ret t -> show t ^ " -> " ^ ret)
+          (show ret) (List.rev args)
+    | Tuple [] -> "()"
+    | Tuple [t] -> "(" ^ show t ^ ")"
+    | Tuple (t :: ts) ->
+        "(" ^ List.fold_left (fun ts t -> ts ^ " * " ^ show t) (show t) ts ^ ")"
+    | Poly i -> "'" ^ string_of_int i
+    | Var v -> show_var_t !(!v)
+    | Variant ([], name) -> Id.show name
+    | Variant ([t], name) -> show t ^ " " ^ Id.show name
+    | Variant (t :: ts, name) ->
+        "("
+        ^ List.fold_left (fun ts t -> ts ^ ", " ^ show t) (show t) ts
+        ^ ") " ^ Id.show name
+
+and show_var_t = function
+    | Unknown (level, tag, refs) -> Printf.sprintf "Unknown (%d, %d)" level tag
+    | Just (t, refs) -> "Just (" ^ show t ^ ")"
+
+let pp fmt t = Ppx_deriving_runtime.Format.fprintf fmt "%s" @@ show t
 
 let rec eq a b =
     match (a, b) with

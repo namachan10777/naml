@@ -8,6 +8,7 @@ type env_t = map_t * map_t * map_t
 exception UnboundId of string list
 
 exception DuplicatedId of string list
+
 exception BothSideOfOrPatternMustHaveSameVars
 
 type pat_t =
@@ -97,30 +98,43 @@ let get1 (x, _, _) = x
 let assert_dup ids =
     match dup_chk ids with Some id -> raise @@ DuplicatedId id | None -> ()
 
-let rec of_pat cenv = function
+let rec of_pat vtbl cenv =
+    let rec lookup_vtbl name = function
+        | (name', id, _) :: _ when name = name' -> id
+        | _ :: remain -> lookup_vtbl name remain
+        | _ -> raise @@ UnboundId name
+    in
+    function
     | Ast.PBool b -> (PBool b, [])
     | Ast.PInt i -> (PInt i, [])
     | Ast.PEmp -> (PCtor (lookup ["[]"] pervasive_cenv, []), [])
     | Ast.PCons (v, l) ->
-        let v, names = of_pat cenv v in
-        let l, names' = of_pat cenv l in
+        let v, names = of_pat vtbl cenv v in
+        let l, names' = of_pat vtbl cenv l in
         (PCtor (lookup ["::"] pervasive_cenv, [v; l]), names @ names')
-    | Ast.PVar id ->
-        let id' = fresh_v () in
-        (PVar id', [([id], id', true)])
+    | Ast.PVar id -> (
+      match vtbl with
+      | Some vtbl ->
+          let id' = lookup_vtbl [id] vtbl in
+          (PVar id', [])
+      | None ->
+          let id' = fresh_v () in
+          (PVar id', [([id], id', true)]) )
     | Ast.PTuple ps ->
-        let ps, envs = Util.unzip @@ List.map (of_pat cenv) ps in
+        let ps, envs = Util.unzip @@ List.map (of_pat vtbl cenv) ps in
         (PTuple ps, List.concat envs)
     | Ast.As ps ->
-        let ps, envs = Util.unzip @@ List.map (of_pat cenv) ps in
+        let ps, envs = Util.unzip @@ List.map (of_pat vtbl cenv) ps in
         (As ps, List.concat envs)
     | Ast.Or (p, ps) ->
-        let p, venv = of_pat cenv p in
-        let count_v_snapshot = !count_v in
-        assert_dup @@ List.map get1 venv;
-        let ps, venvs = Util.unzip @@ List.map (of_pat cenv) ps in
-        count_v := count_v_snapshot;
-        if List.for_all (fun venv' -> (List.sort compare venv') = (List.sort compare venv)) venvs
+        let p, venv = of_pat vtbl cenv p in
+        assert_dup @@ List.map get1 venv ;
+        let vtbl = match vtbl with Some v -> Some v | None -> Some venv in
+        let ps, venvs = Util.unzip @@ List.map (of_pat vtbl cenv) ps in
+        if
+          List.for_all
+            (fun venv' -> List.sort compare venv' = List.sort compare venv)
+            venvs
         then (Or (p, ps), venv)
         else raise BothSideOfOrPatternMustHaveSameVars
     | Ast.PCtor name ->
@@ -128,7 +142,7 @@ let rec of_pat cenv = function
         (PCtor (id, []), [(name, id, true)])
     | Ast.PCtorApp (name, args) ->
         let id = fresh_c () in
-        let args, envs = Util.unzip @@ List.map (of_pat cenv) args in
+        let args, envs = Util.unzip @@ List.map (of_pat vtbl cenv) args in
         (PCtor (id, args), (name, id, true) :: List.concat envs)
 
 let rec of_ty env targs =
@@ -177,7 +191,7 @@ let rec of_expr env =
             Util.unzip3
             @@ List.map
                  (fun (pat, def) ->
-                   let pat, venv' = of_pat cenv pat in
+                   let pat, venv' = of_pat None cenv pat in
                    (venv', pat, of_expr (venv' @ venv, tenv, cenv) def))
                  defs
         in
@@ -201,7 +215,7 @@ let rec of_expr env =
         let arms =
             List.map
               (fun (pat, guard, expr) ->
-                let pat, venv' = of_pat cenv pat in
+                let pat, venv' = of_pat None cenv pat in
                 assert_dup @@ List.map get1 venv' ;
                 let env = (venv' @ venv, tenv, cenv) in
                 (pat, of_expr env guard, of_expr env expr))

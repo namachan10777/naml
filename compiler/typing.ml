@@ -10,6 +10,7 @@ type pat_t =
     | PBool of bool
     | PStr of string
     | As of pat_t list
+    | Or of pat_t * pat_t list
 [@@deriving show]
 
 type tydef_t = Abbr of Types.t | Variant of (string * Types.t list) list
@@ -215,6 +216,7 @@ let rec generalize_pat tbl level =
         | PBool b -> PBool b
         | PStr s -> PStr s
         | As ps -> As (List.map f ps)
+        | Or (p, ps) -> Or(f p, List.map f ps)
     in
     f
 
@@ -272,10 +274,24 @@ let pat_ty cenv level =
             raise
             @@ UnboundIdentifier ("Unbound constructor " ^ Alpha.show_id_t name)
     in
+    let tbl = ref [] in
+    let rec ty_for_id id =
+        let rec f = function
+        | (id', ty) :: _ when id = id' -> ty
+        | _ :: remain -> f remain
+        | [] -> tbl := (id, fresh level) :: !tbl; snd @@ List.hd !tbl
+        in
+        f !tbl
+    in
     let rec f = function
         | Alpha.PVar name ->
-            let ty = fresh level in
+            let ty = ty_for_id name in
             ([(name, ty)], ty, PVar (name, ty))
+        | Alpha.Or(p, ps) ->
+            let names, ty, p = f p in
+            let _, tys, ps = Util.unzip3 @@ List.map f ps in
+            List.map (fun t' -> unify ty t') tys |> ignore;
+            names, ty, Or(p, ps)
         | Alpha.PTuple ts ->
             let names, tys, ps = Util.unzip3 @@ List.map f ts in
             (List.concat names, Types.Tuple tys, PTuple (ps, tys))

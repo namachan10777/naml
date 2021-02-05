@@ -21,7 +21,8 @@ type pat_t =
     | PParen of pat_t
     | PCtor of string list
     | PCtorApp of string list * pat_t
-    | As of pat_t list
+    | PAs of pat_t list
+    | POr of pat_t * pat_t list
 [@@deriving show]
 
 type t =
@@ -222,8 +223,8 @@ let rec parse_pat input =
     match parse_pat_tuple input with
     | pat, Lex.As :: rhr -> (
       match parse_pat_tuple rhr with
-      | PTuple tp, remain -> (As (pat :: tp), remain)
-      | rhr, remain -> (As [pat; rhr], remain) )
+      | PTuple tp, remain -> (PAs (pat :: tp), remain)
+      | rhr, remain -> (PAs [pat; rhr], remain) )
     | p -> p
 
 and parse_pat_tuple input =

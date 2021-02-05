@@ -225,7 +225,7 @@ let () =
     test "parse_as" "match [] with 1, 2 as x -> []"
       (P.Match
          ( P.Emp
-         , [ ( P.As [P.PTuple [P.PInt 1; P.PInt 2]; P.PVar "x"]
+         , [ ( P.PAs [P.PTuple [P.PInt 1; P.PInt 2]; P.PVar "x"]
              , P.Bool true
              , P.Emp ) ] )) ;
     test "parse_as" "match [] with X 1 :: [] -> []"

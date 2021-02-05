@@ -7,12 +7,15 @@ type env_t = map_t * map_t * map_t
 
 exception UnboundId of string list
 
+exception DuplicatedId of string list
+
 type pat_t =
     | PInt of int
     | PBool of bool
     | PVar of id_t
     | PTuple of pat_t list
     | As of pat_t list
+    | Or of pat_t * pat_t list
     | PCtor of id_t * pat_t list
 [@@deriving show]
 
@@ -101,6 +104,10 @@ let rec of_pat cenv = function
     | Ast.As ps ->
         let ps, envs = Util.unzip @@ List.map (of_pat cenv) ps in
         (As ps, List.concat envs)
+    | Ast.Or (p, ps) ->
+        let p, env = of_pat cenv p in
+        let ps, envs = Util.unzip @@ List.map (of_pat cenv) ps in
+        (Or (p, ps), List.concat envs)
     | Ast.PCtor name ->
         let id = fresh_c () in
         (PCtor (id, []), [(name, id, true)])
@@ -138,6 +145,11 @@ let rec of_tydef env targs = function
         in
         (Variant ctors, cenv')
 
+let rec dup_chk = function
+    | [] -> None
+    | x :: xs ->
+        if not @@ List.for_all (( <> ) x) xs then Some x else dup_chk xs
+
 let rec of_expr env =
     let (venv : (string list * int * bool) list), tenv, cenv = env in
     function
@@ -150,8 +162,8 @@ let rec of_expr env =
         CtorApp (lookup name cenv, List.map (of_expr env) es)
     | Ast.Tuple es -> Tuple (List.map (of_expr env) es)
     | Ast.If (ec, e1, e2) -> If (of_expr env ec, of_expr env e1, of_expr env e2)
-    | Ast.Let (defs, e) ->
-        let envs, pats, defs =
+    | Ast.Let (defs, e) -> (
+        let pat_vars, pats, defs =
             Util.unzip3
             @@ List.map
                  (fun (pat, def) ->
@@ -159,14 +171,21 @@ let rec of_expr env =
                    (venv', pat, of_expr (venv' @ venv, tenv, cenv) def))
                  defs
         in
-        Let (Util.zip pats defs, of_expr (List.concat envs @ venv, tenv, cenv) e)
-    | Ast.LetRec (defs, e) ->
+        let venv' = List.concat pat_vars in
+        match dup_chk @@ List.map (fun (name, _, _) -> name) venv' with
+        | Some id -> raise @@ DuplicatedId id
+        | None -> Let (Util.zip pats defs, of_expr (venv' @ venv, tenv, cenv) e)
+        )
+    | Ast.LetRec (defs, e) -> (
         let ids = List.map (fun (n, _) -> (n, fresh_v (), true)) defs in
-        let env = (ids @ venv, tenv, cenv) in
-        let exprs = List.map (fun (_, e) -> of_expr env e) defs in
-        LetRec
-          ( List.map (fun ((_, id, _), e) -> (id, e)) (Util.zip ids exprs)
-          , of_expr env e )
+        match dup_chk @@ List.map (fun (name, _, _) -> name) ids with
+        | Some id -> raise @@ DuplicatedId id
+        | None ->
+            let env = (ids @ venv, tenv, cenv) in
+            let exprs = List.map (fun (_, e) -> of_expr env e) defs in
+            LetRec
+              ( List.map (fun ((_, id, _), e) -> (id, e)) (Util.zip ids exprs)
+              , of_expr env e ) )
     | Ast.Fun (args, body) ->
         let ids = List.map (fun n -> ([n], fresh_v (), true)) args in
         let env = (ids @ venv, tenv, cenv) in
@@ -177,13 +196,16 @@ let rec of_expr env =
             List.map
               (fun (pat, guard, expr) ->
                 let pat, venv' = of_pat cenv pat in
-                let env = (venv' @ venv, tenv, cenv) in
-                (pat, of_expr env guard, of_expr env expr))
+                match dup_chk @@ List.map (fun (name, _, _) -> name) venv' with
+                | Some id -> raise @@ DuplicatedId id
+                | None ->
+                    let env = (venv' @ venv, tenv, cenv) in
+                    (pat, of_expr env guard, of_expr env expr))
               arms
         in
         Match (target, arms)
     | Ast.App (f, args) -> App (of_expr env f, List.map (of_expr env) args)
-    | Ast.Type (defs, e) ->
+    | Ast.Type (defs, e) -> (
         let names = List.map (fun (n, _, _) -> ([n], fresh_t (), true)) defs in
         let env = (venv, names @ tenv, cenv) in
         let tys, ctors, targs_l =
@@ -195,7 +217,10 @@ let rec of_expr env =
                    (ty, ctors, List.length targs))
                  defs
         in
-        let env = (venv, names @ tenv, List.concat ctors @ cenv) in
-        Type
-          ( Util.zip3 (List.map (fun (_, i, _) -> i) names) targs_l tys
-          , of_expr env e )
+        match dup_chk @@ List.map (fun (name, _, _) -> name) names with
+        | Some id -> raise @@ DuplicatedId id
+        | None ->
+            let env = (venv, names @ tenv, List.concat ctors @ cenv) in
+            Type
+              ( Util.zip3 (List.map (fun (_, i, _) -> i) names) targs_l tys
+              , of_expr env e ) )

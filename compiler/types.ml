@@ -19,11 +19,13 @@ let rec show = function
     | Bool -> "Bool"
     | Str -> "Str"
     | Fun ([], ret) -> show ret
-    | Fun ([arg], ret) -> show arg ^ " -> " ^ show ret
+    | Fun ([arg], ret) -> "(" ^ show arg ^ " -> " ^ show ret ^ ")"
     | Fun (args, ret) ->
-        List.fold_left
-          (fun ret t -> show t ^ " -> " ^ ret)
-          (show ret) (List.rev args)
+        "("
+        ^ List.fold_left
+            (fun ret t -> show t ^ " -> " ^ ret)
+            (show ret) (List.rev args)
+        ^ ")"
     | Tuple [] -> "()"
     | Tuple [t] -> "(" ^ show t ^ ")"
     | Tuple (t :: ts) ->

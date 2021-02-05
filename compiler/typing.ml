@@ -36,7 +36,6 @@ type t =
     | Fun of (int * Types.t) list * t * Types.t
     | Tuple of t list * Types.t list
     | Match of t * Types.t * (pat_t * t) list * Types.t
-    | Ctor of int * Types.t
     | CtorApp of int * t list * Types.t
 [@@deriving show]
 
@@ -256,7 +255,6 @@ let generalize tbl level =
                   (fun (pat, expr) -> (generalize_pat tbl level pat, f expr))
                   arms
               , generalize_ty tbl level ty )
-        | Ctor (name, t) -> Ctor (name, generalize_ty tbl level t)
         | CtorApp (name, e, t) ->
             CtorApp (name, List.map f e, generalize_ty tbl level t)
         | Never -> Never
@@ -474,7 +472,7 @@ let rec g env level =
           let ty =
               instantiate (ref []) level (Types.Variant (targs, variant_name))
           in
-          (Ctor (name, ty), ty)
+          (CtorApp (name, [], ty), ty)
       | _ ->
           raise
           @@ TypeError ("Ctor " ^ Alpha.show_id_t name ^ " takes some arguments")

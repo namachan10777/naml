@@ -113,7 +113,7 @@ let () =
                  ( [(16, Ty.Poly 0)]
                  , T.CtorApp
                      ( 2
-                     , [T.Var 16; T.Ctor (3, Ty.Variant ([Ty.Poly 0], 5))]
+                     , [T.Var 16; T.CtorApp (3, [], Ty.Variant ([Ty.Poly 0], 5))]
                      , Ty.Variant ([Ty.Poly 0], 5) )
                  , Ty.Variant ([Ty.Poly 0], 5) ) ) ]
          , T.App
@@ -162,7 +162,39 @@ let () =
                              , [T.Int 1; T.App (T.Var length, [T.Var l])] ) ) ]
                      , Ty.Int )
                  , Ty.Int ) ) ]
-         , T.Tuple ([], []) ))
+         , T.Tuple ([], []) )) ;
+    let map, f, l, x, xs = (15, 16, 17, 18, 19) in
+    let l1_ty = Ty.Variant ([Ty.Poly 1], 5) in
+    let l2_ty = Ty.Variant ([Ty.Poly 0], 5) in
+    let f_ty = Ty.Fun ([Ty.Poly 1], Ty.Poly 0) in
+    let map_ty = Ty.Fun ([f_ty; l1_ty], l2_ty) in
+    let cons_id = Alpha.lookup ["::"] Alpha.pervasive_cenv in
+    let emp_id = Alpha.lookup ["[]"] Alpha.pervasive_cenv in
+    test
+      "let rec map f l = match l with x :: xs -> (f x) :: map f xs | [] -> [] \
+       in map"
+      (T.LetRec
+         ( [ ( map
+             , map_ty
+             , T.Fun
+                 ( [(f, f_ty); (l, l1_ty)]
+                 , T.Match
+                     ( T.Var l
+                     , l1_ty
+                     , [ ( T.PCtor
+                             ( [T.PVar (x, Ty.Poly 1); T.PVar (xs, l1_ty)]
+                             , [Ty.Poly 1]
+                             , cons_id )
+                         , T.CtorApp
+                             ( cons_id
+                             , [ T.App (T.Var f, [T.Var x])
+                               ; T.App (T.Var map, [T.Var f; T.Var xs]) ]
+                             , l2_ty ) )
+                       ; ( T.PCtor ([], [Ty.Poly 1], emp_id)
+                         , T.CtorApp (emp_id, [], l2_ty) ) ]
+                     , l2_ty )
+                 , l2_ty ) ) ]
+         , T.Var map ))
 
 let () =
     let t1 = Types.Int in

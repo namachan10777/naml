@@ -1,5 +1,4 @@
-type id_t = int
-[@@deriving show]
+type id_t = int [@@deriving show]
 
 type map_t = string list * id_t * bool
 
@@ -51,30 +50,38 @@ let rec lookup name = function
     | _ :: remain -> lookup name remain
     | [] -> raise @@ UnboundId name
 
-let pervasive_tenv = List.map (fun (name, id, _) -> name, id, false) Types.pervasive_types
-let pervasive_venv = List.map (fun (name, id, _) -> name, id, false) Types.pervasive_vals
-let pervasive_cenv = List.map (fun (name, id, _) -> name, id, false) Types.pervasive_ctors
+let pervasive_tenv =
+    List.map (fun (name, id, _) -> (name, id, false)) Types.pervasive_types
+
+let pervasive_venv =
+    List.map (fun (name, id, _) -> (name, id, false)) Types.pervasive_vals
+
+let pervasive_cenv =
+    List.map (fun (name, id, _) -> (name, id, false)) Types.pervasive_ctors
 
 let count_v = ref 0
+
 let fresh_v () =
     count_v := !count_v + 1 ;
     !count_v
 
 let count_c = ref 0
+
 let fresh_c () =
     count_c := !count_c + 1 ;
     !count_c
 
 let count_t = ref 0
+
 let fresh_t () =
     count_t := !count_t + 1 ;
     !count_t
 
 let init () =
-    count_v := (List.length pervasive_venv) - 1;
-    count_t := (List.length pervasive_tenv) - 1;
-    count_c := (List.length pervasive_cenv) - 1;
-    pervasive_venv, pervasive_tenv, pervasive_cenv
+    count_v := List.length pervasive_venv - 1 ;
+    count_t := List.length pervasive_tenv - 1 ;
+    count_c := List.length pervasive_cenv - 1 ;
+    (pervasive_venv, pervasive_tenv, pervasive_cenv)
 
 let rec of_pat cenv = function
     | Ast.PBool b -> (PBool b, [])
@@ -86,7 +93,7 @@ let rec of_pat cenv = function
         (PCtor (lookup ["::"] pervasive_cenv, [v; l]), names @ names')
     | Ast.PVar id ->
         let id' = fresh_v () in
-        (PVar id', [[id], id', true])
+        (PVar id', [([id], id', true)])
     | Ast.PTuple ps ->
         let ps, envs = Util.unzip @@ List.map (of_pat cenv) ps in
         (PTuple ps, List.concat envs)
@@ -95,7 +102,7 @@ let rec of_pat cenv = function
         (As ps, List.concat envs)
     | Ast.PCtor name ->
         let id = fresh_c () in
-        (PCtor (id, []), [name, id, true])
+        (PCtor (id, []), [(name, id, true)])
     | Ast.PCtorApp (name, args) ->
         let id = fresh_c () in
         let args, envs = Util.unzip @@ List.map (of_pat cenv) args in
@@ -125,13 +132,13 @@ let rec of_tydef env targs = function
             @@ List.map
                  (fun (name, tys) ->
                    let id = fresh_c () in
-                   ([name], id, true), (id, List.map (of_ty env targs) tys))
+                   (([name], id, true), (id, List.map (of_ty env targs) tys)))
                  ctors
         in
         (Variant ctors, cenv')
 
 let rec of_expr env =
-    let (venv: (string list * int * bool) list), tenv, cenv = env in
+    let (venv : (string list * int * bool) list), tenv, cenv = env in
     function
     | Ast.Int i -> Int i
     | Ast.Bool b -> Bool b
@@ -141,8 +148,7 @@ let rec of_expr env =
     | Ast.CtorApp (name, es) ->
         CtorApp (lookup name cenv, List.map (of_expr env) es)
     | Ast.Tuple es -> Tuple (List.map (of_expr env) es)
-    | Ast.If (ec, e1, e2) ->
-        If (of_expr env ec, of_expr env e1, of_expr env e2)
+    | Ast.If (ec, e1, e2) -> If (of_expr env ec, of_expr env e1, of_expr env e2)
     | Ast.Let (defs, e) ->
         let envs, pats, defs =
             Util.unzip3
@@ -152,9 +158,7 @@ let rec of_expr env =
                    (venv', pat, of_expr (venv' @ venv, tenv, cenv) def))
                  defs
         in
-        Let
-          ( Util.zip pats defs
-          , of_expr (List.concat envs @ venv, tenv, cenv) e )
+        Let (Util.zip pats defs, of_expr (List.concat envs @ venv, tenv, cenv) e)
     | Ast.LetRec (defs, e) ->
         let ids = List.map (fun (n, _) -> (n, fresh_v (), true)) defs in
         let env = (ids @ venv, tenv, cenv) in
@@ -177,12 +181,9 @@ let rec of_expr env =
               arms
         in
         Match (target, arms)
-    | Ast.App (f, args) ->
-        App (of_expr env f, List.map (of_expr env) args)
+    | Ast.App (f, args) -> App (of_expr env f, List.map (of_expr env) args)
     | Ast.Type (defs, e) ->
-        let names =
-            List.map (fun (n, _, _) -> ([n], fresh_t (), true)) defs
-        in
+        let names = List.map (fun (n, _, _) -> ([n], fresh_t (), true)) defs in
         let env = (venv, names @ tenv, cenv) in
         let tys, ctors, targs_l =
             Util.unzip3
@@ -194,4 +195,6 @@ let rec of_expr env =
                  defs
         in
         let env = (venv, names @ tenv, List.concat ctors @ cenv) in
-        Type (Util.zip3 (List.map (fun (_, i, _) -> i) names) targs_l tys, of_expr env e)
+        Type
+          ( Util.zip3 (List.map (fun (_, i, _) -> i) names) targs_l tys
+          , of_expr env e )

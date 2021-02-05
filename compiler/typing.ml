@@ -300,7 +300,9 @@ let pat_ty cenv level =
                 let variant_ty =
                     Types.Variant (List.map deref_ty targs, tname)
                 in
-                ( List.concat names , variant_ty , PCtor (args, List.map deref_ty targs, cname) ))
+                ( List.concat names
+                , variant_ty
+                , PCtor (args, List.map deref_ty targs, cname) ) )
     in
     f
 
@@ -322,9 +324,7 @@ let rec canonical_type_def tenv co_def (name, targs, def) =
               (* TODO 型引数の長さを チェック *)
               Types.Variant (List.map (f_ty hist env) tys, name)
           | Some (targs, Alpha.Alias alias) ->
-              let targs =
-                  List.map (fun ty -> f_ty hist env ty) tys
-              in
+              let targs = List.map (fun ty -> f_ty hist env ty) tys in
               f_tydef hist (name, targs, Alpha.Alias alias)
           | None ->
               let higher = lookup_from_tenv name tenv in
@@ -358,7 +358,8 @@ let rec canonical_type_def tenv co_def (name, targs, def) =
     and lookup_from_tenv id = function
         | (id', tydef) :: _ when id = id' -> tydef
         | _ :: remain -> lookup_from_tenv id remain
-        | [] -> raise @@ UnboundIdentifier ("undefined type" ^ Alpha.show_id_t id)
+        | [] ->
+            raise @@ UnboundIdentifier ("undefined type" ^ Alpha.show_id_t id)
     and lookup_from_co_def id = function
         | (id', targs, ty) :: _ when id = id' -> Some (targs, ty)
         | _ :: remain -> lookup_from_co_def id remain
@@ -372,8 +373,7 @@ let rec canonical_type_def tenv co_def (name, targs, def) =
         let ctors =
             List.map
               (fun (ctor_name, args) ->
-                ( ctor_name
-                , (List.map (f_ty [] targs) args, targs, name) ))
+                (ctor_name, (List.map (f_ty [] targs) args, targs, name)))
               ctors
         in
         (ctors, Types.Variant (targs, name))
@@ -430,9 +430,7 @@ let rec g env level =
                    (pat_vars, (pat, def)))
                  defs
         in
-        let expr, ty =
-            g (List.concat pat_vars @ venv, tenv, cenv) level expr
-        in
+        let expr, ty = g (List.concat pat_vars @ venv, tenv, cenv) level expr in
         (Let (defs, expr), ty)
     | Alpha.LetRec (defs, expr) ->
         let vars = List.map (fun (name, _) -> (name, fresh (level + 1))) defs in
@@ -557,12 +555,10 @@ let rec g env level =
         let env = (venv, tydefs @ tenv, ctors @ cenv) in
         g env level expr
 
-let pervasive_tenv = List.map (fun (_, i, t) -> i, t) Types.pervasive_types
-let pervasive_venv = List.map (fun (_, i, t) -> i, t) Types.pervasive_vals
-let pervasive_cenv = List.map (fun (_, i, t) -> i, t) Types.pervasive_ctors
+let pervasive_tenv = List.map (fun (_, i, t) -> (i, t)) Types.pervasive_types
 
-let f ast =
-    fst
-    @@ g
-         (pervasive_venv, pervasive_tenv, pervasive_cenv)
-         0 ast
+let pervasive_venv = List.map (fun (_, i, t) -> (i, t)) Types.pervasive_vals
+
+let pervasive_cenv = List.map (fun (_, i, t) -> (i, t)) Types.pervasive_ctors
+
+let f ast = fst @@ g (pervasive_venv, pervasive_tenv, pervasive_cenv) 0 ast

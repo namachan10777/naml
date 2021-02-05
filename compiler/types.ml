@@ -83,7 +83,8 @@ let pervasive_vals =
     ; (["."], 9, Fun ([Variant ([Poly 0], 2); Int], Poly 0))
     ; (["<neg>"], 10, Fun ([Int], Int))
     ; ( ["<arrayassign>"]
-      , 11, Fun ([Variant ([Poly 0], 2); Int; Poly 0], Tuple []) )
+      , 11
+      , Fun ([Variant ([Poly 0], 2); Int; Poly 0], Tuple []) )
     ; (["not"], 12, Fun ([Bool], Bool))
     ; (["ref"], 13, Fun ([Poly 0], Variant ([Poly 0], 3)))
     ; ([":="], 14, Fun ([Variant ([Poly 0], 3); Poly 0], unit_ty)) ]

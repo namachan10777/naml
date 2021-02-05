@@ -22,6 +22,7 @@ let unify_test name a b =
       Printf.printf "left: \n%s\n" @@ Types.show a ;
       Printf.printf "right: \n%s\n" @@ Types.show b ;
       failwith "test failed" )
+
 module Ty = Types
 module T = Typing
 
@@ -50,7 +51,7 @@ let () =
        false in a"
       (T.Let
          ( [ ( T.PVar
-                 (15 
+                 ( 15
                  , Ty.Fun
                      ([Ty.Poly 0; Ty.Poly 1], Ty.Tuple [Ty.Poly 0; Ty.Poly 1])
                  )
@@ -64,10 +65,9 @@ let () =
                  , T.App (T.Var 15, [T.Int 1]) ) ]
              , T.Let
                  ( [ ( T.PVar (19, Ty.Tuple [Ty.Bool; Ty.Bool])
-                     , T.App (T.Var 15, [T.Bool true; T.Bool false]) )
-                   ]
+                     , T.App (T.Var 15, [T.Bool true; T.Bool false]) ) ]
                  , Typing.Var 18 ) ) )) ;
-    let f, x, g, y = 15,16,17,18 in
+    let f, x, g, y = (15, 16, 17, 18) in
     test "let f x = let g y = x = y in g in f"
       (T.Let
          ( [ ( T.PVar (f, Ty.Fun ([Ty.Poly 0], Ty.Fun ([Ty.Poly 0], Ty.Bool)))
@@ -82,7 +82,7 @@ let () =
                      , T.Var g )
                  , Ty.Fun ([Ty.Poly 0], Ty.Bool) ) ) ]
          , T.Var f )) ;
-    let fact, n = 15, 16 in
+    let fact, n = (15, 16) in
     test "let rec fact n = if n = 1 then 1 else n * fact (n-1) in fact 5"
       (T.LetRec
          ( [ ( fact
@@ -97,8 +97,7 @@ let () =
                          , [ T.Var n
                            ; T.App
                                ( T.Var fact
-                               , [T.App (T.Var 1, [T.Var n; T.Int 1])]
-                               ) ] ) )
+                               , [T.App (T.Var 1, [T.Var n; T.Int 1])] ) ] ) )
                  , Ty.Int ) ) ]
          , T.App (T.Var fact, [T.Int 5]) )) ;
     test "let x, y = 1, 2 in x"
@@ -109,20 +108,18 @@ let () =
          , T.Var 15 )) ;
     test "let f x = [x] in f 1; f true"
       (T.Let
-         ( [ ( T.PVar
-                 (15, Ty.Fun ([Ty.Poly 0], Ty.Variant ([Ty.Poly 0], 5)))
+         ( [ ( T.PVar (15, Ty.Fun ([Ty.Poly 0], Ty.Variant ([Ty.Poly 0], 5)))
              , T.Fun
                  ( [(16, Ty.Poly 0)]
                  , T.CtorApp
                      ( 2
-                     , [ T.Var 16 
-                       ; T.Ctor (3, Ty.Variant ([Ty.Poly 0], 5)) ]
+                     , [T.Var 16; T.Ctor (3, Ty.Variant ([Ty.Poly 0], 5))]
                      , Ty.Variant ([Ty.Poly 0], 5) )
                  , Ty.Variant ([Ty.Poly 0], 5) ) ) ]
          , T.App
              ( T.Var 8
-             , [ T.App (T.Var 15, [T.Int 1])
-               ; T.App (T.Var 15, [T.Bool true]) ] ) )) ;
+             , [T.App (T.Var 15, [T.Int 1]); T.App (T.Var 15, [T.Bool true])] )
+         )) ;
     test "let x = match (1, 2) with (x, y) -> x + y in x"
       (T.Let
          ( [ ( T.PVar (15, Ty.Int)
@@ -135,7 +132,7 @@ let () =
                      , T.App (T.Var 0, [T.Var 16; T.Var 17]) ) ]
                  , Ty.Int ) ) ]
          , T.Var 15 )) ;
-    let length, l, x = 15, 16, 17 in
+    let length, l, x = (15, 16, 17) in
     test
       "let rec length l = match l with [] -> 0 | x :: [] -> 1 + length l in ()"
       (T.LetRec
@@ -146,19 +143,27 @@ let () =
                  , T.Match
                      ( T.Var l
                      , Ty.Variant ([Ty.Poly 0], 5)
-                     , [ (T.PCtor ([], [Ty.Poly 0], Alpha.lookup ["[]"] Alpha.pervasive_cenv), T.Int 0)
+                     , [ ( T.PCtor
+                             ( []
+                             , [Ty.Poly 0]
+                             , Alpha.lookup ["[]"] Alpha.pervasive_cenv )
+                         , T.Int 0 )
                        ; ( T.PCtor
                              ( [ T.PVar (x, Ty.Poly 0)
-                             ; T.PCtor ([], [Ty.Poly 0], Alpha.lookup ["[]"] Alpha.pervasive_cenv) ]
+                               ; T.PCtor
+                                   ( []
+                                   , [Ty.Poly 0]
+                                   , Alpha.lookup ["[]"] Alpha.pervasive_cenv )
+                               ]
                              , [Ty.Poly 0]
                              , Alpha.lookup ["::"] Alpha.pervasive_cenv )
                          , T.App
                              ( T.Var 0
-                             , [T.Int 1; T.App (T.Var length, [T.Var l])]
-                             ) ) ]
+                             , [T.Int 1; T.App (T.Var length, [T.Var l])] ) ) ]
                      , Ty.Int )
                  , Ty.Int ) ) ]
          , T.Tuple ([], []) ))
+
 let () =
     let t1 = Types.Int in
     let t2 = T.fresh 1 in
@@ -219,8 +224,7 @@ let () =
         , 0
         , Alpha.Alias
             (Alpha.TTuple
-               [Alpha.TApp ([Alpha.TInt], 6); Alpha.TApp ([Alpha.TInt], 6)])
-        )
+               [Alpha.TApp ([Alpha.TInt], 6); Alpha.TApp ([Alpha.TInt], 6)]) )
     in
     let def = Typing.canonical_type_def [] [def1; def2] def1 in
     Test.assert_eq "higher alias" def ([], Types.Tuple [Poly 0; Poly 0]) ;
@@ -242,20 +246,17 @@ let () =
         , 2
         , Alpha.Alias
             (Alpha.TTuple
-               [ Alpha.TApp ([Alpha.TVar 0], 5)
-               ; Alpha.TApp ([Alpha.TVar 1], 5) ]) )
+               [Alpha.TApp ([Alpha.TVar 0], 5); Alpha.TApp ([Alpha.TVar 1], 5)])
+        )
     in
     let def2 =
         (7, 1, Alpha.Alias (Alpha.TApp ([Alpha.TInt; Alpha.TVar 0], 6)))
     in
-    let def =
-        Typing.canonical_type_def T.pervasive_tenv [def1; def2] def2
-    in
+    let def = Typing.canonical_type_def T.pervasive_tenv [def1; def2] def2 in
     Test.assert_eq "chain to defined type" def
       ( []
       , Types.Tuple
-          [ Types.Variant ([Types.Int], 5)
-          ; Types.Variant ([Types.Poly 0], 5) ] ) ;
+          [Types.Variant ([Types.Int], 5); Types.Variant ([Types.Poly 0], 5)] ) ;
     let def1 =
         ( 6
         , 1
@@ -263,9 +264,7 @@ let () =
             [(4, [Alpha.TVar 0]); (5, [Alpha.TApp ([Alpha.TInt], 7)])] )
     in
     let def2 = (7, 1, Alpha.Alias (Alpha.TApp ([Alpha.TVar 0], 6))) in
-    let def =
-        Typing.canonical_type_def T.pervasive_tenv [def1; def2] def1
-    in
+    let def = Typing.canonical_type_def T.pervasive_tenv [def1; def2] def1 in
     Test.assert_eq "matual recursive variatn" def
       ( [ (4, ([Poly 0], [Poly 0], 6))
         ; (5, ([Types.Variant ([Types.Int], 6)], [Poly 0], 6)) ]

@@ -1,6 +1,7 @@
 type id_t = int
+[@@deriving show]
 
-type map_t = string list * id_t
+type map_t = string list * id_t * bool
 
 (* val * type * ctor * exception * record *)
 type env_t = map_t * map_t * map_t
@@ -46,52 +47,59 @@ type t =
 [@@deriving show]
 
 let rec lookup name = function
-    | (name', id) :: _ when name = name' -> id
+    | (name', id, _) :: _ when name = name' -> id
     | _ :: remain -> lookup name remain
     | [] -> raise @@ UnboundId name
 
-let count_v = ref 0
+let pervasive_tenv = List.map (fun (name, id, _) -> name, id, false) Types.pervasive_types
+let pervasive_venv = List.map (fun (name, id, _) -> name, id, false) Types.pervasive_vals
+let pervasive_cenv = List.map (fun (name, id, _) -> name, id, false) Types.pervasive_ctors
 
+let count_v = ref 0
 let fresh_v () =
     count_v := !count_v + 1 ;
     !count_v
 
 let count_c = ref 0
-
 let fresh_c () =
     count_c := !count_c + 1 ;
     !count_c
 
 let count_t = ref 0
-
 let fresh_t () =
     count_t := !count_t + 1 ;
     !count_t
 
-let rec of_pat prefix = function
+let init () =
+    count_v := (List.length pervasive_venv) - 1;
+    count_t := (List.length pervasive_tenv) - 1;
+    count_c := (List.length pervasive_cenv) - 1;
+    pervasive_venv, pervasive_tenv, pervasive_cenv
+
+let rec of_pat cenv = function
     | Ast.PBool b -> (PBool b, [])
     | Ast.PInt i -> (PInt i, [])
-    | Ast.PEmp -> (PCtor (0 (* "[]" id *), []), [])
+    | Ast.PEmp -> (PCtor (lookup ["[]"] pervasive_cenv, []), [])
     | Ast.PCons (v, l) ->
-        let v, names = of_pat prefix v in
-        let l, names' = of_pat prefix l in
-        (PCtor (1 (* "::" id *), [v; l]), names @ names')
+        let v, names = of_pat cenv v in
+        let l, names' = of_pat cenv l in
+        (PCtor (lookup ["::"] pervasive_cenv, [v; l]), names @ names')
     | Ast.PVar id ->
         let id' = fresh_v () in
-        (PVar id', [(prefix @ [id], id')])
+        (PVar id', [[id], id', true])
     | Ast.PTuple ps ->
-        let ps, envs = Util.unzip @@ List.map (of_pat prefix) ps in
+        let ps, envs = Util.unzip @@ List.map (of_pat cenv) ps in
         (PTuple ps, List.concat envs)
     | Ast.As ps ->
-        let ps, envs = Util.unzip @@ List.map (of_pat prefix) ps in
+        let ps, envs = Util.unzip @@ List.map (of_pat cenv) ps in
         (As ps, List.concat envs)
     | Ast.PCtor name ->
         let id = fresh_c () in
-        (PCtor (id, []), [(prefix @ name, id)])
+        (PCtor (id, []), [name, id, true])
     | Ast.PCtorApp (name, args) ->
         let id = fresh_c () in
-        let args, envs = Util.unzip @@ List.map (of_pat prefix) args in
-        (PCtor (id, args), (prefix @ name, id) :: List.concat envs)
+        let args, envs = Util.unzip @@ List.map (of_pat cenv) args in
+        (PCtor (id, args), (name, id, true) :: List.concat envs)
 
 let rec of_ty env targs =
     let rec lookup_targs arg = function
@@ -109,7 +117,7 @@ let rec of_ty env targs =
     | Ast.TApp (ts, higher) ->
         TApp (List.map (of_ty env targs) ts, lookup higher tenv)
 
-let rec of_tydef prefix env targs = function
+let rec of_tydef env targs = function
     | Ast.Alias ty -> (Alias (of_ty env targs ty), [])
     | Ast.Variant ctors ->
         let cenv', ctors =
@@ -117,70 +125,73 @@ let rec of_tydef prefix env targs = function
             @@ List.map
                  (fun (name, tys) ->
                    let id = fresh_c () in
-                   ((prefix @ [name], id), (id, List.map (of_ty env targs) tys)))
+                   ([name], id, true), (id, List.map (of_ty env targs) tys))
                  ctors
         in
         (Variant ctors, cenv')
 
-let rec of_expr prefix env =
-    let venv, tenv, cenv = env in
+let rec of_expr env =
+    let (venv: (string list * int * bool) list), tenv, cenv = env in
     function
     | Ast.Int i -> Int i
     | Ast.Bool b -> Bool b
     | Ast.Never -> Never
-    | Ast.Var name -> Var (lookup (prefix @ name) venv)
-    | Ast.Ctor name -> Ctor (lookup (prefix @ name) cenv)
+    | Ast.Var name -> Var (lookup name venv)
+    | Ast.Ctor name -> Ctor (lookup name cenv)
     | Ast.CtorApp (name, es) ->
-        CtorApp (lookup (prefix @ name) cenv, List.map (of_expr prefix env) es)
-    | Ast.Tuple es -> Tuple (List.map (of_expr prefix env) es)
+        CtorApp (lookup name cenv, List.map (of_expr env) es)
+    | Ast.Tuple es -> Tuple (List.map (of_expr env) es)
     | Ast.If (ec, e1, e2) ->
-        If (of_expr prefix env ec, of_expr prefix env e1, of_expr prefix env e2)
+        If (of_expr env ec, of_expr env e1, of_expr env e2)
     | Ast.Let (defs, e) ->
         let envs, pats, defs =
             Util.unzip3
             @@ List.map
                  (fun (pat, def) ->
-                   let pat, venv' = of_pat prefix pat in
-                   (venv', pat, of_expr prefix (venv' @ venv, tenv, cenv) def))
+                   let pat, venv' = of_pat cenv pat in
+                   (venv', pat, of_expr (venv' @ venv, tenv, cenv) def))
                  defs
         in
         Let
           ( Util.zip pats defs
-          , of_expr prefix (List.concat envs @ venv, tenv, cenv) e )
+          , of_expr (List.concat envs @ venv, tenv, cenv) e )
     | Ast.LetRec (defs, e) ->
-        let ids = List.map (fun (n, _) -> (prefix @ n, fresh_v ())) defs in
+        let ids = List.map (fun (n, _) -> (n, fresh_v (), true)) defs in
         let env = (ids @ venv, tenv, cenv) in
-        let exprs = List.map (fun (_, e) -> of_expr prefix env e) defs in
+        let exprs = List.map (fun (_, e) -> of_expr env e) defs in
         LetRec
-          ( List.map (fun ((_, id), e) -> (id, e)) (Util.zip ids exprs)
-          , of_expr prefix env e )
+          ( List.map (fun ((_, id, _), e) -> (id, e)) (Util.zip ids exprs)
+          , of_expr env e )
     | Ast.Fun (args, body) ->
-        let ids = List.map (fun n -> (prefix @ [n], fresh_v ())) args in
+        let ids = List.map (fun n -> ([n], fresh_v (), true)) args in
         let env = (ids @ venv, tenv, cenv) in
-        Fun (List.map snd ids, of_expr prefix env body)
+        Fun (List.map (fun (_, i, _) -> i) ids, of_expr env body)
     | Ast.Match (target, arms) ->
-        let target = of_expr prefix env target in
+        let target = of_expr env target in
         let arms =
             List.map
               (fun (pat, guard, expr) ->
-                let pat, venv' = of_pat prefix pat in
-                (pat, of_expr prefix env guard, of_expr prefix env expr))
+                let pat, venv' = of_pat cenv pat in
+                let env = (venv' @ venv, tenv, cenv) in
+                (pat, of_expr env guard, of_expr env expr))
               arms
         in
         Match (target, arms)
     | Ast.App (f, args) ->
-        App (of_expr prefix env f, List.map (of_expr prefix env) args)
+        App (of_expr env f, List.map (of_expr env) args)
     | Ast.Type (defs, e) ->
-        let names = List.map (fun (n, _, _) -> ([n], fresh_t ())) defs in
+        let names =
+            List.map (fun (n, _, _) -> ([n], fresh_t (), true)) defs
+        in
         let env = (venv, names @ tenv, cenv) in
         let tys, ctors, targs_l =
             Util.unzip3
             @@ List.map
                  (fun (_, targs, ty) ->
                    let targs = List.mapi (fun i n -> (n, i)) targs in
-                   let ty, ctors = of_tydef prefix env targs ty in
+                   let ty, ctors = of_tydef env targs ty in
                    (ty, ctors, List.length targs))
                  defs
         in
         let env = (venv, names @ tenv, List.concat ctors @ cenv) in
-        Type (Util.zip3 (List.map snd names) targs_l tys, of_expr prefix env e)
+        Type (Util.zip3 (List.map (fun (_, i, _) -> i) names) targs_l tys, of_expr env e)

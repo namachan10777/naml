@@ -47,13 +47,16 @@ parser.cmx: parser.ml lex.cmx
 parser_test: lex.cmx test.cmx parser.cmx parser_test.cmx 
 	$(OCAMLOPT) $^ -o $@
 
-typing.cmx: typing.ml util.cmx types.cmx
+alpha.cmx: alpha.ml types.cmx ast.cmx
 	$(OCAMLOPT) $< -c
 
-typing_test.cmx: typing_test.ml util.cmx typing.cmx util.cmx ast.cmx
+typing.cmx: typing.ml util.cmx types.cmx alpha.cmx
 	$(OCAMLOPT) $< -c
 
-typing_test: lex.cmx parser.cmx ast.cmx util.cmx id.cmx types.cmx typing.cmx test.cmx typing_test.cmx util.cmx
+typing_test.cmx: typing_test.ml util.cmx typing.cmx util.cmx ast.cmx alpha.cmx
+	$(OCAMLOPT) $< -c
+
+typing_test: lex.cmx parser.cmx ast.cmx util.cmx id.cmx types.cmx alpha.cmx typing.cmx test.cmx  util.cmx alpha.cmx typing_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
 main.cmx: main.ml parser.cmx lex.cmx

@@ -3,7 +3,9 @@ let test src expected =
     let lexed = Lex.lex src @@ Lex.initial_pos "test.ml" in
     let s, _ = Parser.parse_expr lexed in
     let ast = Ast.of_parser_t s in
-    let typed = Typing.f ast in
+    let env = Alpha.init () in
+    let alpha = Alpha.of_expr env ast in
+    let typed = Typing.f alpha in
     if typed = expected then Printf.printf "ok\n"
     else (
       Printf.printf "left: \n%s\n" @@ Typing.show typed ;
@@ -20,142 +22,143 @@ let unify_test name a b =
       Printf.printf "left: \n%s\n" @@ Types.show a ;
       Printf.printf "right: \n%s\n" @@ Types.show b ;
       failwith "test failed" )
-
 module Ty = Types
 module T = Typing
 
 let () =
     test "0" (Typing.Int 0) ;
-    test "not" (Typing.Var ["not"]) ;
-    test "not true" (Typing.App (Typing.Var ["not"], [Typing.Bool true])) ;
-    test "1+2" (Typing.App (Typing.Var ["+"], [Typing.Int 1; Typing.Int 2])) ;
+    test "not" (Typing.Var 12) ;
+    test "not true" (Typing.App (Typing.Var 12, [Typing.Bool true])) ;
+    test "1+2" (Typing.App (Typing.Var 0, [Typing.Int 1; Typing.Int 2])) ;
     test "let x = 1 in x"
-      (Typing.Let ([(Typing.PVar ("x", Ty.Int), Typing.Int 1)], Typing.Var ["x"])) ;
+      (Typing.Let ([(Typing.PVar (15, Ty.Int), Typing.Int 1)], Typing.Var 15)) ;
     test "let x = 1 + 1 in x"
       (Typing.Let
-         ( [ ( Typing.PVar ("x", Ty.Int)
-             , Typing.App (Typing.Var ["+"], [Typing.Int 1; Typing.Int 1]) ) ]
-         , Typing.Var ["x"] )) ;
+         ( [ ( Typing.PVar (15, Ty.Int)
+             , Typing.App (Typing.Var 0, [Typing.Int 1; Typing.Int 1]) ) ]
+         , Typing.Var 15 )) ;
     test "let id = fun x -> x in id 1; id true"
       (Typing.Let
-         ( [ ( Typing.PVar ("id", Ty.Fun ([Ty.Poly 0], Ty.Poly 0))
-             , Typing.Fun ([("x", Ty.Poly 0)], Typing.Var ["x"], Ty.Poly 0) ) ]
+         ( [ ( Typing.PVar (15, Ty.Fun ([Ty.Poly 0], Ty.Poly 0))
+             , Typing.Fun ([(16, Ty.Poly 0)], Typing.Var 16, Ty.Poly 0) ) ]
          , Typing.App
-             ( Typing.Var [";"]
-             , [ Typing.App (Typing.Var ["id"], [Typing.Int 1])
-               ; Typing.App (Typing.Var ["id"], [Typing.Bool true]) ] ) )) ;
+             ( Typing.Var 8
+             , [ Typing.App (Typing.Var 15, [Typing.Int 1])
+               ; Typing.App (Typing.Var 15, [Typing.Bool true]) ] ) )) ;
     test
       "let mk_pair x y = (x, y) in let a = mk_pair 1 in let b = mk_pair true \
        false in a"
       (T.Let
          ( [ ( T.PVar
-                 ( "mk_pair"
+                 (15 
                  , Ty.Fun
                      ([Ty.Poly 0; Ty.Poly 1], Ty.Tuple [Ty.Poly 0; Ty.Poly 1])
                  )
              , T.Fun
-                 ( [("x", Ty.Poly 0); ("y", Ty.Poly 1)]
-                 , T.Tuple ([T.Var ["x"]; T.Var ["y"]], [Ty.Poly 0; Ty.Poly 1])
+                 ( [(16, Ty.Poly 0); (17, Ty.Poly 1)]
+                 , T.Tuple ([T.Var 16; T.Var 17], [Ty.Poly 0; Ty.Poly 1])
                  , Ty.Tuple [Ty.Poly 0; Ty.Poly 1] ) ) ]
          , T.Let
              ( [ ( T.PVar
-                     ("a", Ty.Fun ([Ty.Poly 0], Ty.Tuple [Ty.Int; Ty.Poly 0]))
-                 , T.App (T.Var ["mk_pair"], [T.Int 1]) ) ]
+                     (18, Ty.Fun ([Ty.Poly 0], Ty.Tuple [Ty.Int; Ty.Poly 0]))
+                 , T.App (T.Var 15, [T.Int 1]) ) ]
              , T.Let
-                 ( [ ( T.PVar ("b", Ty.Tuple [Ty.Bool; Ty.Bool])
-                     , T.App (T.Var ["mk_pair"], [T.Bool true; T.Bool false]) )
+                 ( [ ( T.PVar (19, Ty.Tuple [Ty.Bool; Ty.Bool])
+                     , T.App (T.Var 15, [T.Bool true; T.Bool false]) )
                    ]
-                 , Typing.Var ["a"] ) ) )) ;
+                 , Typing.Var 18 ) ) )) ;
+    let f, x, g, y = 15,16,17,18 in
     test "let f x = let g y = x = y in g in f"
       (T.Let
-         ( [ ( T.PVar ("f", Ty.Fun ([Ty.Poly 0], Ty.Fun ([Ty.Poly 0], Ty.Bool)))
+         ( [ ( T.PVar (f, Ty.Fun ([Ty.Poly 0], Ty.Fun ([Ty.Poly 0], Ty.Bool)))
              , T.Fun
-                 ( [("x", Ty.Poly 0)]
+                 ( [(x, Ty.Poly 0)]
                  , T.Let
-                     ( [ ( T.PVar ("g", Ty.Fun ([Ty.Poly 0], Ty.Bool))
+                     ( [ ( T.PVar (g, Ty.Fun ([Ty.Poly 0], Ty.Bool))
                          , T.Fun
-                             ( [("y", Ty.Poly 0)]
-                             , T.App (T.Var ["="], [T.Var ["x"]; T.Var ["y"]])
+                             ( [(y, Ty.Poly 0)]
+                             , T.App (T.Var 7, [T.Var x; T.Var y])
                              , Ty.Bool ) ) ]
-                     , T.Var ["g"] )
+                     , T.Var g )
                  , Ty.Fun ([Ty.Poly 0], Ty.Bool) ) ) ]
-         , T.Var ["f"] )) ;
+         , T.Var f )) ;
+    let fact, n = 15, 16 in
     test "let rec fact n = if n = 1 then 1 else n * fact (n-1) in fact 5"
       (T.LetRec
-         ( [ ( ["fact"]
+         ( [ ( fact
              , Ty.Fun ([Ty.Int], Ty.Int)
              , T.Fun
-                 ( [("n", Ty.Int)]
+                 ( [(n, Ty.Int)]
                  , T.If
-                     ( T.App (T.Var ["="], [T.Var ["n"]; T.Int 1])
+                     ( T.App (T.Var 7, [T.Var n; T.Int 1])
                      , T.Int 1
                      , T.App
-                         ( T.Var ["*"]
-                         , [ T.Var ["n"]
+                         ( T.Var 2
+                         , [ T.Var n
                            ; T.App
-                               ( T.Var ["fact"]
-                               , [T.App (T.Var ["-"], [T.Var ["n"]; T.Int 1])]
+                               ( T.Var fact
+                               , [T.App (T.Var 1, [T.Var n; T.Int 1])]
                                ) ] ) )
                  , Ty.Int ) ) ]
-         , T.App (T.Var ["fact"], [T.Int 5]) )) ;
+         , T.App (T.Var fact, [T.Int 5]) )) ;
     test "let x, y = 1, 2 in x"
       (T.Let
          ( [ ( T.PTuple
-                 ([T.PVar ("x", Ty.Int); T.PVar ("y", Ty.Int)], [Ty.Int; Ty.Int])
+                 ([T.PVar (15, Ty.Int); T.PVar (16, Ty.Int)], [Ty.Int; Ty.Int])
              , T.Tuple ([T.Int 1; T.Int 2], [Ty.Int; Ty.Int]) ) ]
-         , T.Var ["x"] )) ;
+         , T.Var 15 )) ;
     test "let f x = [x] in f 1; f true"
       (T.Let
          ( [ ( T.PVar
-                 ("f", Ty.Fun ([Ty.Poly 0], Ty.Variant ([Ty.Poly 0], ["list"])))
+                 (15, Ty.Fun ([Ty.Poly 0], Ty.Variant ([Ty.Poly 0], 5)))
              , T.Fun
-                 ( [("x", Ty.Poly 0)]
+                 ( [(16, Ty.Poly 0)]
                  , T.CtorApp
-                     ( ["::"]
-                     , [ T.Var ["x"]
-                       ; T.Ctor (["[]"], Ty.Variant ([Ty.Poly 0], ["list"])) ]
-                     , Ty.Variant ([Ty.Poly 0], ["list"]) )
-                 , Ty.Variant ([Ty.Poly 0], ["list"]) ) ) ]
+                     ( 2
+                     , [ T.Var 16 
+                       ; T.Ctor (3, Ty.Variant ([Ty.Poly 0], 5)) ]
+                     , Ty.Variant ([Ty.Poly 0], 5) )
+                 , Ty.Variant ([Ty.Poly 0], 5) ) ) ]
          , T.App
-             ( T.Var [";"]
-             , [ T.App (T.Var ["f"], [T.Int 1])
-               ; T.App (T.Var ["f"], [T.Bool true]) ] ) )) ;
+             ( T.Var 8
+             , [ T.App (T.Var 15, [T.Int 1])
+               ; T.App (T.Var 15, [T.Bool true]) ] ) )) ;
     test "let x = match (1, 2) with (x, y) -> x + y in x"
       (T.Let
-         ( [ ( T.PVar ("x", Ty.Int)
+         ( [ ( T.PVar (15, Ty.Int)
              , T.Match
                  ( T.Tuple ([T.Int 1; T.Int 2], [Ty.Int; Ty.Int])
                  , Ty.Tuple [Ty.Int; Ty.Int]
                  , [ ( T.PTuple
-                         ( [T.PVar ("x", Ty.Int); T.PVar ("y", Ty.Int)]
+                         ( [T.PVar (16, Ty.Int); T.PVar (17, Ty.Int)]
                          , [Ty.Int; Ty.Int] )
-                     , T.App (T.Var ["+"], [T.Var ["x"]; T.Var ["y"]]) ) ]
+                     , T.App (T.Var 0, [T.Var 16; T.Var 17]) ) ]
                  , Ty.Int ) ) ]
-         , T.Var ["x"] )) ;
+         , T.Var 15 )) ;
+    let length, l, x = 15, 16, 17 in
     test
       "let rec length l = match l with [] -> 0 | x :: [] -> 1 + length l in ()"
       (T.LetRec
-         ( [ ( ["length"]
-             , Ty.Fun ([Ty.Variant ([Ty.Poly 0], ["list"])], Ty.Int)
+         ( [ ( length
+             , Ty.Fun ([Ty.Variant ([Ty.Poly 0], 5)], Ty.Int)
              , T.Fun
-                 ( [("l", Ty.Variant ([Ty.Poly 0], ["list"]))]
+                 ( [(l, Ty.Variant ([Ty.Poly 0], 5))]
                  , T.Match
-                     ( T.Var ["l"]
-                     , Ty.Variant ([Ty.Poly 0], ["list"])
-                     , [ (T.PCtor ([], [Ty.Poly 0], ["[]"]), T.Int 0)
+                     ( T.Var l
+                     , Ty.Variant ([Ty.Poly 0], 5)
+                     , [ (T.PCtor ([], [Ty.Poly 0], Alpha.lookup ["[]"] Alpha.pervasive_cenv), T.Int 0)
                        ; ( T.PCtor
-                             ( [ T.PVar ("x", Ty.Poly 0)
-                               ; T.PCtor ([], [Ty.Poly 0], ["[]"]) ]
+                             ( [ T.PVar (x, Ty.Poly 0)
+                             ; T.PCtor ([], [Ty.Poly 0], Alpha.lookup ["[]"] Alpha.pervasive_cenv) ]
                              , [Ty.Poly 0]
-                             , ["::"] )
+                             , Alpha.lookup ["::"] Alpha.pervasive_cenv )
                          , T.App
-                             ( T.Var ["+"]
-                             , [T.Int 1; T.App (T.Var ["length"], [T.Var ["l"]])]
+                             ( T.Var 0
+                             , [T.Int 1; T.App (T.Var length, [T.Var l])]
                              ) ) ]
                      , Ty.Int )
                  , Ty.Int ) ) ]
          , T.Tuple ([], []) ))
-
 let () =
     let t1 = Types.Int in
     let t2 = T.fresh 1 in
@@ -202,21 +205,21 @@ let () =
     unify_test "unify 6" u2 Ty.Int
 
 let () =
-    let def1 = (["t1"], [], Ast.Alias (Ast.TTuple [Ast.TInt; Ast.TInt])) in
-    let def2 = (["t2"], [], Ast.Alias (Ast.TApp ([], ["t1"]))) in
+    let def1 = (6, 0, Alpha.Alias (Alpha.TTuple [Alpha.TInt; Alpha.TInt])) in
+    let def2 = (7, 0, Alpha.Alias (Alpha.TApp ([], 6))) in
     let def = Typing.canonical_type_def [] [def1; def2] def1 in
     Test.assert_eq "simple conv" def ([], Types.Tuple [Types.Int; Types.Int]) ;
     let def = Typing.canonical_type_def [] [def1; def2] def2 in
     Test.assert_eq "chain" def ([], Types.Tuple [Types.Int; Types.Int]) ;
     let def1 =
-        (["t1"], ["a"], Ast.Alias (Ast.TTuple [Ast.TVar "a"; Ast.TVar "a"]))
+        (6, 1, Alpha.Alias (Alpha.TTuple [Alpha.TVar 0; Alpha.TVar 0]))
     in
     let def2 =
-        ( ["t2"]
-        , []
-        , Ast.Alias
-            (Ast.TTuple
-               [Ast.TApp ([Ast.TInt], ["t1"]); Ast.TApp ([Ast.TInt], ["t1"])])
+        ( 7
+        , 0
+        , Alpha.Alias
+            (Alpha.TTuple
+               [Alpha.TApp ([Alpha.TInt], 6); Alpha.TApp ([Alpha.TInt], 6)])
         )
     in
     let def = Typing.canonical_type_def [] [def1; def2] def1 in
@@ -227,7 +230,7 @@ let () =
       , Types.Tuple
           [ Types.Tuple [Types.Int; Types.Int]
           ; Types.Tuple [Types.Int; Types.Int] ] ) ;
-    let def1 = (["t1"], [], Ast.Alias (Ast.TApp ([], ["t1"]))) in
+    let def1 = (6, 0, Alpha.Alias (Alpha.TApp ([], 6))) in
     ( try
         Typing.canonical_type_def [] [def1; def2] def1 |> ignore ;
         failwith "test failure"
@@ -235,35 +238,35 @@ let () =
     | T.CyclicType -> ()
     | e -> raise e ) ;
     let def1 =
-        ( ["t1"]
-        , ["a"; "b"]
-        , Ast.Alias
-            (Ast.TTuple
-               [ Ast.TApp ([Ast.TVar "a"], ["list"])
-               ; Ast.TApp ([Ast.TVar "b"], ["list"]) ]) )
+        ( 6
+        , 2
+        , Alpha.Alias
+            (Alpha.TTuple
+               [ Alpha.TApp ([Alpha.TVar 0], 5)
+               ; Alpha.TApp ([Alpha.TVar 1], 5) ]) )
     in
     let def2 =
-        (["t2"], ["a"], Ast.Alias (Ast.TApp ([Ast.TInt; Ast.TVar "a"], ["t1"])))
+        (7, 1, Alpha.Alias (Alpha.TApp ([Alpha.TInt; Alpha.TVar 0], 6)))
     in
     let def =
-        Typing.canonical_type_def Types.pervasive_types [def1; def2] def2
+        Typing.canonical_type_def T.pervasive_tenv [def1; def2] def2
     in
     Test.assert_eq "chain to defined type" def
       ( []
       , Types.Tuple
-          [ Types.Variant ([Types.Int], ["list"])
-          ; Types.Variant ([Types.Poly 0], ["list"]) ] ) ;
+          [ Types.Variant ([Types.Int], 5)
+          ; Types.Variant ([Types.Poly 0], 5) ] ) ;
     let def1 =
-        ( ["t1"]
-        , ["a"]
-        , Ast.Variant
-            [("A", [Ast.TVar "a"]); ("B", [Ast.TApp ([Ast.TInt], ["t2"])])] )
+        ( 6
+        , 1
+        , Alpha.Variant
+            [(4, [Alpha.TVar 0]); (5, [Alpha.TApp ([Alpha.TInt], 7)])] )
     in
-    let def2 = (["t2"], ["a"], Ast.Alias (Ast.TApp ([Ast.TVar "a"], ["t1"]))) in
+    let def2 = (7, 1, Alpha.Alias (Alpha.TApp ([Alpha.TVar 0], 6))) in
     let def =
-        Typing.canonical_type_def Types.pervasive_types [def1; def2] def1
+        Typing.canonical_type_def T.pervasive_tenv [def1; def2] def1
     in
     Test.assert_eq "matual recursive variatn" def
-      ( [ (["A"], ([Poly 0], [Poly 0], ["t1"]))
-        ; (["B"], ([Types.Variant ([Types.Int], ["t1"])], [Poly 0], ["t1"])) ]
-      , Types.Variant ([Poly 0], ["t1"]) )
+      ( [ (4, ([Poly 0], [Poly 0], 6))
+        ; (5, ([Types.Variant ([Types.Int], 6)], [Poly 0], 6)) ]
+      , Types.Variant ([Poly 0], 6) )

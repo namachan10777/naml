@@ -8,6 +8,7 @@ type env_t = map_t * map_t * map_t
 exception UnboundId of string list
 
 exception DuplicatedId of string list
+exception BothSideOfOrPatternMustHaveSameVars
 
 type pat_t =
     | PInt of int
@@ -86,7 +87,16 @@ let init () =
     count_c := List.length pervasive_cenv - 1 ;
     (pervasive_venv, pervasive_tenv, pervasive_cenv)
 
-(* TODO: 重複チェック *)
+let rec dup_chk = function
+    | [] -> None
+    | x :: xs ->
+        if not @@ List.for_all (( <> ) x) xs then Some x else dup_chk xs
+
+let get1 (x, _, _) = x
+
+let assert_dup ids =
+    match dup_chk ids with Some id -> raise @@ DuplicatedId id | None -> ()
+
 let rec of_pat cenv = function
     | Ast.PBool b -> (PBool b, [])
     | Ast.PInt i -> (PInt i, [])
@@ -105,9 +115,14 @@ let rec of_pat cenv = function
         let ps, envs = Util.unzip @@ List.map (of_pat cenv) ps in
         (As ps, List.concat envs)
     | Ast.Or (p, ps) ->
-        let p, env = of_pat cenv p in
-        let ps, envs = Util.unzip @@ List.map (of_pat cenv) ps in
-        (Or (p, ps), List.concat envs)
+        let p, venv = of_pat cenv p in
+        let count_v_snapshot = !count_v in
+        assert_dup @@ List.map get1 venv;
+        let ps, venvs = Util.unzip @@ List.map (of_pat cenv) ps in
+        count_v := count_v_snapshot;
+        if List.for_all (fun venv' -> (List.sort compare venv') = (List.sort compare venv)) venvs
+        then (Or (p, ps), venv)
+        else raise BothSideOfOrPatternMustHaveSameVars
     | Ast.PCtor name ->
         let id = fresh_c () in
         (PCtor (id, []), [(name, id, true)])
@@ -144,16 +159,6 @@ let rec of_tydef env targs = function
                  ctors
         in
         (Variant ctors, cenv')
-
-let rec dup_chk = function
-    | [] -> None
-    | x :: xs ->
-        if not @@ List.for_all (( <> ) x) xs then Some x else dup_chk xs
-
-let get1 (x, _, _) = x
-
-let assert_dup ids =
-    match dup_chk ids with Some id -> raise @@ DuplicatedId id | None -> ()
 
 let rec of_expr env =
     let (venv : (string list * int * bool) list), tenv, cenv = env in

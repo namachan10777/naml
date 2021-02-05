@@ -218,6 +218,7 @@ let rec parse_ty_variant = function
         (Alias ty, remain)
 
 let rec parse_pat input =
+    (* TODO or *)
     match parse_pat_tuple input with
     | pat, Lex.As :: rhr -> (
       match parse_pat_tuple rhr with

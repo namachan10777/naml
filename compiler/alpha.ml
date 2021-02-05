@@ -83,6 +83,7 @@ let init () =
     count_c := List.length pervasive_cenv - 1 ;
     (pervasive_venv, pervasive_tenv, pervasive_cenv)
 
+(* TODO: 重複チェック *)
 let rec of_pat cenv = function
     | Ast.PBool b -> (PBool b, [])
     | Ast.PInt i -> (PInt i, [])

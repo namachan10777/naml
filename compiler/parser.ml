@@ -136,17 +136,26 @@ and parse_tapp_arg =
     in
     function
     | Lex.LP :: inner -> (
-      match parse_ty_term inner with
+      match parse_tapp inner with
       | _, Lex.Mul :: _ -> (
         match parse_ty_tuple inner with
         | ty, Lex.RP :: remain -> ([TParen ty], remain)
-        | _ -> raise @@ SyntaxError "syntax error" )
+        | _ ->
+            raise
+            @@ SyntaxError
+                 "syntax error: paren isn't balanced (reading type tuple)" )
       | _, Lex.Comma :: _ -> (
         match parse_tapp_args inner with
         | tys, Lex.RP :: remain -> (tys, remain)
-        | _ -> raise @@ SyntaxError "syntax error" )
+        | _ ->
+            raise
+            @@ SyntaxError
+                 "syntax error: paren isn't balanced (reading type contructor)"
+        )
       | ty, Lex.RP :: remain -> ([ty], remain)
-      | _ -> raise @@ SyntaxError "syntax error" )
+      | _ ->
+          raise
+          @@ SyntaxError "syntax error: paren isn't balanced (reading type)" )
     | input ->
         let ty, remain = parse_ty_term input in
         ([ty], remain)

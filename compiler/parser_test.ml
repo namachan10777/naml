@@ -282,6 +282,7 @@ let () =
       (P.TApp
          ( [P.TParen (P.TTuple [P.TApp ([], ["a"]); P.TApp ([], ["a"])])]
          , ["list"] )) ;
+    test_ty "('a list)" "('a list)" (P.TApp ([P.TVar "a"], ["list"])) ;
     test_ty "tapp2" "(a, a) list"
       (P.TApp ([P.TApp ([], ["a"]); P.TApp ([], ["a"])], ["list"])) ;
     test_ty "tvar" "'a list" (P.TApp ([P.TVar "a"], ["list"])) ;

@@ -248,6 +248,8 @@ and parse_pat_term = function
       match parse_pat_ctor remain with
       | id, Lex.Cons :: remain -> (PCtor id, Lex.Cons :: remain)
       | id, Lex.Comma :: remain -> (PCtor id, Lex.Comma :: remain)
+      | id, Lex.Arrow :: remain -> (PCtor id, Lex.Arrow :: remain)
+      | id, Lex.Eq :: remain -> (PCtor id, Lex.Eq :: remain)
       | id, remain ->
           let arg, remain = parse_pat_term remain in
           (PCtorApp (id, arg), remain) )

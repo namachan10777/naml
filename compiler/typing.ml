@@ -315,8 +315,16 @@ let pat_ty cenv level =
                 let tbl = ref [] in
                 let ts' = List.map (instantiate tbl level) ts' in
                 let targs = List.map (instantiate tbl level) targs in
-                List.map (fun (t, t') -> unify t t') @@ Util.zip ts' tys
-                |> ignore ;
+                if List.length ts' <> List.length tys then
+                  raise
+                  @@ TypeError
+                       (Printf.sprintf
+                          "The constructor take %d values. But %d arguments \
+                           passed"
+                          (List.length tys) (List.length ts'))
+                else
+                  List.map (fun (t, t') -> unify t t') @@ Util.zip ts' tys
+                  |> ignore ;
                 let variant_ty =
                     Types.Variant (List.map deref_ty targs, tname)
                 in

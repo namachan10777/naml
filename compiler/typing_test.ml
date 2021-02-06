@@ -12,6 +12,20 @@ let test src expected =
       Printf.printf "right: \n%s\n" @@ Typing.show expected ;
       failwith "test failed" )
 
+let test_stmt src expected =
+    Printf.printf "testing \"%s\"..." src ;
+    let lexed = Lex.lex src @@ Lex.initial_pos "test.ml" in
+    let s = Parser.parse_stmts lexed in
+    let ast = Ast.of_parser_t s in
+    let env = Alpha.init () in
+    let alpha = Alpha.of_expr env ast in
+    let typed = Typing.f alpha in
+    if typed = expected then Printf.printf "ok\n"
+    else (
+      Printf.printf "left: \n%s\n" @@ Typing.show typed ;
+      Printf.printf "right: \n%s\n" @@ Typing.show expected ;
+      failwith "test failed" )
+
 let unify_test name a b =
     Printf.printf "testing \"%s\"\"..." name ;
     let tbl = ref [] in
@@ -209,7 +223,30 @@ let () =
                          , T.CtorApp (lc ["[]"], [], l2_ty) ) ]
                      , l2_ty )
                  , l2_ty ) ) ]
-         , v' map ))
+         , v' map )) ;
+    test_stmt
+      "type 'a t = A of 'a * ('a t) | B let rec total l = match l with | A (x, \
+       xs) -> x + total xs | B -> 0"
+      (Typing.LetRec
+         ( [ ( vn 0
+             , Types.Fun ([Types.Variant ([Types.Int], tn 0)], Types.Int)
+             , Typing.Fun
+                 ( [(vn 1, Types.Variant ([Types.Int], tn 0))]
+                 , Typing.Match
+                     ( v' 1
+                     , Types.Variant ([Types.Int], tn 0)
+                     , [ ( Typing.PCtor
+                             ( [ Typing.PVar (vn 2, Int)
+                               ; Typing.PVar
+                                   (vn 3, Types.Variant ([Types.Int], tn 0)) ]
+                             , [Int]
+                             , cn 0 )
+                         , Typing.App
+                             (v ["+"], [v' 2; Typing.App (v' 0, [v' 3])]) )
+                       ; (Typing.PCtor ([], [Int], cn 1), Typing.Int 0) ]
+                     , Int )
+                 , Int ) ) ]
+         , Typing.Never ))
 
 let () =
     let t1 = Types.Int in

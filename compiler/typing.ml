@@ -1,11 +1,9 @@
 (* Algorithm W*)
 
-type id_t = Alpha.id_t [@@deriving show]
-
 type pat_t =
-    | PVar of int * Types.t
+    | PVar of Types.vid_t * Types.t
     | PTuple of pat_t list * Types.t list
-    | PCtor of pat_t list * Types.t list * int
+    | PCtor of pat_t list * Types.t list * Types.cid_t
     | PInt of int
     | PBool of bool
     | PStr of string
@@ -29,28 +27,36 @@ type t =
     | Never
     | Int of int
     | Bool of bool
-    | Var of id_t
+    | Var of Types.vid_t
     | App of t * t list
     | Let of (pat_t * t) list * t
-    | LetRec of (int * Types.t * t) list * t
+    | LetRec of (Types.vid_t * Types.t * t) list * t
     | If of t * t * t
-    | Fun of (int * Types.t) list * t * Types.t
+    | Fun of (Types.vid_t * Types.t) list * t * Types.t
     | Tuple of t list * Types.t list
     | Match of t * Types.t * (pat_t * t) list * Types.t
-    | CtorApp of int * t list * Types.t
+    | CtorApp of Types.cid_t * t list * Types.t
 [@@deriving show]
 
-let rec lookup x = function
-    | (y, ty) :: remain -> if x = y then ty else lookup x remain
-    | _ -> raise @@ UnboundIdentifier (Alpha.show_id_t x)
+let rec lookup_v x = function
+    | (y, ty) :: remain -> if x = y then ty else lookup_v x remain
+    | _ -> raise @@ UnboundIdentifier (Types.show_vid_t x)
 
-let count = ref 0
+let rec lookup_t x = function
+    | (y, ty) :: remain -> if x = y then ty else lookup_t x remain
+    | _ -> raise @@ UnboundIdentifier (Types.show_tid_t x)
 
-let init () = count := 99
+let rec lookup_c x = function
+    | (y, ty) :: remain -> if x = y then ty else lookup_c x remain
+    | _ -> raise @@ UnboundIdentifier (Types.show_cid_t x)
+
+let count_tag = ref 0
+
+let init () = count_tag := 99
 
 let fresh level =
-    count := !count + 1 ;
-    Types.Var (ref @@ ref @@ Types.Unknown (level, !count, []))
+    count_tag := !count_tag + 1 ;
+    Types.Var (ref @@ ref @@ Types.Unknown (level, !count_tag, []))
 
 let rec instantiate env level =
     let lookup i =
@@ -172,7 +178,7 @@ let rec unify a b =
              (Printf.sprintf "cannot unify %s, %s" (Types.show a)
                 (Types.show b))
 
-type poly_map_t = Unknown of int | Poly of int
+type poly_map_t = Unknown of int | Poly of Types.pid_t
 
 let readable global tag =
     let rec f tbl =
@@ -181,8 +187,8 @@ let readable global tag =
         | Unknown tag, (Unknown tag', y) :: remain when tag = tag' -> y
         | _, _ :: remain -> f remain
         | _, [] ->
-            global := (tag, List.length !global) :: !global ;
-            List.length !global - 1
+            global := (tag, Types.Pid (List.length !global)) :: !global ;
+            snd @@ List.hd !global
     in
     let x = f !global in
     x
@@ -216,7 +222,7 @@ let rec generalize_pat tbl level =
         | PBool b -> PBool b
         | PStr s -> PStr s
         | As ps -> As (List.map f ps)
-        | Or (p, ps) -> Or(f p, List.map f ps)
+        | Or (p, ps) -> Or (f p, List.map f ps)
     in
     f
 
@@ -263,8 +269,6 @@ let generalize tbl level =
     in
     f
 
-type env_t = (id_t * Types.t) list [@@deriving show]
-
 (* TODO: 同じ名前が無いかチェック *)
 let pat_ty cenv level =
     let rec lookup_ctor name = function
@@ -272,14 +276,16 @@ let pat_ty cenv level =
         | _ :: remain -> lookup_ctor name remain
         | [] ->
             raise
-            @@ UnboundIdentifier ("Unbound constructor " ^ Alpha.show_id_t name)
+            @@ UnboundIdentifier ("Unbound constructor " ^ Types.show_cid_t name)
     in
     let tbl = ref [] in
     let rec ty_for_id id =
         let rec f = function
-        | (id', ty) :: _ when id = id' -> ty
-        | _ :: remain -> f remain
-        | [] -> tbl := (id, fresh level) :: !tbl; snd @@ List.hd !tbl
+            | (id', ty) :: _ when id = id' -> ty
+            | _ :: remain -> f remain
+            | [] ->
+                tbl := (id, fresh level) :: !tbl ;
+                snd @@ List.hd !tbl
         in
         f !tbl
     in
@@ -287,11 +293,11 @@ let pat_ty cenv level =
         | Alpha.PVar name ->
             let ty = ty_for_id name in
             ([(name, ty)], ty, PVar (name, ty))
-        | Alpha.Or(p, ps) ->
+        | Alpha.Or (p, ps) ->
             let names, ty, p = f p in
             let _, tys, ps = Util.unzip3 @@ List.map f ps in
-            List.map (fun t' -> unify ty t') tys |> ignore;
-            names, ty, Or(p, ps)
+            List.map (fun t' -> unify ty t') tys |> ignore ;
+            (names, ty, Or (p, ps))
         | Alpha.PTuple ts ->
             let names, tys, ps = Util.unzip3 @@ List.map f ts in
             (List.concat names, Types.Tuple tys, PTuple (ps, tys))
@@ -344,7 +350,7 @@ let rec canonical_type_def tenv co_def (name, targs, def) =
               let higher = lookup_from_tenv name tenv in
               (* TODO 型引数の長さを チェック *)
               reassoc_ty
-                (List.mapi (fun i ty -> (i, f_ty hist env ty)) tys)
+                (List.mapi (fun i ty -> (Types.Pid i, f_ty hist env ty)) tys)
                 higher )
         | Alpha.TInt -> Types.Int
         | Alpha.TBool -> Types.Bool
@@ -373,14 +379,14 @@ let rec canonical_type_def tenv co_def (name, targs, def) =
         | (id', tydef) :: _ when id = id' -> tydef
         | _ :: remain -> lookup_from_tenv id remain
         | [] ->
-            raise @@ UnboundIdentifier ("undefined type" ^ Alpha.show_id_t id)
+            raise @@ UnboundIdentifier ("undefined type" ^ Types.show_tid_t id)
     and lookup_from_co_def id = function
         | (id', targs, ty) :: _ when id = id' -> Some (targs, ty)
         | _ :: remain -> lookup_from_co_def id remain
         | [] -> None
     in
     (* 先頭の型引数から順にPolyのIdを振る *)
-    let targs = List.init targs (fun i -> Types.Poly i) in
+    let targs = List.init targs (fun i -> Types.Poly (Types.Pid i)) in
     match def with
     | Alpha.Alias ty -> ([], f_tydef [] (name, targs, Alpha.Alias ty))
     | Alpha.Variant ctors ->
@@ -398,7 +404,7 @@ let rec g env level =
     function
     | Alpha.Int i -> (Int i, Types.Int)
     | Alpha.Bool b -> (Bool b, Types.Bool)
-    | Alpha.Var id -> (Var id, lookup id venv)
+    | Alpha.Var id -> (Var id, lookup_v id venv)
     | Alpha.App (f, args) -> (
         let args, arg_tys = Util.unzip @@ List.map (g env level) args in
         let arg_tys = List.map (instantiate (ref []) level) arg_tys in
@@ -483,7 +489,7 @@ let rec g env level =
         (If (cond, e1, e2), deref_ty e1_ty)
     | Alpha.Never -> (Never, Types.Tuple [])
     | Alpha.Ctor name -> (
-      match lookup name cenv with
+      match lookup_c name cenv with
       | [], targs, variant_name ->
           let ty =
               instantiate (ref []) level (Types.Variant (targs, variant_name))
@@ -491,10 +497,10 @@ let rec g env level =
           (CtorApp (name, [], ty), ty)
       | _ ->
           raise
-          @@ TypeError ("Ctor " ^ Alpha.show_id_t name ^ " takes some arguments")
-      )
+          @@ TypeError
+               ("Ctor " ^ Types.show_cid_t name ^ " takes some arguments") )
     | Alpha.CtorApp (name, args) -> (
-      match lookup name cenv with
+      match lookup_c name cenv with
       | [Types.Tuple arg_tys'], targs, variant_name ->
           let args, arg_tys = Util.unzip @@ List.map (g env level) args in
           let tbl = ref [] in

@@ -1,9 +1,7 @@
-type id_t = int [@@deriving show]
-
-type map_t = string list * id_t * bool
+type 'a map_t = string list * 'a * bool
 
 (* val * type * ctor * exception * record *)
-type env_t = map_t * map_t * map_t
+type env_t = Types.vid_t map_t * Types.tid_t map_t * Types.cid_t map_t
 
 exception UnboundId of string list
 
@@ -14,40 +12,40 @@ exception BothSideOfOrPatternMustHaveSameVars
 type pat_t =
     | PInt of int
     | PBool of bool
-    | PVar of id_t
+    | PVar of Types.vid_t
     | PTuple of pat_t list
     | As of pat_t list
     | Or of pat_t * pat_t list
-    | PCtor of id_t * pat_t list
+    | PCtor of Types.cid_t * pat_t list
 [@@deriving show]
 
 type ty_t =
     | TInt
     | TBool
     | TString
-    | TVar of id_t
+    | TVar of int
     | TTuple of ty_t list
-    | TApp of ty_t list * id_t
+    | TApp of ty_t list * Types.tid_t
 [@@deriving show]
 
-type tydef_t = Variant of (id_t * ty_t list) list | Alias of ty_t
+type tydef_t = Variant of (Types.cid_t * ty_t list) list | Alias of ty_t
 [@@deriving show]
 
 type t =
     | Never
     | Int of int
     | Bool of bool
-    | Var of id_t
-    | Ctor of id_t
-    | CtorApp of id_t * t list
+    | Var of Types.vid_t
+    | Ctor of Types.cid_t
+    | CtorApp of Types.cid_t * t list
     | Tuple of t list
     | If of t * t * t
     | Let of (pat_t * t) list * t
-    | LetRec of (id_t * t) list * t
-    | Fun of id_t list * t
+    | LetRec of (Types.vid_t * t) list * t
+    | Fun of Types.vid_t list * t
     | Match of t * (pat_t * t * t) list
     | App of t * t list
-    | Type of (id_t * int * tydef_t) list * t
+    | Type of (Types.tid_t * int * tydef_t) list * t
 [@@deriving show]
 
 let rec lookup name = function
@@ -68,19 +66,19 @@ let count_v = ref 0
 
 let fresh_v () =
     count_v := !count_v + 1 ;
-    !count_v
+    Types.Vid !count_v
 
 let count_c = ref 0
 
 let fresh_c () =
     count_c := !count_c + 1 ;
-    !count_c
+    Types.Cid !count_c
 
 let count_t = ref 0
 
 let fresh_t () =
     count_t := !count_t + 1 ;
-    !count_t
+    Types.Tid !count_t
 
 let init () =
     count_v := List.length pervasive_venv - 1 ;
@@ -138,12 +136,12 @@ let rec of_pat vtbl cenv =
         then (Or (p, ps), venv)
         else raise BothSideOfOrPatternMustHaveSameVars
     | Ast.PCtor name ->
-        let id = fresh_c () in
-        (PCtor (id, []), [(name, id, true)])
+        let id = lookup name cenv in
+        (PCtor (id, []), [])
     | Ast.PCtorApp (name, args) ->
-        let id = fresh_c () in
+        let id = lookup name cenv in
         let args, envs = Util.unzip @@ List.map (of_pat vtbl cenv) args in
-        (PCtor (id, args), (name, id, true) :: List.concat envs)
+        (PCtor (id, args), List.concat envs)
 
 let rec of_ty env targs =
     let rec lookup_targs arg = function
@@ -175,7 +173,7 @@ let rec of_tydef env targs = function
         (Variant ctors, cenv')
 
 let rec of_expr env =
-    let (venv : (string list * int * bool) list), tenv, cenv = env in
+    let venv, tenv, cenv = env in
     function
     | Ast.Int i -> Int i
     | Ast.Bool b -> Bool b

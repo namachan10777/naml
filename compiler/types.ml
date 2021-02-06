@@ -1,17 +1,25 @@
 type addresses_t = int list [@@deriving show]
 
+type tid_t = Tid of int [@@deriving show]
+
+type cid_t = Cid of int [@@deriving show]
+
+type vid_t = Vid of int [@@deriving show]
+
+type pid_t = Pid of int [@@deriving show]
+
 type t =
     | Int
     | Str
     | Bool
     | Fun of t list * t
     | Tuple of t list
-    (* 不明の型。最初のintはlevelで2つめのintはデバッグ用のタグ *)
     | Var of var_t ref ref
     (* 多相型。intはタグ *)
-    | Poly of int
-    | Variant of t list * int
+    | Poly of pid_t
+    | Variant of t list * tid_t
 
+(* 不明の型。最初のintはlevelで2つめのintはデバッグ用のタグ *)
 and var_t = Unknown of int * int * var_t ref list | Just of t * var_t ref list
 
 let rec show = function
@@ -30,14 +38,14 @@ let rec show = function
     | Tuple [t] -> "(" ^ show t ^ ")"
     | Tuple (t :: ts) ->
         "(" ^ List.fold_left (fun ts t -> ts ^ " * " ^ show t) (show t) ts ^ ")"
-    | Poly i -> "'" ^ string_of_int i
+    | Poly (Pid i) -> "'" ^ string_of_int i
     | Var v -> show_var_t !(!v)
-    | Variant ([], name) -> string_of_int name
-    | Variant ([t], name) -> show t ^ " " ^ string_of_int name
+    | Variant ([], name) -> show_tid_t name
+    | Variant ([t], name) -> show t ^ " " ^ show_tid_t name
     | Variant (t :: ts, name) ->
         "("
         ^ List.fold_left (fun ts t -> ts ^ ", " ^ show t) (show t) ts
-        ^ ") " ^ string_of_int name
+        ^ ") " ^ show_tid_t name
 
 and show_var_t = function
     | Unknown (level, tag, refs) -> Printf.sprintf "Unknown (%d, %d)" level tag
@@ -73,36 +81,41 @@ let rec eq a b =
 let unit_ty = Tuple []
 
 let pervasive_vals =
-    [ (["+"], 0, Fun ([Int; Int], Int))
-    ; (["-"], 1, Fun ([Int; Int], Int))
-    ; (["*"], 2, Fun ([Int; Int], Int))
-    ; (["/"], 3, Fun ([Int; Int], Int))
-    ; (["mod"], 4, Fun ([Int; Int], Int))
-    ; ([">"], 5, Fun ([Int; Int], Bool))
-    ; (["<"], 6, Fun ([Int; Int], Bool))
-    ; (["="], 7, Fun ([Poly 0; Poly 0], Bool))
-    ; ([";"], 8, Fun ([Poly 0; Poly 1], Poly 1))
-    ; (["."], 9, Fun ([Variant ([Poly 0], 2); Int], Poly 0))
-    ; (["<neg>"], 10, Fun ([Int], Int))
+    [ (["+"], Vid 0, Fun ([Int; Int], Int))
+    ; (["-"], Vid 1, Fun ([Int; Int], Int))
+    ; (["*"], Vid 2, Fun ([Int; Int], Int))
+    ; (["/"], Vid 3, Fun ([Int; Int], Int))
+    ; (["mod"], Vid 4, Fun ([Int; Int], Int))
+    ; ([">"], Vid 5, Fun ([Int; Int], Bool))
+    ; (["<"], Vid 6, Fun ([Int; Int], Bool))
+    ; (["="], Vid 7, Fun ([Poly (Pid 0); Poly (Pid 0)], Bool))
+    ; ([";"], Vid 8, Fun ([Poly (Pid 0); Poly (Pid 1)], Poly (Pid 1)))
+    ; (["."], Vid 9, Fun ([Variant ([Poly (Pid 0)], Tid 2); Int], Poly (Pid 0)))
+    ; (["<neg>"], Vid 10, Fun ([Int], Int))
     ; ( ["<arrayassign>"]
-      , 11
-      , Fun ([Variant ([Poly 0], 2); Int; Poly 0], Tuple []) )
-    ; (["not"], 12, Fun ([Bool], Bool))
-    ; (["ref"], 13, Fun ([Poly 0], Variant ([Poly 0], 3)))
-    ; ([":="], 14, Fun ([Variant ([Poly 0], 3); Poly 0], unit_ty)) ]
+      , Vid 11
+      , Fun ([Variant ([Poly (Pid 0)], Tid 2); Int; Poly (Pid 0)], Tuple []) )
+    ; (["not"], Vid 12, Fun ([Bool], Bool))
+    ; (["ref"], Vid 13, Fun ([Poly (Pid 0)], Variant ([Poly (Pid 0)], Tid 3)))
+    ; ( [":="]
+      , Vid 14
+      , Fun ([Variant ([Poly (Pid 0)], Tid 3); Poly (Pid 0)], unit_ty) ) ]
 
 let pervasive_types =
-    [ (["int"], 0, Int)
-    ; (["bool"], 1, Bool)
-    ; (["array"], 2, Variant ([Poly 0], 2))
-    ; (["ref"], 3, Variant ([Poly 0], 3))
-    ; (["option"], 4, Variant ([Poly 0], 4))
-    ; (["list"], 5, Variant ([Poly 0], 5)) ]
+    [ (["int"], Tid 0, Int)
+    ; (["bool"], Tid 1, Bool)
+    ; (["array"], Tid 2, Variant ([Poly (Pid 0)], Tid 2))
+    ; (["ref"], Tid 3, Variant ([Poly (Pid 0)], Tid 3))
+    ; (["option"], Tid 4, Variant ([Poly (Pid 0)], Tid 4))
+    ; (["list"], Tid 5, Variant ([Poly (Pid 0)], Tid 5)) ]
 
 type ctor_t = t list * t list * string list
 
 let pervasive_ctors =
-    [ (["Some"], 0, ([Poly 0], [Poly 0], 4))
-    ; (["None"], 1, ([], [Poly 0], 4))
-    ; (["::"], 2, ([Poly 0; Variant ([Poly 0], 5)], [Poly 0], 5))
-    ; (["[]"], 3, ([], [Poly 0], 5)) ]
+    [ (["Some"], Cid 0, ([Poly (Pid 0)], [Poly (Pid 0)], Tid 4))
+    ; (["None"], Cid 1, ([], [Poly (Pid 0)], Tid 4))
+    ; ( ["::"]
+      , Cid 2
+      , ([Poly (Pid 0); Variant ([Poly (Pid 0)], Tid 5)], [Poly (Pid 0)], Tid 5)
+      )
+    ; (["[]"], Cid 3, ([], [Poly (Pid 0)], Tid 5)) ]

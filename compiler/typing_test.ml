@@ -1,7 +1,9 @@
+let nw = Lex.nowhere
+
 let test src expected =
     Printf.printf "testing \"%s\"..." src ;
     let lexed = Lex.lex src @@ Lex.initial_pos "test.ml" in
-    let s, _ = Parser.parse_expr lexed in
+    let s, _, _ = Parser.parse_expr lexed in
     let ast = Ast.of_parser_t s in
     let env = Alpha.init () in
     let alpha = Alpha.of_expr env ast in
@@ -58,6 +60,8 @@ let cn n = Types.Cid (n + List.length Alpha.pervasive_cenv)
 
 let poly n = Types.Poly (Types.Pid n)
 
+let pos i = ("test.ml", 1, i, i)
+
 let () =
     test "0" (Typing.Int 0) ;
     test "not" (v ["not"]) ;
@@ -69,11 +73,11 @@ let () =
       (Typing.Let
          ( [ ( Typing.PVar (vn 0, Ty.Int)
              , Typing.App (v ["+"], [Typing.Int 1; Typing.Int 1]) ) ]
-         , Typing.Var (vn 0) )) ;
+         , v' 0 )) ;
     test "let id = fun x -> x in id 1; id true"
       (Typing.Let
          ( [ ( Typing.PVar (vn 0, Ty.Fun ([poly 0], poly 0))
-             , Typing.Fun ([(vn 1, poly 0)], v' 1, poly 0) ) ]
+             , Typing.Fun ([(vn 1, poly 0)], v' 1, poly 0, pos 19) ) ]
          , Typing.App
              ( v [";"]
              , [ Typing.App (v' 0, [Typing.Int 1])
@@ -87,7 +91,8 @@ let () =
              , T.Fun
                  ( [(vn 1, poly 0); (vn 2, poly 1)]
                  , T.Tuple ([v' 1; v' 2], [poly 0; poly 1])
-                 , Ty.Tuple [poly 0; poly 1] ) ) ]
+                 , Ty.Tuple [poly 0; poly 1]
+                 , pos 5 ) ) ]
          , T.Let
              ( [ ( T.PVar (vn 3, Ty.Fun ([poly 0], Ty.Tuple [Ty.Int; poly 0]))
                  , T.App (v' 0, [T.Int 1]) ) ]
@@ -106,9 +111,11 @@ let () =
                          , T.Fun
                              ( [(vn y, poly 0)]
                              , T.App (v ["="], [v' x; v' y])
-                             , Ty.Bool ) ) ]
+                             , Ty.Bool
+                             , pos 15 ) ) ]
                      , v' g )
-                 , Ty.Fun ([poly 0], Ty.Bool) ) ) ]
+                 , Ty.Fun ([poly 0], Ty.Bool)
+                 , pos 5 ) ) ]
          , v' f )) ;
     let fact, n = (0, 1) in
     test "let rec fact n = if n = 1 then 1 else n * fact (n-1) in\n   fact 5"
@@ -125,7 +132,8 @@ let () =
                          , [ v' n
                            ; T.App (v' fact, [T.App (v ["-"], [v' n; T.Int 1])])
                            ] ) )
-                 , Ty.Int ) ) ]
+                 , Ty.Int
+                 , pos 9 ) ) ]
          , T.App (v' fact, [T.Int 5]) )) ;
     test "let x,\n   y = 1, 2 in x"
       (T.Let
@@ -147,7 +155,8 @@ let () =
                            (lc ["[]"], [], Ty.Variant ([poly 0], lt ["list"]))
                        ]
                      , Ty.Variant ([poly 0], lt ["list"]) )
-                 , Ty.Variant ([poly 0], lt ["list"]) ) ) ]
+                 , Ty.Variant ([poly 0], lt ["list"])
+                 , pos 5 ) ) ]
          , T.App
              (v [";"], [T.App (v' 0, [T.Int 1]); T.App (v' 0, [T.Bool true])])
          )) ;
@@ -192,7 +201,8 @@ let () =
                          , T.App (v ["+"], [T.Int 1; T.App (v' length, [v' l])])
                          ) ]
                      , Ty.Int )
-                 , Ty.Int ) ) ]
+                 , Ty.Int
+                 , pos 9 ) ) ]
          , T.Tuple ([], []) )) ;
     let map, f, l, x, xs = (0, 1, 2, 3, 4) in
     let l1_ty = Ty.Variant ([poly 1], lt ["list"]) in
@@ -222,7 +232,8 @@ let () =
                        ; ( T.PCtor ([], [poly 1], lc ["[]"])
                          , T.CtorApp (lc ["[]"], [], l2_ty) ) ]
                      , l2_ty )
-                 , l2_ty ) ) ]
+                 , l2_ty
+                 , pos 9 ) ) ]
          , v' map )) ;
     test_stmt
       "type 'a t = A of 'a * ('a t) | B let rec total l = match l with | A (x, \
@@ -245,7 +256,8 @@ let () =
                              (v ["+"], [v' 2; Typing.App (v' 0, [v' 3])]) )
                        ; (Typing.PCtor ([], [Int], cn 1), Typing.Int 0) ]
                      , Int )
-                 , Int ) ) ]
+                 , Int
+                 , pos 42 ) ) ]
          , Typing.Never ))
 
 let () =
@@ -294,22 +306,30 @@ let () =
     unify_test "unify 6" u2 Ty.Int
 
 let () =
-    let def1 = (tn 0, 0, Alpha.Alias (Alpha.TTuple [Alpha.TInt; Alpha.TInt])) in
-    let def2 = (tn 1, 0, Alpha.Alias (Alpha.TApp ([], tn 0))) in
+    let def1 =
+        ( tn 0
+        , 0
+        , Alpha.Alias (Alpha.TTuple ([Alpha.TInt nw; Alpha.TInt nw], nw)) )
+    in
+    let def2 = (tn 1, 0, Alpha.Alias (Alpha.TApp ([], tn 0, nw))) in
     let def = Typing.canonical_type_def [] [def1; def2] def1 in
     Test.assert_eq "simple conv" def ([], Types.Tuple [Types.Int; Types.Int]) ;
     let def = Typing.canonical_type_def [] [def1; def2] def2 in
     Test.assert_eq "chain" def ([], Types.Tuple [Types.Int; Types.Int]) ;
     let def1 =
-        (tn 0, 1, Alpha.Alias (Alpha.TTuple [Alpha.TVar 0; Alpha.TVar 0]))
+        ( tn 0
+        , 1
+        , Alpha.Alias
+            (Alpha.TTuple ([Alpha.TVar (0, nw); Alpha.TVar (0, nw)], nw)) )
     in
     let def2 =
         ( tn 1
         , 0
         , Alpha.Alias
             (Alpha.TTuple
-               [Alpha.TApp ([Alpha.TInt], tn 0); Alpha.TApp ([Alpha.TInt], tn 0)])
-        )
+               ( [ Alpha.TApp ([Alpha.TInt nw], tn 0, nw)
+                 ; Alpha.TApp ([Alpha.TInt nw], tn 0, nw) ]
+               , nw )) )
     in
     let def = Typing.canonical_type_def [] [def1; def2] def1 in
     Test.assert_eq "higher alias" def ([], Types.Tuple [poly 0; poly 0]) ;
@@ -319,7 +339,7 @@ let () =
       , Types.Tuple
           [ Types.Tuple [Types.Int; Types.Int]
           ; Types.Tuple [Types.Int; Types.Int] ] ) ;
-    let def1 = (tn 0, 0, Alpha.Alias (Alpha.TApp ([], tn 0))) in
+    let def1 = (tn 0, 0, Alpha.Alias (Alpha.TApp ([], tn 0, nw))) in
     ( try
         Typing.canonical_type_def [] [def1; def2] def1 |> ignore ;
         failwith "test failure"
@@ -331,11 +351,15 @@ let () =
         , 2
         , Alpha.Alias
             (Alpha.TTuple
-               [ Alpha.TApp ([Alpha.TVar 0], lt ["list"])
-               ; Alpha.TApp ([Alpha.TVar 1], lt ["list"]) ]) )
+               ( [ Alpha.TApp ([Alpha.TVar (0, nw)], lt ["list"], nw)
+                 ; Alpha.TApp ([Alpha.TVar (1, nw)], lt ["list"], nw) ]
+               , nw )) )
     in
     let def2 =
-        (tn 1, 1, Alpha.Alias (Alpha.TApp ([Alpha.TInt; Alpha.TVar 0], tn 0)))
+        ( tn 1
+        , 1
+        , Alpha.Alias
+            (Alpha.TApp ([Alpha.TInt nw; Alpha.TVar (0, nw)], tn 0, nw)) )
     in
     let def = Typing.canonical_type_def T.pervasive_tenv [def1; def2] def2 in
     Test.assert_eq "chain to defined type" def
@@ -347,10 +371,12 @@ let () =
         ( tn 0
         , 1
         , Alpha.Variant
-            [(cn 0, [Alpha.TVar 0]); (cn 1, [Alpha.TApp ([Alpha.TInt], tn 1)])]
-        )
+            [ (cn 0, nw, [Alpha.TVar (0, nw)])
+            ; (cn 1, nw, [Alpha.TApp ([Alpha.TInt nw], tn 1, nw)]) ] )
     in
-    let def2 = (tn 1, 1, Alpha.Alias (Alpha.TApp ([Alpha.TVar 0], tn 0))) in
+    let def2 =
+        (tn 1, 1, Alpha.Alias (Alpha.TApp ([Alpha.TVar (0, nw)], tn 0, nw)))
+    in
     let def = Typing.canonical_type_def T.pervasive_tenv [def1; def2] def1 in
     Test.assert_eq "matual recursive variatn" def
       ( [ (cn 0, ([poly 0], [poly 0], tn 0))

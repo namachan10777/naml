@@ -1,14 +1,14 @@
 (* Algorithm W*)
 
 type pat_t =
-    | PVar of Types.vid_t * Types.t * Lex.pos_t
-    | PTuple of pat_t list * Types.t list * Lex.pos_t
-    | PCtor of pat_t list * Types.t list * Types.cid_t * Lex.pos_t
-    | PInt of int * Lex.pos_t
-    | PBool of bool * Lex.pos_t
-    | PStr of string * Lex.pos_t
-    | As of pat_t list * Lex.pos_t
-    | Or of pat_t * pat_t list * Lex.pos_t
+    | PVar of Types.vid_t * Types.t
+    | PTuple of pat_t list * Types.t list
+    | PCtor of pat_t list * Types.t list * Types.cid_t
+    | PInt of int
+    | PBool of bool
+    | PStr of string
+    | As of pat_t list
+    | Or of pat_t * pat_t list
 [@@deriving show]
 
 type tydef_t = Abbr of Types.t | Variant of (string * Types.t list) list
@@ -25,17 +25,17 @@ exception TypeError of string
 
 type t =
     | Never
-    | Int of int * Lex.pos_t
-    | Bool of bool * Lex.pos_t
-    | Var of Types.vid_t * Lex.pos_t
-    | App of t * t list * Lex.pos_t
+    | Int of int
+    | Bool of bool
+    | Var of Types.vid_t
+    | App of t * t list
     | Let of (pat_t * t) list * t
     | LetRec of (Types.vid_t * Types.t * t) list * t
-    | If of t * t * t * Lex.pos_t
+    | If of t * t * t
     | Fun of (Types.vid_t * Types.t) list * t * Types.t * Lex.pos_t
-    | Tuple of t list * Types.t list * Lex.pos_t
+    | Tuple of t list * Types.t list
     | Match of t * Types.t * (pat_t * t) list * Types.t
-    | CtorApp of Types.cid_t * t list * Types.t * Lex.pos_t
+    | CtorApp of Types.cid_t * t list * Types.t
 [@@deriving show]
 
 let rec lookup_v x = function
@@ -213,25 +213,25 @@ let generalize_ty tbl level =
 
 let rec generalize_pat tbl level =
     let rec f = function
-        | PVar (id, ty, p) -> PVar (id, generalize_ty tbl level ty, p)
-        | PTuple (ps, ty, p) ->
-            PTuple (List.map f ps, List.map (generalize_ty tbl level) ty, p)
-        | PCtor (ps, targs, name, p) ->
-            PCtor (List.map f ps, List.map (generalize_ty tbl level) targs, name, p)
-        | PInt (i, p) -> PInt (i, p)
-        | PBool (b, p) -> PBool (b, p)
-        | PStr (s, p) -> PStr (s, p)
-        | As (ps, p) -> As (List.map f ps, p)
-        | Or (pat, pats, p) -> Or (f pat, List.map f pats, p)
+        | PVar (id, ty) -> PVar (id, generalize_ty tbl level ty)
+        | PTuple (ps, ty) ->
+            PTuple (List.map f ps, List.map (generalize_ty tbl level) ty)
+        | PCtor (ps, targs, name) ->
+            PCtor (List.map f ps, List.map (generalize_ty tbl level) targs, name)
+        | PInt i -> PInt i
+        | PBool b -> PBool b
+        | PStr s -> PStr s
+        | As ps -> As (List.map f ps)
+        | Or (pat, pats) -> Or (f pat, List.map f pats)
     in
     f
 
 let generalize tbl level =
     let rec f = function
-        | Int (i, p) -> Int (i, p)
-        | Bool (b, p) -> Bool (b, p)
-        | Var (id, p) -> Var (id, p)
-        | App (g, args, p) -> App (f g, List.map f args, p)
+        | Int i -> Int i
+        | Bool b -> Bool b
+        | Var id -> Var id
+        | App (g, args) -> App (f g, List.map f args)
         | Fun (args, body, ret_ty, p) ->
             Fun
               ( List.map
@@ -239,9 +239,9 @@ let generalize tbl level =
                   args
               , f body
               , generalize_ty tbl level ret_ty
-              , p)
-        | Tuple (vals, types, p) ->
-            Tuple (List.map f vals, List.map (generalize_ty tbl level) types, p)
+              , p )
+        | Tuple (vals, types) ->
+            Tuple (List.map f vals, List.map (generalize_ty tbl level) types)
         | Let (defs, expr) ->
             Let
               ( List.map
@@ -255,7 +255,7 @@ let generalize tbl level =
                     (name, generalize_ty tbl level ty, f def))
                   defs
               , f expr )
-        | If (cond, e1, e2, p) -> If (f cond, f e1, f e2, p)
+        | If (cond, e1, e2) -> If (f cond, f e1, f e2)
         | Match (target, target_ty, arms, ty) ->
             Match
               ( f target
@@ -263,9 +263,9 @@ let generalize tbl level =
               , List.map
                   (fun (pat, expr) -> (generalize_pat tbl level pat, f expr))
                   arms
-              , generalize_ty tbl level ty)
-        | CtorApp (name, e, t, p) ->
-            CtorApp (name, List.map f e, generalize_ty tbl level t, p)
+              , generalize_ty tbl level ty )
+        | CtorApp (name, e, t) ->
+            CtorApp (name, List.map f e, generalize_ty tbl level t)
         | Never -> Never
     in
     f
@@ -293,23 +293,23 @@ let pat_ty cenv level =
     let rec f = function
         | Alpha.PVar (name, p) ->
             let ty = ty_for_id name in
-            ([(name, ty)], ty, PVar (name, ty, p))
-        | Alpha.Or (pat, pats, p) ->
+            ([(name, ty)], ty, PVar (name, ty))
+        | Alpha.Or (pat, pats, _) ->
             let names, ty, pat = f pat in
             let _, tys, pats = Util.unzip3 @@ List.map f pats in
             List.map (fun t' -> unify ty t') tys |> ignore ;
-            (names, ty, Or (pat, pats, p))
-        | Alpha.PTuple (ts, p) ->
+            (names, ty, Or (pat, pats))
+        | Alpha.PTuple (ts, _) ->
             let names, tys, ps = Util.unzip3 @@ List.map f ts in
-            (List.concat names, Types.Tuple tys, PTuple (ps, tys, p))
-        | Alpha.PInt (i, p) -> ([], Types.Int, PInt (i, p))
-        | Alpha.PBool (b, p) -> ([], Types.Bool, PBool (b, p))
-        | Alpha.As (ps, p) ->
+            (List.concat names, Types.Tuple tys, PTuple (ps, tys))
+        | Alpha.PInt (i, _) -> ([], Types.Int, PInt i)
+        | Alpha.PBool (b, _) -> ([], Types.Bool, PBool b)
+        | Alpha.As (ps, _) ->
             let names, tys, ps = Util.unzip3 @@ List.map f ps in
             let t = fresh level in
             List.map (fun t' -> unify t t') tys |> ignore ;
-            (List.concat names, deref_ty t, As (ps, p))
-        | Alpha.PCtor (cname, args, p) -> (
+            (List.concat names, deref_ty t, As ps)
+        | Alpha.PCtor (cname, args, _) -> (
             let names, tys, args = Util.unzip3 @@ List.map f args in
             match lookup_ctor cname cenv with
             | ([Types.Tuple ts'] | ts'), targs, tname ->
@@ -331,7 +331,7 @@ let pat_ty cenv level =
                 in
                 ( List.concat names
                 , variant_ty
-                , PCtor (args, List.map deref_ty targs, cname, p) ) )
+                , PCtor (args, List.map deref_ty targs, cname) ) )
     in
     f
 
@@ -411,9 +411,9 @@ let rec canonical_type_def tenv co_def (name, targs, def) =
 let rec g env level =
     let venv, tenv, cenv = env in
     function
-    | Alpha.Int (i, p) -> (Int (i, p), Types.Int)
-    | Alpha.Bool (b, p) -> (Bool (b, p), Types.Bool)
-    | Alpha.Var (id, p) -> (Var (id, p), lookup_v id venv)
+    | Alpha.Int (i, p) -> (Int i, Types.Int)
+    | Alpha.Bool (b, p) -> (Bool b, Types.Bool)
+    | Alpha.Var (id, p) -> (Var id, lookup_v id venv)
     | Alpha.App (f, args, p) -> (
         let args, arg_tys = Util.unzip @@ List.map (g env level) args in
         let arg_tys = List.map (instantiate (ref []) level) arg_tys in
@@ -425,9 +425,9 @@ let rec g env level =
         | Types.Fun (params, ret_ty) ->
             if List.length params > List.length args then
               let param_tys = Util.drop (List.length arg_tys) params in
-              (App (f, args, p), Types.Fun (param_tys, ret_ty))
+              (App (f, args), Types.Fun (param_tys, ret_ty))
             else if List.length params = List.length args then
-              (App (f, args, p), ret_ty)
+              (App (f, args), ret_ty)
             else
               raise
               @@ TypeError
@@ -462,7 +462,9 @@ let rec g env level =
         let expr, ty = g (List.concat pat_vars @ venv, tenv, cenv) level expr in
         (Let (defs, expr), ty)
     | Alpha.LetRec (defs, expr) ->
-        let vars = List.map (fun (name, p, _) -> (name, fresh (level + 1))) defs in
+        let vars =
+            List.map (fun (name, p, _) -> (name, fresh (level + 1))) defs
+        in
         let defs = List.map (fun (_, _, t) -> t) defs in
         let env = (vars @ venv, tenv, cenv) in
         let tbl = ref [] in
@@ -488,14 +490,14 @@ let rec g env level =
         (Fun (args, body, body_ty, p), Types.Fun (List.map snd args, body_ty))
     | Alpha.Tuple (tp, p) ->
         let elems, types = Util.unzip @@ List.map (g env level) tp in
-        (Tuple (elems, types, p), Types.Tuple types)
+        (Tuple (elems, types), Types.Tuple types)
     | Alpha.If (cond, e1, e2, p) ->
         let cond, cond_ty = g env level cond in
         unify cond_ty Types.Bool ;
         let e1, e1_ty = g env level e1 in
         let e2, e2_ty = g env level e2 in
         unify e1_ty e2_ty ;
-        (If (cond, e1, e2, p), deref_ty e1_ty)
+        (If (cond, e1, e2), deref_ty e1_ty)
     | Alpha.Never -> (Never, Types.Tuple [])
     | Alpha.Ctor (name, p) -> (
       match lookup_c name cenv with
@@ -503,7 +505,7 @@ let rec g env level =
           let ty =
               instantiate (ref []) level (Types.Variant (targs, variant_name))
           in
-          (CtorApp (name, [], ty, p), ty)
+          (CtorApp (name, [], ty), ty)
       | _ ->
           raise
           @@ TypeError
@@ -522,7 +524,7 @@ let rec g env level =
           Util.zip arg_tys arg_tys'
           |> List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty')
           |> ignore ;
-          (CtorApp (name, [Tuple (args, arg_tys, p)], variant_ty, p), variant_ty)
+          (CtorApp (name, [Tuple (args, arg_tys)], variant_ty), variant_ty)
       | arg_tys', targs, variant_name ->
           let args, arg_tys = Util.unzip @@ List.map (g env level) args in
           let tbl = ref [] in
@@ -535,7 +537,7 @@ let rec g env level =
           Util.zip arg_tys arg_tys'
           |> List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty')
           |> ignore ;
-          (CtorApp (name, args, variant_ty, p), variant_ty) )
+          (CtorApp (name, args, variant_ty), variant_ty) )
     | Alpha.Match (target, arms) ->
         let target, target_ty = g env level target in
         let pats, guards, exprs =

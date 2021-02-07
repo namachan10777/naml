@@ -6,7 +6,7 @@ let test src expected =
     let s, _, _ = Parser.parse_expr lexed in
     let ast = Ast.of_parser_t s in
     let env = Alpha.init () in
-    let alpha = Alpha.of_expr env ast in
+    let alpha = Alpha.of_expr "" env ast in
     let typed = Typing.f alpha in
     if typed = expected then Printf.printf "ok\n"
     else (
@@ -20,7 +20,7 @@ let test_stmt src expected =
     let s = Parser.parse_stmts lexed in
     let ast = Ast.of_parser_t s in
     let env = Alpha.init () in
-    let alpha = Alpha.of_expr env ast in
+    let alpha = Alpha.of_expr "" env ast in
     let typed = Typing.f alpha in
     if typed = expected then Printf.printf "ok\n"
     else (
@@ -77,7 +77,7 @@ let () =
     test "let id = fun x -> x in id 1; id true"
       (Typing.Let
          ( [ ( Typing.PVar (vn 0, Ty.Fun ([poly 0], poly 0))
-             , Typing.Fun ([(vn 1, poly 0)], v' 1, poly 0, pos 19) ) ]
+             , Typing.Fun ([(vn 1, poly 0)], v' 1, poly 0, "_id_1", pos 19) ) ]
          , Typing.App
              ( v [";"]
              , [ Typing.App (v' 0, [Typing.Int 1])
@@ -92,6 +92,7 @@ let () =
                  ( [(vn 1, poly 0); (vn 2, poly 1)]
                  , T.Tuple ([v' 1; v' 2], [poly 0; poly 1])
                  , Ty.Tuple [poly 0; poly 1]
+                 , "_mk_pair_1"
                  , pos 5 ) ) ]
          , T.Let
              ( [ ( T.PVar (vn 3, Ty.Fun ([poly 0], Ty.Tuple [Ty.Int; poly 0]))
@@ -112,9 +113,11 @@ let () =
                              ( [(vn y, poly 0)]
                              , T.App (v ["="], [v' x; v' y])
                              , Ty.Bool
+                             , "_f_1_g_2"
                              , pos 15 ) ) ]
                      , v' g )
                  , Ty.Fun ([poly 0], Ty.Bool)
+                 , "_f_1"
                  , pos 5 ) ) ]
          , v' f )) ;
     let fact, n = (0, 1) in
@@ -133,6 +136,7 @@ let () =
                            ; T.App (v' fact, [T.App (v ["-"], [v' n; T.Int 1])])
                            ] ) )
                  , Ty.Int
+                 , "_fact_1"
                  , pos 9 ) ) ]
          , T.App (v' fact, [T.Int 5]) )) ;
     test "let x,\n   y = 1, 2 in x"
@@ -156,6 +160,7 @@ let () =
                        ]
                      , Ty.Variant ([poly 0], lt ["list"]) )
                  , Ty.Variant ([poly 0], lt ["list"])
+                 , "_f_1"
                  , pos 5 ) ) ]
          , T.App
              (v [";"], [T.App (v' 0, [T.Int 1]); T.App (v' 0, [T.Bool true])])
@@ -204,6 +209,7 @@ let () =
                          ) ]
                      , Ty.Int )
                  , Ty.Int
+                 , "_length_1"
                  , pos 9 ) ) ]
          , T.Tuple ([], []) )) ;
     let map, f, l, x, xs = (0, 1, 2, 3, 4) in
@@ -235,6 +241,7 @@ let () =
                          , T.CtorApp (lc ["[]"], [], l2_ty) ) ]
                      , l2_ty )
                  , l2_ty
+                 , "_map_1"
                  , pos 9 ) ) ]
          , v' map )) ;
     test_stmt
@@ -259,6 +266,7 @@ let () =
                        ; (Typing.PCtor ([], [Int], cn 1), Typing.Int 0) ]
                      , Int )
                  , Int
+                 , "_total_1"
                  , pos 42 ) ) ]
          , Typing.Never ))
 

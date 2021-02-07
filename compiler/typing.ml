@@ -32,7 +32,7 @@ type t =
     | Let of (pat_t * t) list * t
     | LetRec of (Types.vid_t * Types.t * t) list * t
     | If of t * t * t
-    | Fun of (Types.vid_t * Types.t) list * t * Types.t * Lex.pos_t
+    | Fun of (Types.vid_t * Types.t) list * t * Types.t * string * Lex.pos_t
     | Tuple of t list * Types.t list
     | Match of t * Types.t * (pat_t * t) list * Types.t
     | CtorApp of Types.cid_t * t list * Types.t
@@ -234,13 +234,14 @@ let generalize tbl level =
         | Bool b -> Bool b
         | Var id -> Var id
         | App (g, args) -> App (f g, List.map f args)
-        | Fun (args, body, ret_ty, p) ->
+        | Fun (args, body, ret_ty, label, p) ->
             Fun
               ( List.map
                   (fun (arg, ty) -> (arg, generalize_ty tbl level ty))
                   args
               , f body
               , generalize_ty tbl level ret_ty
+              , label
               , p )
         | Tuple (vals, types) ->
             Tuple (List.map f vals, List.map (generalize_ty tbl level) types)
@@ -491,11 +492,12 @@ let rec g env level =
         in
         let expr, ty = g env level expr in
         (LetRec (defs, expr), ty)
-    | Alpha.Fun (args, body, p) ->
+    | Alpha.Fun (args, body, label, p) ->
         let args = List.map (fun arg -> (arg, fresh level)) args in
         let arg_as_vars = List.map (fun (arg, ty) -> (arg, ty)) args in
         let body, body_ty = g (arg_as_vars @ venv, tenv, cenv) level body in
-        (Fun (args, body, body_ty, p), Types.Fun (List.map snd args, body_ty))
+        ( Fun (args, body, body_ty, label, p)
+        , Types.Fun (List.map snd args, body_ty) )
     | Alpha.Tuple (tp, p) ->
         let elems, types = Util.unzip @@ List.map (g env level) tp in
         (Tuple (elems, types), Types.Tuple types)

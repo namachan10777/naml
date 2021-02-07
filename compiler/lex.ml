@@ -1,5 +1,8 @@
 type pos_t = string * int * int * int [@@deriving show]
 
+let string_of_pos_t (file, col, line, _) =
+    Printf.sprintf "%s:%d:%d" file col line
+
 let nowhere = ("", -1, -1, -1)
 
 let initial_pos fname = (fname, 1, 0, 0)

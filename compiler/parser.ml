@@ -58,7 +58,7 @@ type t =
     | LetRec of (string list * Lex.pos_t * t) list * t
     | Type of
         (string * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
-    | Fun of (string * Lex.pos_t) list * t
+    | Fun of (string * Lex.pos_t) list * t * Lex.pos_t
     | Match of t * (pat_t * t * t) list
     | App of t * t list * Lex.pos_t
     | Seq of t * t * Lex.pos_t
@@ -334,7 +334,7 @@ let rec parse_expr = function
       match parse_params Lex.Arrow remain with
       | args, (Lex.Arrow, _) :: remain ->
           let expr, p, remain = parse_expr remain in
-          (unfold_fun args expr, p, remain)
+          (unfold_fun p args expr, p, remain)
       | x -> raise @@ SyntaxError "fun" )
     | (Lex.If, p) :: cond -> (
       match parse_expr cond with
@@ -356,7 +356,7 @@ let rec parse_expr = function
       | _ -> raise @@ SyntaxError "match" )
     | others -> parse_seq others
 
-and unfold_fun args expr =
+and unfold_fun p args expr =
     let body, params =
         List.fold_left
           (fun (inner, params) -> function
@@ -367,7 +367,7 @@ and unfold_fun args expr =
                 , (tmpname, p) :: params ))
           (expr, []) (List.rev args)
     in
-    Fun (params, body)
+    Fun (params, body, p)
 
 and parse_seq input =
     match parse_assign input with
@@ -701,8 +701,8 @@ and parse_let_ands input =
       match parse_expr remain with
       | def, _, (Lex.AndDef, _) :: remain ->
           let ands, remain = parse_let_ands remain in
-          ((PVar (id, p), unfold_fun args def) :: ands, remain)
-      | def, _, remain -> ([(PVar (id, p), unfold_fun args def)], remain) )
+          ((PVar (id, p), unfold_fun p args def) :: ands, remain)
+      | def, _, remain -> ([(PVar (id, p), unfold_fun p args def)], remain) )
     | _ -> raise @@ SyntaxError "let stmt"
 
 and parse_letrec_ands input =
@@ -717,8 +717,8 @@ and parse_letrec_ands input =
       match parse_expr remain with
       | def, _, (Lex.AndDef, _) :: remain ->
           let ands, remain = parse_letrec_ands remain in
-          (([id], p, unfold_fun args def) :: ands, remain)
-      | def, _, remain -> ([([id], p, unfold_fun args def)], remain) )
+          (([id], p, unfold_fun p args def) :: ands, remain)
+      | def, _, remain -> ([([id], p, unfold_fun p args def)], remain) )
     | _ -> raise @@ SyntaxError "let stmt"
 
 let rec parse_type_ands = function

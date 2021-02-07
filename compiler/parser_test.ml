@@ -88,7 +88,7 @@ let rec eq l r =
         && List.for_all (fun ((id1, _, def1), (id2, _, def2)) ->
                id1 = id2 && eq def1 def2)
            @@ Util.zip defs1 defs2
-    | P.Fun (args1, e1), P.Fun (args2, e2) ->
+    | P.Fun (args1, e1, _), P.Fun (args2, e2, _) ->
         eq e1 e2
         && List.for_all (fun ((id1, _), (id2, _)) -> id1 = id2)
            @@ Util.zip args1 args2
@@ -211,7 +211,8 @@ let () =
          ( [ ( P.PVar ("add", nw)
              , P.Fun
                  ( [("x", nw); ("y", nw)]
-                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ) ]
+                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
+                 , nw ) ) ]
          , P.Var (["add"], nw) )) ;
     Parser.count := 0 ;
     test "letfun_pat" "let add (x, y) (z, w) = x + y in add"
@@ -233,7 +234,8 @@ let () =
                                  , P.Bool (true, nw)
                                  , P.Add
                                      (P.Var (["x"], nw), P.Var (["y"], nw), nw)
-                                 ) ] ) ) ] ) ) ) ]
+                                 ) ] ) ) ] )
+                 , nw ) ) ]
          , P.Var (["add"], nw) )) ;
     test "letrecfun" "let rec add x\n y = x + y in add"
       (P.LetRec
@@ -241,7 +243,8 @@ let () =
              , nw
              , P.Fun
                  ( [("x", nw); ("y", nw)]
-                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ) ]
+                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
+                 , nw ) ) ]
          , P.Var (["add"], nw) )) ;
     Parser.count := 0 ;
     test "letrecfun_pat" "let rec add (x, y) (z,\n   w) = x + y in add"
@@ -264,7 +267,8 @@ let () =
                                  , P.Bool (true, nw)
                                  , P.Add
                                      (P.Var (["x"], nw), P.Var (["y"], nw), nw)
-                                 ) ] ) ) ] ) ) ) ]
+                                 ) ] ) ) ] )
+                 , nw ) ) ]
          , P.Var (["add"], nw) )) ;
     test "fun" "fun x\n   y z -> x + y + z"
       (P.Fun
@@ -272,7 +276,8 @@ let () =
          , P.Add
              ( P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
              , P.Var (["z"], nw)
-             , nw ) )) ;
+             , nw )
+         , nw )) ;
     test "fun" "(fun x y z -> x + y + z) 1"
       (P.App
          ( P.Paren
@@ -281,7 +286,8 @@ let () =
                 , P.Add
                     ( P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
                     , P.Var (["z"], nw)
-                    , nw ) ))
+                    , nw )
+                , nw ))
          , [P.Int (1, nw)]
          , nw )) ;
     Parser.count := 0 ;
@@ -292,7 +298,8 @@ let () =
              ( P.Var (["<anonymous1>"], nw)
              , [ ( P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw)
                  , P.Bool (true, nw)
-                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ] ) )) ;
+                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ] )
+         , nw )) ;
     Parser.count := 0 ;
     test "fun pat" "fun (x, y) (z, w) -> 0"
       (P.Fun
@@ -306,7 +313,8 @@ let () =
                      , [ ( P.PParen
                              (P.PTuple ([P.PVar ("z", nw); P.PVar ("w", nw)], nw))
                          , P.Bool (true, nw)
-                         , P.Int (0, nw) ) ] ) ) ] ) )) ;
+                         , P.Int (0, nw) ) ] ) ) ] )
+         , nw )) ;
     test "cons" "1 + 2 :: 3 :: [] = []"
       (P.Eq
          ( P.Cons
@@ -575,7 +583,8 @@ let () =
          ( [ ( P.PVar ("add", nw)
              , P.Fun
                  ( [("x", nw); ("y", nw)]
-                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ) ]
+                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
+                 , nw ) ) ]
          , P.Never )) ;
     test_stmts "letrec and" "let rec f = 1\n   and g = 2"
       (P.LetRec
@@ -604,7 +613,8 @@ let () =
                                  , P.Bool (true, nw)
                                  , P.Add
                                      (P.Var (["x"], nw), P.Var (["y"], nw), nw)
-                                 ) ] ) ) ] ) ) )
+                                 ) ] ) ) ] )
+                 , nw ) )
            ; (P.PVar ("add2", nw), P.Var (["add"], nw)) ]
          , P.Never )) ;
     test_stmts "type variant" "type t =\n   Leaf of\n int | Node of t * t"

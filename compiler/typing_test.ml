@@ -42,7 +42,7 @@ let unify_test name a b =
 module Ty = Types
 module T = Typing
 
-let lv n = Alpha.lookup n Alpha.pervasive_venv
+let lv n = Alpha.lookup Lex.nowhere n Alpha.pervasive_venv
 
 let v n = Typing.Var (lv n)
 
@@ -50,11 +50,11 @@ let vn n = Types.Vid (n + List.length Alpha.pervasive_venv)
 
 let v' n = Typing.Var (vn n)
 
-let lt n = Alpha.lookup n Alpha.pervasive_tenv
+let lt n = Alpha.lookup Lex.nowhere n Alpha.pervasive_tenv
 
 let tn n = Types.Tid (n + List.length Alpha.pervasive_tenv)
 
-let lc n = Alpha.lookup n Alpha.pervasive_cenv
+let lc n = Alpha.lookup Lex.nowhere n Alpha.pervasive_cenv
 
 let cn n = Types.Cid (n + List.length Alpha.pervasive_cenv)
 
@@ -187,17 +187,19 @@ let () =
                      , [ ( T.PCtor
                              ( []
                              , [poly 0]
-                             , Alpha.lookup ["[]"] Alpha.pervasive_cenv )
+                             , Alpha.lookup Lex.nowhere ["[]"]
+                                 Alpha.pervasive_cenv )
                          , T.Int 0 )
                        ; ( T.PCtor
                              ( [ T.PVar (vn x, poly 0)
                                ; T.PCtor
                                    ( []
                                    , [poly 0]
-                                   , Alpha.lookup ["[]"] Alpha.pervasive_cenv )
-                               ]
+                                   , Alpha.lookup Lex.nowhere ["[]"]
+                                       Alpha.pervasive_cenv ) ]
                              , [poly 0]
-                             , Alpha.lookup ["::"] Alpha.pervasive_cenv )
+                             , Alpha.lookup Lex.nowhere ["::"]
+                                 Alpha.pervasive_cenv )
                          , T.App (v ["+"], [T.Int 1; T.App (v' length, [v' l])])
                          ) ]
                      , Ty.Int )

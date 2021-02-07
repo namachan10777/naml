@@ -3,11 +3,11 @@ type 'a map_t = string list * 'a * bool
 (* val * type * ctor * exception * record *)
 type env_t = Types.vid_t map_t * Types.tid_t map_t * Types.cid_t map_t
 
-exception UnboundId of string list
+exception UnboundId of string list * Lex.pos_t
 
-exception DuplicatedId of string list
+exception DuplicatedId of string list * Lex.pos_t
 
-exception BothSideOfOrPatternMustHaveSameVars
+exception BothSideOfOrPatternMustHaveSameVars of Lex.pos_t
 
 type pat_t =
     | PInt of int * Lex.pos_t
@@ -50,10 +50,10 @@ type t =
     | Type of (Types.tid_t * Lex.pos_t * int * tydef_t) list * t
 [@@deriving show]
 
-let rec lookup name = function
+let rec lookup p name = function
     | (name', id, _) :: _ when name = name' -> id
-    | _ :: remain -> lookup name remain
-    | [] -> raise @@ UnboundId name
+    | _ :: remain -> lookup p name remain
+    | [] -> raise @@ UnboundId (name, p)
 
 let pervasive_tenv =
     List.map (fun (name, id, _) -> (name, id, false)) Types.pervasive_types
@@ -90,36 +90,41 @@ let init () =
 
 let rec dup_chk = function
     | [] -> None
-    | x :: xs ->
-        if not @@ List.for_all (( <> ) x) xs then Some x else dup_chk xs
+    | (x, p) :: xs ->
+        if not @@ List.for_all (fun (x', _) -> x' <> x) xs then Some (x, p)
+        else dup_chk xs
 
 let get1 (x, _, _) = x
 
 let assert_dup ids =
-    match dup_chk ids with Some id -> raise @@ DuplicatedId id | None -> ()
+    match dup_chk ids with
+    | Some (id, p) -> raise @@ DuplicatedId (id, p)
+    | None -> ()
+
+let drop_pos = List.map (fun (name, _, id, is_local) -> (name, id, is_local))
 
 let rec of_pat vtbl cenv =
-    let rec lookup_vtbl name = function
+    let rec lookup_vtbl p name = function
         | (name', id, _) :: _ when name = name' -> id
-        | _ :: remain -> lookup_vtbl name remain
-        | _ -> raise @@ UnboundId name
+        | _ :: remain -> lookup_vtbl p name remain
+        | _ -> raise @@ UnboundId (name, p)
     in
     function
     | Ast.PBool (b, p) -> (PBool (b, p), [])
     | Ast.PInt (i, p) -> (PInt (i, p), [])
-    | Ast.PEmp p -> (PCtor (lookup ["[]"] pervasive_cenv, [], p), [])
+    | Ast.PEmp p -> (PCtor (lookup p ["[]"] pervasive_cenv, [], p), [])
     | Ast.PCons (v, l, p) ->
         let v, names = of_pat vtbl cenv v in
         let l, names' = of_pat vtbl cenv l in
-        (PCtor (lookup ["::"] pervasive_cenv, [v; l], p), names @ names')
+        (PCtor (lookup p ["::"] pervasive_cenv, [v; l], p), names @ names')
     | Ast.PVar (id, p) -> (
       match vtbl with
       | Some vtbl ->
-          let id' = lookup_vtbl [id] vtbl in
+          let id' = lookup_vtbl p [id] vtbl in
           (PVar (id', p), [])
       | None ->
           let id' = fresh_v () in
-          (PVar (id', p), [([id], id', true)]) )
+          (PVar (id', p), [([id], p, id', true)]) )
     | Ast.PTuple (ps, p) ->
         let ps, envs = Util.unzip @@ List.map (of_pat vtbl cenv) ps in
         (PTuple (ps, p), List.concat envs)
@@ -128,38 +133,40 @@ let rec of_pat vtbl cenv =
         (As (ps, p), List.concat envs)
     | Ast.Or (pat, pats, p) ->
         let pat, venv = of_pat vtbl cenv pat in
-        assert_dup @@ List.map get1 venv ;
-        let vtbl = match vtbl with Some v -> Some v | None -> Some venv in
+        assert_dup @@ List.map (fun (id, p, _, _) -> (id, p)) venv ;
+        let vtbl =
+            match vtbl with Some v -> Some v | None -> Some (drop_pos venv)
+        in
         let pats, venvs = Util.unzip @@ List.map (of_pat vtbl cenv) pats in
         if
           List.for_all
             (fun venv' -> List.sort compare venv' = List.sort compare venv)
             venvs
         then (Or (pat, pats, p), venv)
-        else raise BothSideOfOrPatternMustHaveSameVars
+        else raise @@ BothSideOfOrPatternMustHaveSameVars p
     | Ast.PCtor (name, p) ->
-        let id = lookup name cenv in
+        let id = lookup p name cenv in
         (PCtor (id, [], p), [])
     | Ast.PCtorApp (name, args, p) ->
-        let id = lookup name cenv in
+        let id = lookup p name cenv in
         let args, envs = Util.unzip @@ List.map (of_pat vtbl cenv) args in
         (PCtor (id, args, p), List.concat envs)
 
 let rec of_ty env targs =
-    let rec lookup_targs arg = function
+    let rec lookup_targs p arg = function
         | (arg', id) :: _ when arg = arg' -> id
-        | _ :: remain -> lookup_targs arg remain
-        | [] -> raise @@ UnboundId ["'" ^ arg]
+        | _ :: remain -> lookup_targs p arg remain
+        | [] -> raise @@ UnboundId (["'" ^ arg], p)
     in
     let _, tenv, _ = env in
     function
     | Ast.TInt p -> TInt p
     | Ast.TBool p -> TBool p
     | Ast.TString p -> TString p
-    | Ast.TVar (v, p) -> TVar (lookup_targs v targs, p)
+    | Ast.TVar (v, p) -> TVar (lookup_targs p v targs, p)
     | Ast.TTuple (ts, p) -> TTuple (List.map (of_ty env targs) ts, p)
     | Ast.TApp (ts, higher, p) ->
-        TApp (List.map (of_ty env targs) ts, lookup higher tenv, p)
+        TApp (List.map (of_ty env targs) ts, lookup p higher tenv, p)
 
 let rec of_tydef env targs = function
     | Ast.Alias ty -> (Alias (of_ty env targs ty), [])
@@ -180,10 +187,10 @@ let rec of_expr env =
     | Ast.Int (i, p) -> Int (i, p)
     | Ast.Bool (b, p) -> Bool (b, p)
     | Ast.Never -> Never
-    | Ast.Var (name, p) -> Var (lookup name venv, p)
-    | Ast.Ctor (name, p) -> Ctor (lookup name cenv, p)
+    | Ast.Var (name, p) -> Var (lookup p name venv, p)
+    | Ast.Ctor (name, p) -> Ctor (lookup p name cenv, p)
     | Ast.CtorApp (name, p, es) ->
-        CtorApp (lookup name cenv, p, List.map (of_expr env) es)
+        CtorApp (lookup p name cenv, p, List.map (of_expr env) es)
     | Ast.Tuple (es, p) -> Tuple (List.map (of_expr env) es, p)
     | Ast.If (ec, e1, e2, p) ->
         If (of_expr env ec, of_expr env e1, of_expr env e2, p)
@@ -193,22 +200,22 @@ let rec of_expr env =
             @@ List.map
                  (fun (pat, def) ->
                    let pat, venv' = of_pat None cenv pat in
-                   (venv', pat, of_expr (venv' @ venv, tenv, cenv) def))
+                   (venv', pat, of_expr (drop_pos venv' @ venv, tenv, cenv) def))
                  defs
         in
         let venv' = List.concat pat_vars in
-        assert_dup @@ List.map get1 venv' ;
-        Let (Util.zip pats defs, of_expr (venv' @ venv, tenv, cenv) e)
+        assert_dup @@ List.map (fun (id, p, _, _) -> (id, p)) venv' ;
+        Let (Util.zip pats defs, of_expr (drop_pos venv' @ venv, tenv, cenv) e)
     | Ast.LetRec (defs, e) ->
-        let ids = List.map (fun (n, _, _) -> (n, fresh_v (), true)) defs in
-        assert_dup @@ List.map get1 ids ;
-        let env = (ids @ venv, tenv, cenv) in
+        let ids = List.map (fun (n, p, _) -> (n, p, fresh_v (), true)) defs in
+        assert_dup @@ List.map (fun (id, p, _, _) -> (id, p)) ids ;
+        let env = (drop_pos ids @ venv, tenv, cenv) in
         let exprs = List.map (fun (_, _, e) -> of_expr env e) defs in
         let ps = List.map (fun (_, p, _) -> p) defs in
         LetRec
           ( List.map
               (fun ((_, id, _), p, e) -> (id, p, e))
-              (Util.zip3 ids ps exprs)
+              (Util.zip3 (drop_pos ids) ps exprs)
           , of_expr env e )
     | Ast.Fun (args, body, p) ->
         let ids = List.map (fun (n, _) -> ([n], fresh_v (), true)) args in
@@ -220,8 +227,8 @@ let rec of_expr env =
             List.map
               (fun (pat, guard, expr) ->
                 let pat, venv' = of_pat None cenv pat in
-                assert_dup @@ List.map get1 venv' ;
-                let env = (venv' @ venv, tenv, cenv) in
+                assert_dup @@ List.map (fun (id, p, _, _) -> (id, p)) venv' ;
+                let env = (drop_pos venv' @ venv, tenv, cenv) in
                 (pat, of_expr env guard, of_expr env expr))
               arms
         in
@@ -241,7 +248,7 @@ let rec of_expr env =
                    (ty, p, ctors, List.length targs))
                  defs
         in
-        assert_dup @@ List.map get1 names ;
+        assert_dup @@ List.map (fun (id, p, _, _) -> ([id], p)) defs ;
         let env = (venv, names @ tenv, List.concat ctors @ cenv) in
         Type
           ( Util.zip4 (List.map (fun (_, i, _) -> i) names) ps targs_l tys

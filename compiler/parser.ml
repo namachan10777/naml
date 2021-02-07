@@ -54,12 +54,12 @@ type t =
     | Cons of t * t * Lex.pos_t
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
-    | Let of (pat_t * t) list * t
+    | Let of (pat_t * Lex.pos_t * t) list * t
     | LetRec of (string list * Lex.pos_t * t) list * t
     | Type of
         (string * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
     | Fun of (string * Lex.pos_t) list * t * Lex.pos_t
-    | Match of t * (pat_t * t * t) list
+    | Match of t * (pat_t * Lex.pos_t * t * t) list
     | App of t * t list * Lex.pos_t
     | Seq of t * t * Lex.pos_t
     | Pipeline of t * t * Lex.pos_t
@@ -393,7 +393,7 @@ and unfold_fun p args expr =
             | PVar (id, _), p -> (inner, (id, p) :: params)
             | pat, p ->
                 let tmpname = gen_fresh () in
-                ( Match (Var ([tmpname], p), [(pat, Bool (true, p), inner)])
+                ( Match (Var ([tmpname], p), [(pat, p, Bool (true, p), inner)])
                 , (tmpname, p) :: params ))
           (expr, []) (List.rev args)
     in
@@ -702,17 +702,17 @@ and parse_arms arm =
       match parse_expr expr with
       | expr, _, (Lex.VBar, _) :: remain ->
           let arms, _, remain = parse_arms remain in
-          ((pat, Bool (true, p), expr) :: arms, p, remain)
-      | expr, p, remain -> ([(pat, Bool (true, p), expr)], p, remain) )
+          ((pat, p, Bool (true, p), expr) :: arms, p, remain)
+      | expr, p, remain -> ([(pat, p, Bool (true, p), expr)], p, remain) )
     | pat, p, (Lex.When, _) :: when_e -> (
       match parse_expr when_e with
       | when_e, p, (Lex.Arrow, p_arm) :: expr -> (
         match parse_expr expr with
         | expr, _, (Lex.VBar, _) :: remain ->
             let arms, _, remain = parse_arms remain in
-            ((pat, when_e, expr) :: arms, p_arm, remain)
-        | expr, _, remain -> ([(pat, Bool (true, p_arm), expr)], p_arm, remain)
-        )
+            ((pat, p, when_e, expr) :: arms, p_arm, remain)
+        | expr, _, remain ->
+            ([(pat, p, Bool (true, p_arm), expr)], p_arm, remain) )
       | _, p, _ ->
           raise @@ SyntaxError (Lex.string_of_pos_t p ^ "invalid \'when\' guard")
       )
@@ -728,18 +728,18 @@ and take_targs = function
 
 and parse_let_ands input =
     match parse_params Lex.Eq input with
-    | [(pat, _)], (Lex.Eq, _) :: remain -> (
+    | [(pat, p)], (Lex.Eq, _) :: remain -> (
       match parse_expr remain with
       | def, _, (Lex.AndDef, _) :: remain ->
           let ands, remain = parse_let_ands remain in
-          ((pat, def) :: ands, remain)
-      | def, _, remain -> ([(pat, def)], remain) )
+          ((pat, p, def) :: ands, remain)
+      | def, _, remain -> ([(pat, p, def)], remain) )
     | (PVar (id, p), _) :: args, (Lex.Eq, _) :: remain -> (
       match parse_expr remain with
       | def, _, (Lex.AndDef, _) :: remain ->
           let ands, remain = parse_let_ands remain in
-          ((PVar (id, p), unfold_fun p args def) :: ands, remain)
-      | def, _, remain -> ([(PVar (id, p), unfold_fun p args def)], remain) )
+          ((PVar (id, p), p, unfold_fun p args def) :: ands, remain)
+      | def, _, remain -> ([(PVar (id, p), p, unfold_fun p args def)], remain) )
     | _, (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "let stmt")
     | _, [] -> raise Unreachable
 

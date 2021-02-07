@@ -265,26 +265,26 @@ let () =
 let () =
     let t1 = Types.Int in
     let t2 = T.fresh 1 in
-    T.unify t1 t2 ;
+    T.unify nw t1 t2 ;
     unify_test "unify int u" t1 t2 ;
     let u1 = T.fresh 0 in
     let u2 = T.fresh 0 in
-    T.unify u1 u2 ;
+    T.unify nw u1 u2 ;
     unify_test "unify u u " u1 u2 ;
     let u1 = T.fresh 0 in
     let u2 = T.fresh 0 in
     let t = Types.Int in
-    T.unify u1 t ;
-    T.unify u2 t ;
+    T.unify nw u1 t ;
+    T.unify nw u2 t ;
     unify_test "unify 2" u1 u2 ;
     let t1 = T.fresh 0 in
     let t2 = T.fresh 1 in
     let t3 = T.fresh 2 in
     let t4 = T.fresh 3 in
     let t5 = t4 in
-    T.unify t1 t2 ;
-    T.unify t3 t4 ;
-    T.unify t1 t3 ;
+    T.unify nw t1 t2 ;
+    T.unify nw t3 t4 ;
+    T.unify nw t1 t3 ;
     unify_test "unify 3" t1 t2 ;
     unify_test "unify 3" t3 t4 ;
     unify_test "unify 3" t1 t3 ;
@@ -294,38 +294,41 @@ let () =
     unify_test "unify 3" t1 t5 ;
     let u1 = T.fresh 0 in
     let u2 = T.fresh 0 in
-    T.unify u1 u2 ;
-    T.unify Ty.Int u1 ;
+    T.unify nw u1 u2 ;
+    T.unify nw Ty.Int u1 ;
     unify_test "unify 4" u1 u2 ;
     let u1 = T.fresh 0 in
     let u2 = T.fresh 0 in
-    T.unify u1 u2 ;
-    T.unify Ty.Int u1 ;
+    T.unify nw u1 u2 ;
+    T.unify nw Ty.Int u1 ;
     unify_test "unify 5" u1 u2 ;
     let u1 = T.fresh 0 in
     let u2 = u1 in
-    T.unify u1 Ty.Int ;
+    T.unify nw u1 Ty.Int ;
     unify_test "unify 6" u2 Ty.Int
 
 let () =
     let def1 =
         ( tn 0
+        , nw
         , 0
         , Alpha.Alias (Alpha.TTuple ([Alpha.TInt nw; Alpha.TInt nw], nw)) )
     in
-    let def2 = (tn 1, 0, Alpha.Alias (Alpha.TApp ([], tn 0, nw))) in
+    let def2 = (tn 1, nw, 0, Alpha.Alias (Alpha.TApp ([], tn 0, nw))) in
     let def = Typing.canonical_type_def [] [def1; def2] def1 in
     Test.assert_eq "simple conv" def ([], Types.Tuple [Types.Int; Types.Int]) ;
     let def = Typing.canonical_type_def [] [def1; def2] def2 in
     Test.assert_eq "chain" def ([], Types.Tuple [Types.Int; Types.Int]) ;
     let def1 =
         ( tn 0
+        , nw
         , 1
         , Alpha.Alias
             (Alpha.TTuple ([Alpha.TVar (0, nw); Alpha.TVar (0, nw)], nw)) )
     in
     let def2 =
         ( tn 1
+        , nw
         , 0
         , Alpha.Alias
             (Alpha.TTuple
@@ -341,15 +344,16 @@ let () =
       , Types.Tuple
           [ Types.Tuple [Types.Int; Types.Int]
           ; Types.Tuple [Types.Int; Types.Int] ] ) ;
-    let def1 = (tn 0, 0, Alpha.Alias (Alpha.TApp ([], tn 0, nw))) in
+    let def1 = (tn 0, nw, 0, Alpha.Alias (Alpha.TApp ([], tn 0, nw))) in
     ( try
         Typing.canonical_type_def [] [def1; def2] def1 |> ignore ;
         failwith "test failure"
       with
-    | T.CyclicType -> ()
+    | T.CyclicType _ -> ()
     | e -> raise e ) ;
     let def1 =
         ( tn 0
+        , nw
         , 2
         , Alpha.Alias
             (Alpha.TTuple
@@ -359,6 +363,7 @@ let () =
     in
     let def2 =
         ( tn 1
+        , nw
         , 1
         , Alpha.Alias
             (Alpha.TApp ([Alpha.TInt nw; Alpha.TVar (0, nw)], tn 0, nw)) )
@@ -371,13 +376,14 @@ let () =
           ; Types.Variant ([poly 0], lt ["list"]) ] ) ;
     let def1 =
         ( tn 0
+        , nw
         , 1
         , Alpha.Variant
             [ (cn 0, nw, [Alpha.TVar (0, nw)])
             ; (cn 1, nw, [Alpha.TApp ([Alpha.TInt nw], tn 1, nw)]) ] )
     in
     let def2 =
-        (tn 1, 1, Alpha.Alias (Alpha.TApp ([Alpha.TVar (0, nw)], tn 0, nw)))
+        (tn 1, nw, 1, Alpha.Alias (Alpha.TApp ([Alpha.TVar (0, nw)], tn 0, nw)))
     in
     let def = Typing.canonical_type_def T.pervasive_tenv [def1; def2] def1 in
     Test.assert_eq "matual recursive variatn" def

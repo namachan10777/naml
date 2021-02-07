@@ -36,10 +36,10 @@ type t =
     | CtorApp of string list * Lex.pos_t * t list
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
-    | Let of (pat_t * t) list * t
+    | Let of (pat_t * Lex.pos_t * t) list * t
     | LetRec of (string list * Lex.pos_t * t) list * t
     | Fun of (string * Lex.pos_t) list * t * Lex.pos_t
-    | Match of t * (pat_t * t * t) list
+    | Match of t * (pat_t * Lex.pos_t * t * t) list
     | App of t * t list * Lex.pos_t
     | Type of
         (string * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
@@ -112,7 +112,7 @@ let rec of_parser_t = function
     | Parser.Let (defs, expr) ->
         Let
           ( List.map
-              (fun (pat, def) -> (of_parser_pat_t pat, of_parser_t def))
+              (fun (pat, p, def) -> (of_parser_pat_t pat, p, of_parser_t def))
               defs
           , of_parser_t expr )
     | Parser.LetRec (defs, expr) ->
@@ -126,8 +126,8 @@ let rec of_parser_t = function
         Match
           ( of_parser_t target
           , List.map
-              (fun (pat, when_e, expr) ->
-                (of_parser_pat_t pat, of_parser_t when_e, of_parser_t expr))
+              (fun (pat, p, when_e, expr) ->
+                (of_parser_pat_t pat, p, of_parser_t when_e, of_parser_t expr))
               arms )
     | Parser.Type (defs, expr) ->
         Type

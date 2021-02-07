@@ -42,10 +42,10 @@ type t =
     | CtorApp of Types.cid_t * Lex.pos_t * t list
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
-    | Let of (pat_t * t) list * t
+    | Let of (pat_t * Lex.pos_t * t) list * t
     | LetRec of (Types.vid_t * Lex.pos_t * t) list * t
     | Fun of Types.vid_t list * t * Lex.pos_t
-    | Match of t * (pat_t * t * t) list
+    | Match of t * (pat_t * Lex.pos_t * t * t) list
     | App of t * t list * Lex.pos_t
     | Type of (Types.tid_t * Lex.pos_t * int * tydef_t) list * t
 [@@deriving show]
@@ -195,17 +195,19 @@ let rec of_expr env =
     | Ast.If (ec, e1, e2, p) ->
         If (of_expr env ec, of_expr env e1, of_expr env e2, p)
     | Ast.Let (defs, e) ->
+        let ps = List.map (fun (_, p, _) -> p) defs in
         let pat_vars, pats, defs =
             Util.unzip3
             @@ List.map
-                 (fun (pat, def) ->
+                 (fun (pat, _, def) ->
                    let pat, venv' = of_pat None cenv pat in
                    (venv', pat, of_expr (drop_pos venv' @ venv, tenv, cenv) def))
                  defs
         in
         let venv' = List.concat pat_vars in
         assert_dup @@ List.map (fun (id, p, _, _) -> (id, p)) venv' ;
-        Let (Util.zip pats defs, of_expr (drop_pos venv' @ venv, tenv, cenv) e)
+        Let
+          (Util.zip3 pats ps defs, of_expr (drop_pos venv' @ venv, tenv, cenv) e)
     | Ast.LetRec (defs, e) ->
         let ids = List.map (fun (n, p, _) -> (n, p, fresh_v (), true)) defs in
         assert_dup @@ List.map (fun (id, p, _, _) -> (id, p)) ids ;
@@ -225,11 +227,11 @@ let rec of_expr env =
         let target = of_expr env target in
         let arms =
             List.map
-              (fun (pat, guard, expr) ->
+              (fun (pat, p, guard, expr) ->
                 let pat, venv' = of_pat None cenv pat in
                 assert_dup @@ List.map (fun (id, p, _, _) -> (id, p)) venv' ;
                 let env = (drop_pos venv' @ venv, tenv, cenv) in
-                (pat, of_expr env guard, of_expr env expr))
+                (pat, p, of_expr env guard, of_expr env expr))
               arms
         in
         Match (target, arms)

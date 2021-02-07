@@ -80,7 +80,7 @@ let rec eq l r =
         List.for_all (fun (a, b) -> eq a b) @@ Util.zip es1 es2
     | P.Let (defs1, e1), P.Let (defs2, e2) ->
         eq e1 e2
-        && List.for_all (fun ((pat1, def1), (pat2, def2)) ->
+        && List.for_all (fun ((pat1, _, def1), (pat2, _, def2)) ->
                eq_pat pat1 pat2 && eq def1 def2)
            @@ Util.zip defs1 defs2
     | P.LetRec (defs1, e1), P.LetRec (defs2, e2) ->
@@ -94,7 +94,7 @@ let rec eq l r =
            @@ Util.zip args1 args2
     | P.Match (e1, arms1), P.Match (e2, arms2) ->
         eq e1 e2
-        && List.for_all (fun ((pat1, guard1, e1), (pat2, guard2, e2)) ->
+        && List.for_all (fun ((pat1, _, guard1, e1), (pat2, _, guard2, e2)) ->
                eq_pat pat1 pat2 && eq guard1 guard2 && eq e1 e2)
            @@ Util.zip arms1 arms2
     | P.Type (defs1, e1), P.Type (defs2, e2) ->
@@ -178,29 +178,32 @@ let () =
              (P.Eq (P.Int (1, nw), P.Int (2, nw), nw), P.Bool (false, nw), nw)
          , nw )) ;
     test "let\n   simple" "let x = 1 in\n x"
-      (P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw))) ;
+      (P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw))) ;
     test "let rec" "let rec x\n = 1 in x"
       (P.LetRec ([(["x"], nw, P.Int (1, nw))], P.Var (["x"], nw))) ;
     test "let add left" "1 + let x = 1 in x"
       (P.Add
          ( P.Int (1, nw)
-         , P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw))
+         , P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw))
          , nw )) ;
     test "let add right" "(let x = 1\n   in x) + 1"
       (P.Add
          ( P.Paren
-             (P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw)))
+             (P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw)))
          , P.Int (1, nw)
          , nw )) ;
     test "let complex" "let\n x = let y = 1 in y in let z = x in z"
       (P.Let
          ( [ ( P.PVar ("x", nw)
-             , P.Let ([(P.PVar ("y", nw), P.Int (1, nw))], P.Var (["y"], nw)) )
-           ]
-         , P.Let ([(P.PVar ("z", nw), P.Var (["x"], nw))], P.Var (["z"], nw)) )) ;
+             , nw
+             , P.Let ([(P.PVar ("y", nw), nw, P.Int (1, nw))], P.Var (["y"], nw))
+             ) ]
+         , P.Let ([(P.PVar ("z", nw), nw, P.Var (["x"], nw))], P.Var (["z"], nw))
+         )) ;
     test "let and" "let x = 1 and\n   y = 2 in y"
       (P.Let
-         ( [(P.PVar ("x", nw), P.Int (1, nw)); (P.PVar ("y", nw), P.Int (2, nw))]
+         ( [ (P.PVar ("x", nw), nw, P.Int (1, nw))
+           ; (P.PVar ("y", nw), nw, P.Int (2, nw)) ]
          , P.Var (["y"], nw) )) ;
     test "let rec and" "let rec\n x = 1 and y = 2 in y"
       (P.LetRec
@@ -209,6 +212,7 @@ let () =
     test "letfun" "let add\n   x y = x + y in add"
       (P.Let
          ( [ ( P.PVar ("add", nw)
+             , nw
              , P.Fun
                  ( [("x", nw); ("y", nw)]
                  , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
@@ -218,12 +222,14 @@ let () =
     test "letfun_pat" "let add (x, y) (z, w) = x + y in add"
       (P.Let
          ( [ ( P.PVar ("add", nw)
+             , nw
              , P.Fun
                  ( [("<anonymous2>", nw); ("<anonymous1>", nw)]
                  , P.Match
                      ( P.Var (["<anonymous2>"], nw)
                      , [ ( P.PParen
                              (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+                         , nw
                          , P.Bool (true, nw)
                          , P.Match
                              ( P.Var (["<anonymous1>"], nw)
@@ -231,6 +237,7 @@ let () =
                                      (P.PTuple
                                         ( [P.PVar ("z", nw); P.PVar ("w", nw)]
                                         , nw ))
+                                 , nw
                                  , P.Bool (true, nw)
                                  , P.Add
                                      (P.Var (["x"], nw), P.Var (["y"], nw), nw)
@@ -257,6 +264,7 @@ let () =
                      ( P.Var (["<anonymous2>"], nw)
                      , [ ( P.PParen
                              (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+                         , nw
                          , P.Bool (true, nw)
                          , P.Match
                              ( P.Var (["<anonymous1>"], nw)
@@ -264,6 +272,7 @@ let () =
                                      (P.PTuple
                                         ( [P.PVar ("z", nw); P.PVar ("w", nw)]
                                         , nw ))
+                                 , nw
                                  , P.Bool (true, nw)
                                  , P.Add
                                      (P.Var (["x"], nw), P.Var (["y"], nw), nw)
@@ -297,6 +306,7 @@ let () =
          , P.Match
              ( P.Var (["<anonymous1>"], nw)
              , [ ( P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw)
+                 , nw
                  , P.Bool (true, nw)
                  , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ] )
          , nw )) ;
@@ -307,11 +317,13 @@ let () =
          , P.Match
              ( P.Var (["<anonymous2>"], nw)
              , [ ( P.PParen (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+                 , nw
                  , P.Bool (true, nw)
                  , P.Match
                      ( P.Var (["<anonymous1>"], nw)
                      , [ ( P.PParen
                              (P.PTuple ([P.PVar ("z", nw); P.PVar ("w", nw)], nw))
+                         , nw
                          , P.Bool (true, nw)
                          , P.Int (0, nw) ) ] ) ) ] )
          , nw )) ;
@@ -344,31 +356,35 @@ let () =
     test "match1" "match x\n   with\n y -> 0 | z -> match z with a -> a"
       (P.Match
          ( P.Var (["x"], nw)
-         , [ (P.PVar ("y", nw), P.Bool (true, nw), P.Int (0, nw))
+         , [ (P.PVar ("y", nw), nw, P.Bool (true, nw), P.Int (0, nw))
            ; ( P.PVar ("z", nw)
+             , nw
              , P.Bool (true, nw)
              , P.Match
                  ( P.Var (["z"], nw)
-                 , [(P.PVar ("a", nw), P.Bool (true, nw), P.Var (["a"], nw))] )
-             ) ] )) ;
+                 , [(P.PVar ("a", nw), nw, P.Bool (true, nw), P.Var (["a"], nw))]
+                 ) ) ] )) ;
     test "match_when" "match x\n with y when is_prime y -> 0 | z -> 1"
       (P.Match
          ( P.Var (["x"], nw)
          , [ ( P.PVar ("y", nw)
+             , nw
              , P.App (P.Var (["is_prime"], nw), [P.Var (["y"], nw)], nw)
              , P.Int (0, nw) )
-           ; (P.PVar ("z", nw), P.Bool (true, nw), P.Int (1, nw)) ] )) ;
+           ; (P.PVar ("z", nw), nw, P.Bool (true, nw), P.Int (1, nw)) ] )) ;
     test "match2" "match x with y -> let x = 1\n   in x | z ->\n 1"
       (P.Match
          ( P.Var (["x"], nw)
          , [ ( P.PVar ("y", nw)
+             , nw
              , P.Bool (true, nw)
-             , P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw)) )
-           ; (P.PVar ("z", nw), P.Bool (true, nw), P.Int (1, nw)) ] )) ;
+             , P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw))
+             )
+           ; (P.PVar ("z", nw), nw, P.Bool (true, nw), P.Int (1, nw)) ] )) ;
     test "match nested" "match match [] with [] -> [] with [] ->\n   []"
       (P.Match
-         ( P.Match (P.Emp nw, [(P.PEmp nw, P.Bool (true, nw), P.Emp nw)])
-         , [(P.PEmp nw, P.Bool (true, nw), P.Emp nw)] )) ;
+         ( P.Match (P.Emp nw, [(P.PEmp nw, nw, P.Bool (true, nw), P.Emp nw)])
+         , [(P.PEmp nw, nw, P.Bool (true, nw), P.Emp nw)] )) ;
     test "tuple1" "1, 2" (P.Tuple ([P.Int (1, nw); P.Int (2, nw)], nw)) ;
     test "tuple1" "1+2, 2+3"
       (P.Tuple
@@ -386,6 +402,7 @@ let () =
       (P.Match
          ( P.Var (["x"], nw)
          , [ ( P.PParen (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+             , nw
              , P.Bool (true, nw)
              , P.Var (["x"], nw) ) ] )) ;
     test "pattern_tuple" "match x with (x,\n   (y,\n z)) -> x"
@@ -398,12 +415,14 @@ let () =
                           (P.PTuple ([P.PVar ("y", nw); P.PVar ("z", nw)], nw))
                       ]
                     , nw ))
+             , nw
              , P.Bool (true, nw)
              , P.Var (["x"], nw) ) ] )) ;
     test "pattern_cons" "match x with x :: [] -> x"
       (P.Match
          ( P.Var (["x"], nw)
          , [ ( P.PCons (P.PVar ("x", nw), P.PEmp nw, nw)
+             , nw
              , P.Bool (true, nw)
              , P.Var (["x"], nw) ) ] )) ;
     test "parse_list1" "[1]" (P.Cons (P.Int (1, nw), P.Emp nw, nw)) ;
@@ -427,12 +446,14 @@ let () =
       (P.Match
          ( P.Emp nw
          , [ ( P.PCons (P.PInt (1, nw), P.PEmp nw, nw)
+             , nw
              , P.Bool (true, nw)
              , P.Emp nw ) ] )) ;
     test "parse_pattern_list2" "match [] with [1;] -> []"
       (P.Match
          ( P.Emp nw
          , [ ( P.PCons (P.PInt (1, nw), P.PEmp nw, nw)
+             , nw
              , P.Bool (true, nw)
              , P.Emp nw ) ] )) ;
     test "parse_pattern_list3" "match [] with [1;2;3] -> []"
@@ -445,6 +466,7 @@ let () =
                      , P.PCons (P.PInt (3, nw), P.PEmp nw, nw)
                      , nw )
                  , nw )
+             , nw
              , P.Bool (true, nw)
              , P.Emp nw ) ] )) ;
     test "parse_pattern_list4" "match [] with [1;2;3;] -> []"
@@ -457,6 +479,7 @@ let () =
                      , P.PCons (P.PInt (3, nw), P.PEmp nw, nw)
                      , nw )
                  , nw )
+             , nw
              , P.Bool (true, nw)
              , P.Emp nw ) ] )) ;
     test "parse_pattern_list5" "match [] with 1 ::\n\n   [2;3] -> []"
@@ -469,6 +492,7 @@ let () =
                      , P.PCons (P.PInt (3, nw), P.PEmp nw, nw)
                      , nw )
                  , nw )
+             , nw
              , P.Bool (true, nw)
              , P.Emp nw ) ] )) ;
     test "parse_as" "match [] with 1, 2 as x -> []"
@@ -478,17 +502,20 @@ let () =
                  ( [ P.PTuple ([P.PInt (1, nw); P.PInt (2, nw)], nw)
                    ; P.PVar ("x", nw) ]
                  , nw )
+             , nw
              , P.Bool (true, nw)
              , P.Emp nw ) ] )) ;
     test "parse_as" "match [] with X 1 :: [] -> []"
       (P.Match
          ( P.Emp nw
          , [ ( P.PCons (P.PCtorApp (["X"], P.PInt (1, nw), nw), P.PEmp nw, nw)
+             , nw
              , P.Bool (true, nw)
              , P.Emp nw ) ] )) ;
     test "let\n\n   x, y = z in x" "let x, y = z in x"
       (P.Let
          ( [ ( P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw)
+             , nw
              , P.Var (["z"], nw) ) ]
          , P.Var (["x"], nw) )) ;
     test "app1" "1 + f 2"
@@ -511,7 +538,7 @@ let () =
       (P.If
          ( P.App (P.Var (["f"], nw), [P.Var (["x"], nw)], nw)
          , P.Int (1, nw)
-         , P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw))
+         , P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw))
          , nw )) ;
     test "if_nested"
       "if if x then\n\
@@ -550,7 +577,7 @@ let () =
          , P.Add (P.Int (1, nw), P.Int (1, nw), nw)
          , nw )) ;
     test "unit" "let () = () in ()"
-      (P.Let ([(P.PTuple ([], nw), P.Tuple ([], nw))], P.Tuple ([], nw))) ;
+      (P.Let ([(P.PTuple ([], nw), nw, P.Tuple ([], nw))], P.Tuple ([], nw))) ;
     test_ty "tuple1" "t * t"
       (P.TTuple ([P.TApp ([], ["t"], nw); P.TApp ([], ["t"], nw)], nw)) ;
     test_ty "tuple2" "t *\n   (t * t)"
@@ -577,10 +604,11 @@ let () =
       (P.TApp ([P.TApp ([], ["a"], nw); P.TApp ([], ["a"], nw)], ["list"], nw)) ;
     test_ty "tvar" "'a\n   list" (P.TApp ([P.TVar ("a", nw)], ["list"], nw)) ;
     test_stmts "let stmt" "let x = 1"
-      (P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Never)) ;
+      (P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Never)) ;
     test_stmts "letfun stmt" "let\n   add x y =\n x + y"
       (P.Let
          ( [ ( P.PVar ("add", nw)
+             , nw
              , P.Fun
                  ( [("x", nw); ("y", nw)]
                  , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
@@ -591,18 +619,21 @@ let () =
          ([(["f"], nw, P.Int (1, nw)); (["g"], nw, P.Int (2, nw))], P.Never)) ;
     test_stmts "let\n and" "let f = 1 and g = 2"
       (P.Let
-         ( [(P.PVar ("f", nw), P.Int (1, nw)); (P.PVar ("g", nw), P.Int (2, nw))]
+         ( [ (P.PVar ("f", nw), nw, P.Int (1, nw))
+           ; (P.PVar ("g", nw), nw, P.Int (2, nw)) ]
          , P.Never )) ;
     P.count := 0 ;
     test_stmts "letfun and" "let add (x, y) (z,\n w) = x + y and add2 = add"
       (P.Let
          ( [ ( P.PVar ("add", nw)
+             , nw
              , P.Fun
                  ( [("<anonymous2>", nw); ("<anonymous1>", nw)]
                  , P.Match
                      ( P.Var (["<anonymous2>"], nw)
                      , [ ( P.PParen
                              (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+                         , nw
                          , P.Bool (true, nw)
                          , P.Match
                              ( P.Var (["<anonymous1>"], nw)
@@ -610,12 +641,13 @@ let () =
                                      (P.PTuple
                                         ( [P.PVar ("z", nw); P.PVar ("w", nw)]
                                         , nw ))
+                                 , nw
                                  , P.Bool (true, nw)
                                  , P.Add
                                      (P.Var (["x"], nw), P.Var (["y"], nw), nw)
                                  ) ] ) ) ] )
                  , nw ) )
-           ; (P.PVar ("add2", nw), P.Var (["add"], nw)) ]
+           ; (P.PVar ("add2", nw), nw, P.Var (["add"], nw)) ]
          , P.Never )) ;
     test_stmts "type variant" "type t =\n   Leaf of\n int | Node of t * t"
       (P.Type

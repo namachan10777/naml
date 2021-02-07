@@ -13,6 +13,8 @@ type tydef_t =
     | Alias of ty_t
 [@@deriving show]
 
+type name_t = string list [@@deriving show]
+
 type pat_t =
     | PInt of int * Lex.pos_t
     | PBool of bool * Lex.pos_t

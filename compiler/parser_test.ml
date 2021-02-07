@@ -1,8 +1,116 @@
 module P = Parser
 
+let rec eq_pat l r =
+    match (l, r) with
+    | P.PInt (i1, _), P.PInt (i2, _) -> i1 = i2
+    | P.PVar (id1, _), P.PVar (id2, _) -> id1 = id2
+    | P.PParen p1, P.PParen p2 -> eq_pat p1 p2
+    | P.PTuple (ps1, _), P.PTuple (ps2, _) ->
+        List.for_all (fun (a, b) -> eq_pat a b) @@ Util.zip ps1 ps2
+    | P.PAs (ps1, _), P.PAs (ps2, _) ->
+        List.for_all (fun (a, b) -> eq_pat a b) @@ Util.zip ps1 ps2
+    | P.PEmp _, P.PEmp _ -> true
+    | P.PCons (l1, r1, _), P.PCons (l2, r2, _) -> eq_pat l1 l2 && eq_pat r1 r2
+    | P.PCtorApp (id1, p1, _), P.PCtorApp (id2, p2, _) ->
+        id1 = id2 && eq_pat p1 p2
+    | P.PCtor (id1, _), P.PCtor (id2, _) -> id1 = id2
+    | a, b ->
+        Printf.printf "%s\n%s" (P.show_pat_t a) (P.show_pat_t b) ;
+        false
+
+let rec eq_ty l r =
+    match (l, r) with
+    | P.TInt _, P.TInt _ -> true
+    | P.TTuple (ts1, _), P.TTuple (ts2, _) ->
+        List.for_all (fun (a, b) -> eq_ty a b) @@ Util.zip ts1 ts2
+    | P.TApp (ts1, name1, _), P.TApp (ts2, name2, _) ->
+        name1 = name2
+        && (List.for_all (fun (a, b) -> eq_ty a b) @@ Util.zip ts1 ts2)
+    | P.TParen t1, P.TParen t2 -> eq_ty t1 t2
+    | P.TVar (id1, _), P.TVar (id2, _) -> id1 = id2
+    | a, b ->
+        Printf.printf "%s\n%s" (P.show_ty_t a) (P.show_ty_t b) ;
+        false
+
+let rec eq_tydef l r =
+    match (l, r) with
+    | P.Alias ty1, P.Alias ty2 -> eq_ty ty2 ty1
+    | P.Variant defs1, P.Variant defs2 ->
+        List.for_all (fun ((name1, _, tys1), (name2, _, tys2)) ->
+            name1 = name2
+            && (List.for_all (fun (t1, t2) -> eq_ty t1 t2) @@ Util.zip tys1 tys2))
+        @@ Util.zip defs1 defs2
+    | a, b ->
+        Printf.printf "%s\n%s" (P.show_tydef_t a) (P.show_tydef_t b) ;
+        false
+
+let rec eq l r =
+    match (l, r) with
+    | P.Never, P.Never -> true
+    | P.Int (i1, _), P.Int (i2, _) -> i1 = i2
+    | P.Bool (b1, _), P.Bool (b2, _) -> b1 = b2
+    | P.Neg (e1, _), P.Neg (e2, _) -> eq e1 e2
+    | P.Var (id1, _), P.Var (id2, _) -> id1 = id2
+    | P.Paren e1, P.Paren e2 -> eq e1 e2
+    | P.Emp _, P.Emp _ -> true
+    | P.Ctor (id1, _), P.Ctor (id2, _) -> id1 = id2
+    | P.If (c1, t1, e1, _), P.If (c2, t2, e2, _) ->
+        eq c1 c2 && eq t1 t2 && eq e1 e2
+    | P.Assign (a1, v1, _), P.Assign (a2, v2, _) -> eq a1 a2 && eq v1 v2
+    | P.ArrayAssign (a1, i1, v1, _), P.ArrayAssign (a2, i2, v2, _) ->
+        eq a1 a2 && eq i1 i2 && eq v1 v2
+    | P.Add (l1, r1, _), P.Add (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Sub (l1, r1, _), P.Sub (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Mul (l1, r1, _), P.Mul (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Div (l1, r1, _), P.Div (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Mod (l1, r1, _), P.Mod (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.And (l1, r1, _), P.And (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Or (l1, r1, _), P.Or (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Eq (l1, r1, _), P.Eq (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Neq (l1, r1, _), P.Neq (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Gret (l1, r1, _), P.Gret (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Less (l1, r1, _), P.Less (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Seq (l1, r1, _), P.Seq (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Index (l1, r1, _), P.Index (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.Cons (l1, r1, _), P.Cons (l2, r2, _) -> eq l1 l2 && eq r1 r2
+    | P.App (f1, a1, _), P.App (f2, a2, _) ->
+        eq f1 f2 && (List.for_all (fun (a, b) -> eq a b) @@ Util.zip a1 a2)
+    | P.Pipeline (a1, f1, _), P.Pipeline (a2, f2, _) -> eq f1 f2 && eq a1 a2
+    | P.Tuple (es1, _), P.Tuple (es2, _) ->
+        List.for_all (fun (a, b) -> eq a b) @@ Util.zip es1 es2
+    | P.Let (defs1, e1), P.Let (defs2, e2) ->
+        eq e1 e2
+        && List.for_all (fun ((pat1, def1), (pat2, def2)) ->
+               eq_pat pat1 pat2 && eq def1 def2)
+           @@ Util.zip defs1 defs2
+    | P.LetRec (defs1, e1), P.LetRec (defs2, e2) ->
+        eq e1 e2
+        && List.for_all (fun ((id1, _, def1), (id2, _, def2)) ->
+               id1 = id2 && eq def1 def2)
+           @@ Util.zip defs1 defs2
+    | P.Fun (args1, e1), P.Fun (args2, e2) ->
+        eq e1 e2
+        && List.for_all (fun ((id1, _), (id2, _)) -> id1 = id2)
+           @@ Util.zip args1 args2
+    | P.Match (e1, arms1), P.Match (e2, arms2) ->
+        eq e1 e2
+        && List.for_all (fun ((pat1, guard1, e1), (pat2, guard2, e2)) ->
+               eq_pat pat1 pat2 && eq guard1 guard2 && eq e1 e2)
+           @@ Util.zip arms1 arms2
+    | P.Type (defs1, e1), P.Type (defs2, e2) ->
+        List.for_all (fun ((name1, _, targs1, ty1), (name2, _, targs2, ty2)) ->
+            name1 = name2
+            && List.for_all (fun ((t1, _), (t2, _)) -> t1 = t2)
+               @@ Util.zip targs1 targs2
+            && eq_tydef ty1 ty2)
+        @@ Util.zip defs1 defs2
+    | a, b ->
+        Printf.printf "%s\n%s" (P.show a) (P.show b) ;
+        false
+
 let test name src right =
     let left = P.parse @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
-    try Test.assert_eq name left right
+    try Test.assert_eq name (eq left right) true
     with Test.UnitTestError err ->
       Printf.printf "left  : %s\nright : %s\n" (P.show left) (P.show right) ;
       raise @@ Test.UnitTestError err
@@ -10,10 +118,10 @@ let test name src right =
 let test_ty name src right =
     let left =
         match P.parse_ty @@ Lex.lex src @@ Lex.initial_pos "test.ml" with
-        | t, [Lex.Eof] -> t
+        | t, _, [(Lex.Eof, _)] -> t
         | _ -> raise @@ Test.UnitTestError "parse failed"
     in
-    try Test.assert_eq name left right
+    try Test.assert_eq name (eq_ty left right) true
     with Test.UnitTestError err ->
       Printf.printf "left  : %s\nright : %s\n" (P.show_ty_t left)
         (P.show_ty_t right) ;
@@ -21,323 +129,520 @@ let test_ty name src right =
 
 let test_stmts name src right =
     let left = P.parse_stmts @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
-    try Test.assert_eq name left right
+    try Test.assert_eq name (eq left right) true
     with Test.UnitTestError err ->
       Printf.printf "left  : %s\nright : %s\n" (P.show left) (P.show right) ;
       raise @@ Test.UnitTestError err
 
+let p i = ("test.ml", 1, i, i)
+
+let nw = Lex.nowhere
+
 let () =
-    test "parse_add" "0+1+2" (P.Add (P.Add (P.Int 0, P.Int 1), P.Int 2)) ;
-    test "parse_mul" "0*1*2" (P.Mul (P.Mul (P.Int 0, P.Int 1), P.Int 2)) ;
-    test "unary_minus" "1+-2" (P.Add (P.Int 1, P.Neg (P.Int 2))) ;
-    test "mod" "3 mod 2" (P.Mod (P.Int 3, P.Int 2)) ;
-    test "add_r" "0+(1+2)" (P.Add (P.Int 0, P.Paren (P.Add (P.Int 1, P.Int 2)))) ;
+    test "parse_add" "0+1+2"
+      (P.Add (P.Add (P.Int (0, nw), P.Int (1, nw), nw), P.Int (2, nw), nw)) ;
+    test "parse_mul" "0*1*2"
+      (P.Mul (P.Mul (P.Int (0, nw), P.Int (1, nw), nw), P.Int (2, nw), nw)) ;
+    test "unary_minus" "1+-2"
+      (P.Add (P.Int (1, nw), P.Neg (P.Int (2, nw), nw), nw)) ;
+    test "mod" "3\n mod 2"
+      (P.Mod
+         (P.Int (3, nw), P.Int (2, ("test.ml", 2, 6, 8)), ("test.ml", 2, 2, 4))) ;
+    test "add_r" "0+(1+2)"
+      (P.Add
+         (P.Int (0, nw), P.Paren (P.Add (P.Int (1, nw), P.Int (2, nw), nw)), nw)) ;
     test "4arith" "3*(200+300)/4-5"
       (P.Sub
          ( P.Div
-             (P.Mul (P.Int 3, P.Paren (P.Add (P.Int 200, P.Int 300))), P.Int 4)
-         , P.Int 5 )) ;
+             ( P.Mul
+                 ( P.Int (3, nw)
+                 , P.Paren (P.Add (P.Int (200, nw), P.Int (300, nw), nw))
+                 , nw )
+             , P.Int (4, nw)
+             , nw )
+         , P.Int (5, nw)
+         , nw )) ;
     test "bool" "3>2 && not (1 < 0)"
       (P.And
-         ( P.Gret (P.Int 3, P.Int 2)
-         , P.App (P.Var ["not"], [P.Paren (P.Less (P.Int 1, P.Int 0))]) )) ;
-    test "ref" "ref 1" (P.App (P.Var ["ref"], [P.Int 1])) ;
-    test "bool2" "true && false || 1 = 2 && false"
+         ( P.Gret (P.Int (3, nw), P.Int (2, nw), nw)
+         , P.App
+             ( P.Var (["not"], nw)
+             , [P.Paren (P.Less (P.Int (1, nw), P.Int (0, nw), nw))]
+             , nw )
+         , nw )) ;
+    test "ref" "ref 1" (P.App (P.Var (["ref"], nw), [P.Int (1, nw)], nw)) ;
+    test "bool2" "true &&\n false || 1 = 2 && false"
       (P.Or
-         ( P.And (P.Bool true, P.Bool false)
-         , P.And (P.Eq (P.Int 1, P.Int 2), P.Bool false) )) ;
-    test "let simple" "let x = 1 in x"
-      (P.Let ([(P.PVar "x", P.Int 1)], P.Var ["x"])) ;
-    test "let rec" "let rec x = 1 in x"
-      (P.LetRec ([(["x"], P.Int 1)], P.Var ["x"])) ;
+         ( P.And (P.Bool (true, nw), P.Bool (false, nw), nw)
+         , P.And
+             (P.Eq (P.Int (1, nw), P.Int (2, nw), nw), P.Bool (false, nw), nw)
+         , nw )) ;
+    test "let\n   simple" "let x = 1 in\n x"
+      (P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw))) ;
+    test "let rec" "let rec x\n = 1 in x"
+      (P.LetRec ([(["x"], nw, P.Int (1, nw))], P.Var (["x"], nw))) ;
     test "let add left" "1 + let x = 1 in x"
-      (P.Add (P.Int 1, P.Let ([(P.PVar "x", P.Int 1)], P.Var ["x"]))) ;
-    test "let add right" "(let x = 1 in x) + 1"
-      (P.Add (P.Paren (P.Let ([(P.PVar "x", P.Int 1)], P.Var ["x"])), P.Int 1)) ;
-    test "let complex" "let x = let y = 1 in y in let z = x in z"
+      (P.Add
+         ( P.Int (1, nw)
+         , P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw))
+         , nw )) ;
+    test "let add right" "(let x = 1\n   in x) + 1"
+      (P.Add
+         ( P.Paren
+             (P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw)))
+         , P.Int (1, nw)
+         , nw )) ;
+    test "let complex" "let\n x = let y = 1 in y in let z = x in z"
       (P.Let
-         ( [(P.PVar "x", P.Let ([(P.PVar "y", P.Int 1)], P.Var ["y"]))]
-         , P.Let ([(P.PVar "z", P.Var ["x"])], P.Var ["z"]) )) ;
-    test "let and" "let x = 1 and y = 2 in y"
-      (P.Let ([(P.PVar "x", P.Int 1); (P.PVar "y", P.Int 2)], P.Var ["y"])) ;
-    test "let rec and" "let rec x = 1 and y = 2 in y"
-      (P.LetRec ([(["x"], P.Int 1); (["y"], P.Int 2)], P.Var ["y"])) ;
-    test "letfun" "let add x y = x + y in add"
+         ( [ ( P.PVar ("x", nw)
+             , P.Let ([(P.PVar ("y", nw), P.Int (1, nw))], P.Var (["y"], nw)) )
+           ]
+         , P.Let ([(P.PVar ("z", nw), P.Var (["x"], nw))], P.Var (["z"], nw)) )) ;
+    test "let and" "let x = 1 and\n   y = 2 in y"
       (P.Let
-         ( [(P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"])))]
-         , P.Var ["add"] )) ;
+         ( [(P.PVar ("x", nw), P.Int (1, nw)); (P.PVar ("y", nw), P.Int (2, nw))]
+         , P.Var (["y"], nw) )) ;
+    test "let rec and" "let rec\n x = 1 and y = 2 in y"
+      (P.LetRec
+         ( [(["x"], nw, P.Int (1, nw)); (["y"], nw, P.Int (2, nw))]
+         , P.Var (["y"], nw) )) ;
+    test "letfun" "let add\n   x y = x + y in add"
+      (P.Let
+         ( [ ( P.PVar ("add", nw)
+             , P.Fun
+                 ( [("x", nw); ("y", nw)]
+                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ) ]
+         , P.Var (["add"], nw) )) ;
     Parser.count := 0 ;
     test "letfun_pat" "let add (x, y) (z, w) = x + y in add"
       (P.Let
-         ( [ ( P.PVar "add"
+         ( [ ( P.PVar ("add", nw)
              , P.Fun
-                 ( ["<anonymous2>"; "<anonymous1>"]
+                 ( [("<anonymous2>", nw); ("<anonymous1>", nw)]
                  , P.Match
-                     ( P.Var ["<anonymous2>"]
-                     , [ ( P.PParen (P.PTuple [P.PVar "x"; P.PVar "y"])
-                         , P.Bool true
+                     ( P.Var (["<anonymous2>"], nw)
+                     , [ ( P.PParen
+                             (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+                         , P.Bool (true, nw)
                          , P.Match
-                             ( P.Var ["<anonymous1>"]
-                             , [ ( P.PParen (P.PTuple [P.PVar "z"; P.PVar "w"])
-                                 , P.Bool true
-                                 , P.Add (P.Var ["x"], P.Var ["y"]) ) ] ) ) ] )
-                 ) ) ]
-         , P.Var ["add"] )) ;
-    test "letrecfun" "let rec add x y = x + y in add"
-      (P.LetRec
-         ( [(["add"], P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"])))]
-         , P.Var ["add"] )) ;
-    Parser.count := 0 ;
-    test "letrecfun_pat" "let rec add (x, y) (z, w) = x + y in add"
+                             ( P.Var (["<anonymous1>"], nw)
+                             , [ ( P.PParen
+                                     (P.PTuple
+                                        ( [P.PVar ("z", nw); P.PVar ("w", nw)]
+                                        , nw ))
+                                 , P.Bool (true, nw)
+                                 , P.Add
+                                     (P.Var (["x"], nw), P.Var (["y"], nw), nw)
+                                 ) ] ) ) ] ) ) ) ]
+         , P.Var (["add"], nw) )) ;
+    test "letrecfun" "let rec add x\n y = x + y in add"
       (P.LetRec
          ( [ ( ["add"]
+             , nw
              , P.Fun
-                 ( ["<anonymous2>"; "<anonymous1>"]
+                 ( [("x", nw); ("y", nw)]
+                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ) ]
+         , P.Var (["add"], nw) )) ;
+    Parser.count := 0 ;
+    test "letrecfun_pat" "let rec add (x, y) (z,\n   w) = x + y in add"
+      (P.LetRec
+         ( [ ( ["add"]
+             , nw
+             , P.Fun
+                 ( [("<anonymous2>", nw); ("<anonymous1>", nw)]
                  , P.Match
-                     ( P.Var ["<anonymous2>"]
-                     , [ ( P.PParen (P.PTuple [P.PVar "x"; P.PVar "y"])
-                         , P.Bool true
+                     ( P.Var (["<anonymous2>"], nw)
+                     , [ ( P.PParen
+                             (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+                         , P.Bool (true, nw)
                          , P.Match
-                             ( P.Var ["<anonymous1>"]
-                             , [ ( P.PParen (P.PTuple [P.PVar "z"; P.PVar "w"])
-                                 , P.Bool true
-                                 , P.Add (P.Var ["x"], P.Var ["y"]) ) ] ) ) ] )
-                 ) ) ]
-         , P.Var ["add"] )) ;
-    test "fun" "fun x y z -> x + y + z"
+                             ( P.Var (["<anonymous1>"], nw)
+                             , [ ( P.PParen
+                                     (P.PTuple
+                                        ( [P.PVar ("z", nw); P.PVar ("w", nw)]
+                                        , nw ))
+                                 , P.Bool (true, nw)
+                                 , P.Add
+                                     (P.Var (["x"], nw), P.Var (["y"], nw), nw)
+                                 ) ] ) ) ] ) ) ) ]
+         , P.Var (["add"], nw) )) ;
+    test "fun" "fun x\n   y z -> x + y + z"
       (P.Fun
-         (["x"; "y"; "z"], P.Add (P.Add (P.Var ["x"], P.Var ["y"]), P.Var ["z"]))) ;
+         ( [("x", nw); ("y", nw); ("z", nw)]
+         , P.Add
+             ( P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
+             , P.Var (["z"], nw)
+             , nw ) )) ;
     test "fun" "(fun x y z -> x + y + z) 1"
       (P.App
          ( P.Paren
              (P.Fun
-                ( ["x"; "y"; "z"]
-                , P.Add (P.Add (P.Var ["x"], P.Var ["y"]), P.Var ["z"]) ))
-         , [P.Int 1] )) ;
+                ( [("x", nw); ("y", nw); ("z", nw)]
+                , P.Add
+                    ( P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
+                    , P.Var (["z"], nw)
+                    , nw ) ))
+         , [P.Int (1, nw)]
+         , nw )) ;
     Parser.count := 0 ;
-    test "fun pat" "fun x, y -> x + y"
+    test "fun pat" "fun x, y\n   -> x + y"
       (P.Fun
-         ( ["<anonymous1>"]
+         ( [("<anonymous1>", nw)]
          , P.Match
-             ( P.Var ["<anonymous1>"]
-             , [ ( P.PTuple [P.PVar "x"; P.PVar "y"]
-                 , P.Bool true
-                 , P.Add (P.Var ["x"], P.Var ["y"]) ) ] ) )) ;
+             ( P.Var (["<anonymous1>"], nw)
+             , [ ( P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw)
+                 , P.Bool (true, nw)
+                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ] ) )) ;
     Parser.count := 0 ;
     test "fun pat" "fun (x, y) (z, w) -> 0"
       (P.Fun
-         ( ["<anonymous2>"; "<anonymous1>"]
+         ( [("<anonymous2>", nw); ("<anonymous1>", nw)]
          , P.Match
-             ( P.Var ["<anonymous2>"]
-             , [ ( P.PParen (P.PTuple [P.PVar "x"; P.PVar "y"])
-                 , P.Bool true
+             ( P.Var (["<anonymous2>"], nw)
+             , [ ( P.PParen (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+                 , P.Bool (true, nw)
                  , P.Match
-                     ( P.Var ["<anonymous1>"]
-                     , [ ( P.PParen (P.PTuple [P.PVar "z"; P.PVar "w"])
-                         , P.Bool true
-                         , P.Int 0 ) ] ) ) ] ) )) ;
+                     ( P.Var (["<anonymous1>"], nw)
+                     , [ ( P.PParen
+                             (P.PTuple ([P.PVar ("z", nw); P.PVar ("w", nw)], nw))
+                         , P.Bool (true, nw)
+                         , P.Int (0, nw) ) ] ) ) ] ) )) ;
     test "cons" "1 + 2 :: 3 :: [] = []"
-      (P.Eq (P.Cons (P.Add (P.Int 1, P.Int 2), P.Cons (P.Int 3, P.Emp)), P.Emp)) ;
+      (P.Eq
+         ( P.Cons
+             ( P.Add (P.Int (1, nw), P.Int (2, nw), nw)
+             , P.Cons (P.Int (3, nw), P.Emp nw, nw)
+             , nw )
+         , P.Emp nw
+         , nw )) ;
     test "pipeline" "1 |> f |> g"
-      (P.Pipeline (P.Pipeline (P.Int 1, P.Var ["f"]), P.Var ["g"])) ;
+      (P.Pipeline
+         ( P.Pipeline (P.Int (1, nw), P.Var (["f"], nw), nw)
+         , P.Var (["g"], nw)
+         , nw )) ;
     test "@@" "f @@ g @@ 1"
-      (P.App (P.Var ["f"], [P.App (P.Var ["g"], [P.Int 1])])) ;
+      (P.App
+         ( P.Var (["f"], nw)
+         , [P.App (P.Var (["g"], nw), [P.Int (1, nw)], nw)]
+         , nw )) ;
     test "seq" "1; 2 |> f; 3"
-      (P.Seq (P.Int 1, P.Seq (P.Pipeline (P.Int 2, P.Var ["f"]), P.Int 3))) ;
-    test "match1" "match x with y -> 0 | z -> match z with a -> a"
+      (P.Seq
+         ( P.Int (1, nw)
+         , P.Seq
+             ( P.Pipeline (P.Int (2, nw), P.Var (["f"], nw), nw)
+             , P.Int (3, nw)
+             , nw )
+         , nw )) ;
+    test "match1" "match x\n   with\n y -> 0 | z -> match z with a -> a"
       (P.Match
-         ( P.Var ["x"]
-         , [ (P.PVar "y", P.Bool true, P.Int 0)
-           ; ( P.PVar "z"
-             , P.Bool true
-             , P.Match (P.Var ["z"], [(P.PVar "a", P.Bool true, P.Var ["a"])])
+         ( P.Var (["x"], nw)
+         , [ (P.PVar ("y", nw), P.Bool (true, nw), P.Int (0, nw))
+           ; ( P.PVar ("z", nw)
+             , P.Bool (true, nw)
+             , P.Match
+                 ( P.Var (["z"], nw)
+                 , [(P.PVar ("a", nw), P.Bool (true, nw), P.Var (["a"], nw))] )
              ) ] )) ;
-    test "match_when" "match x with y when is_prime y -> 0 | z -> 1"
+    test "match_when" "match x\n with y when is_prime y -> 0 | z -> 1"
       (P.Match
-         ( P.Var ["x"]
-         , [ (P.PVar "y", P.App (P.Var ["is_prime"], [P.Var ["y"]]), P.Int 0)
-           ; (P.PVar "z", P.Bool true, P.Int 1) ] )) ;
-    test "match2" "match x with y -> let x = 1 in x | z -> 1"
+         ( P.Var (["x"], nw)
+         , [ ( P.PVar ("y", nw)
+             , P.App (P.Var (["is_prime"], nw), [P.Var (["y"], nw)], nw)
+             , P.Int (0, nw) )
+           ; (P.PVar ("z", nw), P.Bool (true, nw), P.Int (1, nw)) ] )) ;
+    test "match2" "match x with y -> let x = 1\n   in x | z ->\n 1"
       (P.Match
-         ( P.Var ["x"]
-         , [ ( P.PVar "y"
-             , P.Bool true
-             , P.Let ([(P.PVar "x", P.Int 1)], P.Var ["x"]) )
-           ; (P.PVar "z", P.Bool true, P.Int 1) ] )) ;
-    test "match nested" "match match [] with [] -> [] with [] -> []"
+         ( P.Var (["x"], nw)
+         , [ ( P.PVar ("y", nw)
+             , P.Bool (true, nw)
+             , P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw)) )
+           ; (P.PVar ("z", nw), P.Bool (true, nw), P.Int (1, nw)) ] )) ;
+    test "match nested" "match match [] with [] -> [] with [] ->\n   []"
       (P.Match
-         ( P.Match (P.Emp, [(P.PEmp, P.Bool true, P.Emp)])
-         , [(P.PEmp, P.Bool true, P.Emp)] )) ;
-    test "tuple1" "1, 2" (P.Tuple [P.Int 1; P.Int 2]) ;
+         ( P.Match (P.Emp nw, [(P.PEmp nw, P.Bool (true, nw), P.Emp nw)])
+         , [(P.PEmp nw, P.Bool (true, nw), P.Emp nw)] )) ;
+    test "tuple1" "1, 2" (P.Tuple ([P.Int (1, nw); P.Int (2, nw)], nw)) ;
     test "tuple1" "1+2, 2+3"
-      (P.Tuple [P.Add (P.Int 1, P.Int 2); P.Add (P.Int 2, P.Int 3)]) ;
-    test "tuple1" "1, 2, 3, 4" (P.Tuple [P.Int 1; P.Int 2; P.Int 3; P.Int 4]) ;
+      (P.Tuple
+         ( [ P.Add (P.Int (1, nw), P.Int (2, nw), nw)
+           ; P.Add (P.Int (2, nw), P.Int (3, nw), nw) ]
+         , nw )) ;
+    test "tuple1" "1, 2, 3, 4"
+      (P.Tuple ([P.Int (1, nw); P.Int (2, nw); P.Int (3, nw); P.Int (4, nw)], nw)) ;
     test "tuple nest" "1, (3, 4)"
-      (P.Tuple [P.Int 1; P.Paren (P.Tuple [P.Int 3; P.Int 4])]) ;
+      (P.Tuple
+         ( [ P.Int (1, nw)
+           ; P.Paren (P.Tuple ([P.Int (3, nw); P.Int (4, nw)], nw)) ]
+         , nw )) ;
     test "pattern_tuple" "match x with (x, y) -> x"
       (P.Match
-         ( P.Var ["x"]
-         , [ ( P.PParen (P.PTuple [P.PVar "x"; P.PVar "y"])
-             , P.Bool true
-             , P.Var ["x"] ) ] )) ;
-    test "pattern_tuple" "match x with (x, (y, z)) -> x"
+         ( P.Var (["x"], nw)
+         , [ ( P.PParen (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+             , P.Bool (true, nw)
+             , P.Var (["x"], nw) ) ] )) ;
+    test "pattern_tuple" "match x with (x,\n   (y,\n z)) -> x"
       (P.Match
-         ( P.Var ["x"]
+         ( P.Var (["x"], nw)
          , [ ( P.PParen
                  (P.PTuple
-                    [P.PVar "x"; P.PParen (P.PTuple [P.PVar "y"; P.PVar "z"])])
-             , P.Bool true
-             , P.Var ["x"] ) ] )) ;
+                    ( [ P.PVar ("x", nw)
+                      ; P.PParen
+                          (P.PTuple ([P.PVar ("y", nw); P.PVar ("z", nw)], nw))
+                      ]
+                    , nw ))
+             , P.Bool (true, nw)
+             , P.Var (["x"], nw) ) ] )) ;
     test "pattern_cons" "match x with x :: [] -> x"
       (P.Match
-         ( P.Var ["x"]
-         , [(P.PCons (P.PVar "x", P.PEmp), P.Bool true, P.Var ["x"])] )) ;
-    test "parse_list1" "[1]" (P.Cons (P.Int 1, P.Emp)) ;
-    test "parse_list2" "[1;]" (P.Cons (P.Int 1, P.Emp)) ;
+         ( P.Var (["x"], nw)
+         , [ ( P.PCons (P.PVar ("x", nw), P.PEmp nw, nw)
+             , P.Bool (true, nw)
+             , P.Var (["x"], nw) ) ] )) ;
+    test "parse_list1" "[1]" (P.Cons (P.Int (1, nw), P.Emp nw, nw)) ;
+    test "parse_list2" "[1;]" (P.Cons (P.Int (1, nw), P.Emp nw, nw)) ;
     test "parse_list3" "[1;2;3]"
-      (P.Cons (P.Int 1, P.Cons (P.Int 2, P.Cons (P.Int 3, P.Emp)))) ;
+      (P.Cons
+         ( P.Int (1, nw)
+         , P.Cons (P.Int (2, nw), P.Cons (P.Int (3, nw), P.Emp nw, nw), nw)
+         , nw )) ;
     test "parse_list4" "[1;2;3;]"
-      (P.Cons (P.Int 1, P.Cons (P.Int 2, P.Cons (P.Int 3, P.Emp)))) ;
+      (P.Cons
+         ( P.Int (1, nw)
+         , P.Cons (P.Int (2, nw), P.Cons (P.Int (3, nw), P.Emp nw, nw), nw)
+         , nw )) ;
     test "parse_list5" "1 :: [2;3]"
-      (P.Cons (P.Int 1, P.Cons (P.Int 2, P.Cons (P.Int 3, P.Emp)))) ;
+      (P.Cons
+         ( P.Int (1, nw)
+         , P.Cons (P.Int (2, nw), P.Cons (P.Int (3, nw), P.Emp nw, nw), nw)
+         , nw )) ;
     test "parse_list1" "match [] with [1] -> []"
-      (P.Match (P.Emp, [(P.PCons (P.PInt 1, P.PEmp), P.Bool true, P.Emp)])) ;
+      (P.Match
+         ( P.Emp nw
+         , [ ( P.PCons (P.PInt (1, nw), P.PEmp nw, nw)
+             , P.Bool (true, nw)
+             , P.Emp nw ) ] )) ;
     test "parse_pattern_list2" "match [] with [1;] -> []"
-      (P.Match (P.Emp, [(P.PCons (P.PInt 1, P.PEmp), P.Bool true, P.Emp)])) ;
+      (P.Match
+         ( P.Emp nw
+         , [ ( P.PCons (P.PInt (1, nw), P.PEmp nw, nw)
+             , P.Bool (true, nw)
+             , P.Emp nw ) ] )) ;
     test "parse_pattern_list3" "match [] with [1;2;3] -> []"
       (P.Match
-         ( P.Emp
-         , [ ( P.PCons (P.PInt 1, P.PCons (P.PInt 2, P.PCons (P.PInt 3, P.PEmp)))
-             , P.Bool true
-             , P.Emp ) ] )) ;
+         ( P.Emp nw
+         , [ ( P.PCons
+                 ( P.PInt (1, nw)
+                 , P.PCons
+                     ( P.PInt (2, nw)
+                     , P.PCons (P.PInt (3, nw), P.PEmp nw, nw)
+                     , nw )
+                 , nw )
+             , P.Bool (true, nw)
+             , P.Emp nw ) ] )) ;
     test "parse_pattern_list4" "match [] with [1;2;3;] -> []"
       (P.Match
-         ( P.Emp
-         , [ ( P.PCons (P.PInt 1, P.PCons (P.PInt 2, P.PCons (P.PInt 3, P.PEmp)))
-             , P.Bool true
-             , P.Emp ) ] )) ;
-    test "parse_pattern_list5" "match [] with 1 :: [2;3] -> []"
+         ( P.Emp nw
+         , [ ( P.PCons
+                 ( P.PInt (1, nw)
+                 , P.PCons
+                     ( P.PInt (2, nw)
+                     , P.PCons (P.PInt (3, nw), P.PEmp nw, nw)
+                     , nw )
+                 , nw )
+             , P.Bool (true, nw)
+             , P.Emp nw ) ] )) ;
+    test "parse_pattern_list5" "match [] with 1 ::\n\n   [2;3] -> []"
       (P.Match
-         ( P.Emp
-         , [ ( P.PCons (P.PInt 1, P.PCons (P.PInt 2, P.PCons (P.PInt 3, P.PEmp)))
-             , P.Bool true
-             , P.Emp ) ] )) ;
+         ( P.Emp nw
+         , [ ( P.PCons
+                 ( P.PInt (1, nw)
+                 , P.PCons
+                     ( P.PInt (2, nw)
+                     , P.PCons (P.PInt (3, nw), P.PEmp nw, nw)
+                     , nw )
+                 , nw )
+             , P.Bool (true, nw)
+             , P.Emp nw ) ] )) ;
     test "parse_as" "match [] with 1, 2 as x -> []"
       (P.Match
-         ( P.Emp
-         , [ ( P.PAs [P.PTuple [P.PInt 1; P.PInt 2]; P.PVar "x"]
-             , P.Bool true
-             , P.Emp ) ] )) ;
+         ( P.Emp nw
+         , [ ( P.PAs
+                 ( [ P.PTuple ([P.PInt (1, nw); P.PInt (2, nw)], nw)
+                   ; P.PVar ("x", nw) ]
+                 , nw )
+             , P.Bool (true, nw)
+             , P.Emp nw ) ] )) ;
     test "parse_as" "match [] with X 1 :: [] -> []"
       (P.Match
-         ( P.Emp
-         , [(P.PCons (P.PCtorApp (["X"], P.PInt 1), P.PEmp), P.Bool true, P.Emp)]
-         )) ;
-    test "let x, y = z in x" "let x, y = z in x"
-      (P.Let ([(P.PTuple [P.PVar "x"; P.PVar "y"], P.Var ["z"])], P.Var ["x"])) ;
-    test "app1" "1 + f 2" (P.Add (P.Int 1, P.App (P.Var ["f"], [P.Int 2]))) ;
-    test "app2" "- f 2" (P.Neg (P.App (P.Var ["f"], [P.Int 2]))) ;
-    test "app3" "f 1 + 2" (P.Add (P.App (P.Var ["f"], [P.Int 1]), P.Int 2)) ;
-    test "app4" "f 1 2" (P.App (P.Var ["f"], [P.Int 1; P.Int 2])) ;
-    test "app5" "f 1 2 3" (P.App (P.Var ["f"], [P.Int 1; P.Int 2; P.Int 3])) ;
+         ( P.Emp nw
+         , [ ( P.PCons (P.PCtorApp (["X"], P.PInt (1, nw), nw), P.PEmp nw, nw)
+             , P.Bool (true, nw)
+             , P.Emp nw ) ] )) ;
+    test "let\n\n   x, y = z in x" "let x, y = z in x"
+      (P.Let
+         ( [ ( P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw)
+             , P.Var (["z"], nw) ) ]
+         , P.Var (["x"], nw) )) ;
+    test "app1" "1 + f 2"
+      (P.Add (P.Int (1, nw), P.App (P.Var (["f"], nw), [P.Int (2, nw)], nw), nw)) ;
+    test "app2" "- f 2"
+      (P.Neg (P.App (P.Var (["f"], nw), [P.Int (2, nw)], nw), nw)) ;
+    test "app3" "f 1 + 2"
+      (P.Add (P.App (P.Var (["f"], nw), [P.Int (1, nw)], nw), P.Int (2, nw), nw)) ;
+    test "app4" "f 1 2"
+      (P.App (P.Var (["f"], nw), [P.Int (1, nw); P.Int (2, nw)], nw)) ;
+    test "app5" "f 1 2 3"
+      (P.App
+         (P.Var (["f"], nw), [P.Int (1, nw); P.Int (2, nw); P.Int (3, nw)], nw)) ;
     test "ctor" "Leaf (1, 2)"
-      (P.App (P.Ctor ["Leaf"], [P.Paren (P.Tuple [P.Int 1; P.Int 2])])) ;
-    test "if" "if f x then 1 else let x = 1 in x"
+      (P.App
+         ( P.Ctor (["Leaf"], nw)
+         , [P.Paren (P.Tuple ([P.Int (1, nw); P.Int (2, nw)], nw))]
+         , nw )) ;
+    test "if" "if f x then 1 else let x = 1\n   in\n x"
       (P.If
-         ( P.App (P.Var ["f"], [P.Var ["x"]])
-         , P.Int 1
-         , P.Let ([(P.PVar "x", P.Int 1)], P.Var ["x"]) )) ;
+         ( P.App (P.Var (["f"], nw), [P.Var (["x"], nw)], nw)
+         , P.Int (1, nw)
+         , P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Var (["x"], nw))
+         , nw )) ;
     test "if_nested"
-      "if if x then true else false then true else if y then true else false"
+      "if if x then\n\
+      \   true else\n\
+      \  false then true else if y then true else false"
       (P.If
-         ( P.If (P.Var ["x"], P.Bool true, P.Bool false)
-         , P.Bool true
-         , P.If (P.Var ["y"], P.Bool true, P.Bool false) )) ;
+         ( P.If (P.Var (["x"], nw), P.Bool (true, nw), P.Bool (false, nw), nw)
+         , P.Bool (true, nw)
+         , P.If (P.Var (["y"], nw), P.Bool (true, nw), P.Bool (false, nw), nw)
+         , nw )) ;
     test "assign" "a := 1 + 2"
-      (P.Assign (P.Var ["a"], P.Add (P.Int 1, P.Int 2))) ;
+      (P.Assign (P.Var (["a"], nw), P.Add (P.Int (1, nw), P.Int (2, nw), nw), nw)) ;
     test "assign" "a.(0) <- 1 + 2"
-      (P.ArrayAssign (P.Var ["a"], P.Int 0, P.Add (P.Int 1, P.Int 2))) ;
-    test "ref array" "a.(0) <- a.(0)"
-      (P.ArrayAssign (P.Var ["a"], P.Int 0, P.Index (P.Var ["a"], P.Int 0))) ;
-    test "dot access" "X.Y.z" (P.Var ["X"; "Y"; "z"]) ;
+      (P.ArrayAssign
+         ( P.Var (["a"], nw)
+         , P.Int (0, nw)
+         , P.Add (P.Int (1, nw), P.Int (2, nw), nw)
+         , nw )) ;
+    test "ref\n   array" "a.(0) <-\n a.(0)"
+      (P.ArrayAssign
+         ( P.Var (["a"], nw)
+         , P.Int (0, nw)
+         , P.Index (P.Var (["a"], nw), P.Int (0, nw), nw)
+         , nw )) ;
+    test "dot access" "X.Y.z" (P.Var (["X"; "Y"; "z"], nw)) ;
     test "arr assign" "(getarr 0).(1+1) <- 2"
       (P.ArrayAssign
-         ( P.Paren (P.App (P.Var ["getarr"], [P.Int 0]))
-         , P.Add (P.Int 1, P.Int 1)
-         , P.Int 2 )) ;
+         ( P.Paren (P.App (P.Var (["getarr"], nw), [P.Int (0, nw)], nw))
+         , P.Add (P.Int (1, nw), P.Int (1, nw), nw)
+         , P.Int (2, nw)
+         , nw )) ;
     test "dot array assign" "X.y.(1) <- 1 + 1"
-      (P.ArrayAssign (P.Var ["X"; "y"], P.Int 1, P.Add (P.Int 1, P.Int 1))) ;
+      (P.ArrayAssign
+         ( P.Var (["X"; "y"], nw)
+         , P.Int (1, nw)
+         , P.Add (P.Int (1, nw), P.Int (1, nw), nw)
+         , nw )) ;
     test "unit" "let () = () in ()"
-      (P.Let ([(P.PTuple [], P.Tuple [])], P.Tuple [])) ;
-    test_ty "tuple1" "t * t" (P.TTuple [P.TApp ([], ["t"]); P.TApp ([], ["t"])]) ;
-    test_ty "tuple2" "t * (t * t)"
+      (P.Let ([(P.PTuple ([], nw), P.Tuple ([], nw))], P.Tuple ([], nw))) ;
+    test_ty "tuple1" "t * t"
+      (P.TTuple ([P.TApp ([], ["t"], nw); P.TApp ([], ["t"], nw)], nw)) ;
+    test_ty "tuple2" "t *\n   (t * t)"
       (P.TTuple
-         [ P.TApp ([], ["t"])
-         ; P.TParen (P.TTuple [P.TApp ([], ["t"]); P.TApp ([], ["t"])]) ]) ;
+         ( [ P.TApp ([], ["t"], nw)
+           ; P.TParen
+               (P.TTuple ([P.TApp ([], ["t"], nw); P.TApp ([], ["t"], nw)], nw))
+           ]
+         , nw )) ;
     test_ty "tid" "M1.t * M2.t"
-      (P.TTuple [P.TApp ([], ["M1"; "t"]); P.TApp ([], ["M2"; "t"])]) ;
+      (P.TTuple
+         ([P.TApp ([], ["M1"; "t"], nw); P.TApp ([], ["M2"; "t"], nw)], nw)) ;
     test_ty "higher type" "t list list"
-      (P.TApp ([P.TApp ([P.TApp ([], ["t"])], ["list"])], ["list"])) ;
-    test_ty "tapp2" "(a * a) list"
+      (P.TApp ([P.TApp ([P.TApp ([], ["t"], nw)], ["list"], nw)], ["list"], nw)) ;
+    test_ty "tapp2" "(a * a)\n list"
       (P.TApp
-         ( [P.TParen (P.TTuple [P.TApp ([], ["a"]); P.TApp ([], ["a"])])]
-         , ["list"] )) ;
-    test_ty "('a list)" "('a list)" (P.TApp ([P.TVar "a"], ["list"])) ;
+         ( [ P.TParen
+               (P.TTuple ([P.TApp ([], ["a"], nw); P.TApp ([], ["a"], nw)], nw))
+           ]
+         , ["list"]
+         , nw )) ;
+    test_ty "('a list)" "('a list)" (P.TApp ([P.TVar ("a", nw)], ["list"], nw)) ;
     test_ty "tapp2" "(a, a) list"
-      (P.TApp ([P.TApp ([], ["a"]); P.TApp ([], ["a"])], ["list"])) ;
-    test_ty "tvar" "'a list" (P.TApp ([P.TVar "a"], ["list"])) ;
-    test_stmts "let stmt" "let x = 1" (P.Let ([(P.PVar "x", P.Int 1)], P.Never)) ;
-    test_stmts "letfun stmt" "let add x y = x + y"
+      (P.TApp ([P.TApp ([], ["a"], nw); P.TApp ([], ["a"], nw)], ["list"], nw)) ;
+    test_ty "tvar" "'a\n   list" (P.TApp ([P.TVar ("a", nw)], ["list"], nw)) ;
+    test_stmts "let stmt" "let x = 1"
+      (P.Let ([(P.PVar ("x", nw), P.Int (1, nw))], P.Never)) ;
+    test_stmts "letfun stmt" "let\n   add x y =\n x + y"
       (P.Let
-         ( [(P.PVar "add", P.Fun (["x"; "y"], P.Add (P.Var ["x"], P.Var ["y"])))]
-         , P.Never )) ;
-    test_stmts "letrec and" "let rec f = 1 and g = 2"
-      (P.LetRec ([(["f"], P.Int 1); (["g"], P.Int 2)], P.Never)) ;
-    test_stmts "let and" "let f = 1 and g = 2"
-      (P.Let ([(P.PVar "f", P.Int 1); (P.PVar "g", P.Int 2)], P.Never)) ;
-    P.count := 0 ;
-    test_stmts "letfun and" "let add (x, y) (z, w) = x + y and add2 = add"
-      (P.Let
-         ( [ ( P.PVar "add"
+         ( [ ( P.PVar ("add", nw)
              , P.Fun
-                 ( ["<anonymous2>"; "<anonymous1>"]
-                 , P.Match
-                     ( P.Var ["<anonymous2>"]
-                     , [ ( P.PParen (P.PTuple [P.PVar "x"; P.PVar "y"])
-                         , P.Bool true
-                         , P.Match
-                             ( P.Var ["<anonymous1>"]
-                             , [ ( P.PParen (P.PTuple [P.PVar "z"; P.PVar "w"])
-                                 , P.Bool true
-                                 , P.Add (P.Var ["x"], P.Var ["y"]) ) ] ) ) ] )
-                 ) )
-           ; (P.PVar "add2", P.Var ["add"]) ]
+                 ( [("x", nw); ("y", nw)]
+                 , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw) ) ) ]
          , P.Never )) ;
-    test_stmts "type variant" "type t = Leaf of int | Node of t * t"
+    test_stmts "letrec and" "let rec f = 1\n   and g = 2"
+      (P.LetRec
+         ([(["f"], nw, P.Int (1, nw)); (["g"], nw, P.Int (2, nw))], P.Never)) ;
+    test_stmts "let\n and" "let f = 1 and g = 2"
+      (P.Let
+         ( [(P.PVar ("f", nw), P.Int (1, nw)); (P.PVar ("g", nw), P.Int (2, nw))]
+         , P.Never )) ;
+    P.count := 0 ;
+    test_stmts "letfun and" "let add (x, y) (z,\n w) = x + y and add2 = add"
+      (P.Let
+         ( [ ( P.PVar ("add", nw)
+             , P.Fun
+                 ( [("<anonymous2>", nw); ("<anonymous1>", nw)]
+                 , P.Match
+                     ( P.Var (["<anonymous2>"], nw)
+                     , [ ( P.PParen
+                             (P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw))
+                         , P.Bool (true, nw)
+                         , P.Match
+                             ( P.Var (["<anonymous1>"], nw)
+                             , [ ( P.PParen
+                                     (P.PTuple
+                                        ( [P.PVar ("z", nw); P.PVar ("w", nw)]
+                                        , nw ))
+                                 , P.Bool (true, nw)
+                                 , P.Add
+                                     (P.Var (["x"], nw), P.Var (["y"], nw), nw)
+                                 ) ] ) ) ] ) ) )
+           ; (P.PVar ("add2", nw), P.Var (["add"], nw)) ]
+         , P.Never )) ;
+    test_stmts "type variant" "type t =\n   Leaf of\n int | Node of t * t"
       (P.Type
          ( [ ( "t"
+             , nw
              , []
              , P.Variant
-                 [ ("Leaf", [P.TInt])
-                 ; ("Node", [P.TApp ([], ["t"]); P.TApp ([], ["t"])]) ] ) ]
+                 [ ("Leaf", nw, [P.TInt nw])
+                 ; ("Node", nw, [P.TApp ([], ["t"], nw); P.TApp ([], ["t"], nw)])
+                 ] ) ]
          , P.Never )) ;
     test_stmts "type variant and"
-      "type t = Leaf of int | Node of t * t and 'a a_t = int"
+      "type t = Leaf of int | Node of t\n   * t and 'a\n a_t = int"
       (P.Type
          ( [ ( "t"
+             , nw
              , []
              , P.Variant
-                 [ ("Leaf", [P.TInt])
-                 ; ("Node", [P.TApp ([], ["t"]); P.TApp ([], ["t"])]) ] )
-           ; ("a_t", ["a"], P.Alias P.TInt) ]
+                 [ ("Leaf", nw, [P.TInt nw])
+                 ; ("Node", nw, [P.TApp ([], ["t"], nw); P.TApp ([], ["t"], nw)])
+                 ] )
+           ; ("a_t", nw, [("a", nw)], P.Alias (P.TInt nw)) ]
          , P.Never )) ;
-    test_stmts "type option" "type 'a t = Some of 'a | None"
-      (P.Type
-         ( [("t", ["a"], P.Variant [("Some", [P.TVar "a"]); ("None", [])])]
-         , P.Never )) ;
-    test_stmts "type result" "type ('a, 'b) t = Ok of 'a | Err of 'b"
+    test_stmts "type option" "type 'a t =\n   Some of 'a |\n None"
       (P.Type
          ( [ ( "t"
-             , ["a"; "b"]
-             , P.Variant [("Ok", [P.TVar "a"]); ("Err", [P.TVar "b"])] ) ]
+             , nw
+             , [("a", nw)]
+             , P.Variant [("Some", nw, [P.TVar ("a", nw)]); ("None", nw, [])] )
+           ]
+         , P.Never )) ;
+    test_stmts "type result" "type ('a, 'b)\n   t = Ok of 'a |\n Err of 'b"
+      (P.Type
+         ( [ ( "t"
+             , nw
+             , [("a", nw); ("b", nw)]
+             , P.Variant
+                 [ ("Ok", nw, [P.TVar ("a", nw)])
+                 ; ("Err", nw, [P.TVar ("b", nw)]) ] ) ]
          , P.Never ))

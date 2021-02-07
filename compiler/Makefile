@@ -35,7 +35,7 @@ lex_test.cmx: lex_test.ml parser.cmx test.cmx
 lex_test: test.cmx lex.cmx lex_test.cmx 
 	$(OCAMLOPT) $^ -o $@
 
-parser_test.cmx: parser_test.ml parser.cmx lex.cmx
+parser_test.cmx: parser_test.ml parser.cmx lex.cmx util.cmx
 	$(OCAMLOPT) $< -c
 
 id.cmx: id.ml
@@ -44,7 +44,7 @@ id.cmx: id.ml
 parser.cmx: parser.ml lex.cmx
 	$(OCAMLOPT) $< -c
 
-parser_test: lex.cmx test.cmx parser.cmx parser_test.cmx 
+parser_test: lex.cmx test.cmx parser.cmx util.cmx parser_test.cmx 
 	$(OCAMLOPT) $^ -o $@
 
 alpha.cmx: alpha.ml types.cmx ast.cmx

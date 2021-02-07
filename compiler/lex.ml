@@ -186,7 +186,7 @@ let match_hexint = chain (match_str "0x") (opt match_hexnum_char)
 
 let update_pos s (fname, line, col, i_start) i_end =
     let rec f (col, el_cnt) i =
-        if i = i_end then (col, el_cnt)
+        if i >= i_end then (col, el_cnt)
         else if s.[i] = '\n' then f (0, el_cnt + 1) (i + 1)
         else f (col + 1, el_cnt) (i + 1)
     in
@@ -225,7 +225,7 @@ let rec lex s pos =
         (* 愚直すぎ (末尾再帰の最適化を狙っています。許して) *)
         | None -> match match_str "." s i with
         | Some i' -> (Dot, pos (i+1)) :: lex s (pos i')
-        | None -> match match_str "pos ::" s i with
+        | None -> match match_str "::" s i with
         | Some i' -> (Cons, pos (i+1)) :: lex s (pos i')
         | None -> match match_str "->" s i with
         | Some i' -> (Arrow, pos (i+1)) :: lex s (pos i')
@@ -272,7 +272,7 @@ let rec lex s pos =
         | None -> match match_str "|" s i with
         | Some i' -> (VBar, pos (i+1)) :: lex s (pos i')
         | None -> match match_upper_ident s i with
-        | Some i' -> (UIdent (take i), pos (i+1)) :: lex s (pos i')
+        | Some i' -> (UIdent (take i'), pos (i+1)) :: lex s (pos i')
         | None -> match match_lower_ident s i with
         | Some i' -> begin match take i' with
             | "and" -> (AndDef, pos (i+1)) :: lex s (pos i')
@@ -298,7 +298,7 @@ let rec lex s pos =
             | "mod" -> (Mod, pos (i+1)) :: lex s (pos i')
             | ident -> (LIdent ident, pos (i+1)) :: lex s (pos i')
         end
-        | None -> raise (LexException (pos 0))
+        | None -> Printf.printf "lex: %s %d\n" s i; raise (LexException (pos 0))
 [@@ocamlformat "disable"]
 
 let f fname src = lex src @@ initial_pos fname

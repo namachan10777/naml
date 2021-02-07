@@ -3,60 +3,60 @@ type pos_t = string * int * int * int [@@deriving show]
 let initial_pos fname = (fname, 1, 1, 0)
 
 type t =
-    | Str of string
-    | Int of int
-    | UIdent of string
-    | Char of char
-    | LIdent of string
-    | TVar of string
-    | TInt
-    | TBool
-    | TString
-    | Type
-    | Of
-    | Dot
-    | True
-    | False
-    | Add
-    | Sub
-    | Mul
-    | Div
-    | Mod
-    | Cons
-    | Gret
-    | Less
-    | Eq
-    | Neq
-    | And
-    | Or
-    | Pipeline
-    | AtAt
-    | Assign
-    | ArrayAssign
-    | LP
-    | RP
-    | LB
-    | RB
-    | Semicol
-    | Comma
-    | VBar
-    | Arrow
-    | Fun
-    | If
-    | Then
-    | Else
-    | Let
-    | In
-    | Rec
-    | AndDef
-    | Match
-    | When
-    | With
-    | Builtin
-    | Not
-    | Ref
-    | As
-    | Eof
+    | Str of string * pos_t
+    | Int of int * pos_t
+    | UIdent of string * pos_t
+    | Char of char * pos_t
+    | LIdent of string * pos_t
+    | TVar of string * pos_t
+    | TInt of pos_t
+    | TBool of pos_t
+    | TString of pos_t
+    | Type of pos_t
+    | Of of pos_t
+    | Dot of pos_t
+    | True of pos_t
+    | False of pos_t
+    | Add of pos_t
+    | Sub of pos_t
+    | Mul of pos_t
+    | Div of pos_t
+    | Mod of pos_t
+    | Cons of pos_t
+    | Gret of pos_t
+    | Less of pos_t
+    | Eq of pos_t
+    | Neq of pos_t
+    | And of pos_t
+    | Or of pos_t
+    | Pipeline of pos_t
+    | AtAt of pos_t
+    | Assign of pos_t
+    | ArrayAssign of pos_t
+    | LP of pos_t
+    | RP of pos_t
+    | LB of pos_t
+    | RB of pos_t
+    | Semicol of pos_t
+    | Comma of pos_t
+    | VBar of pos_t
+    | Arrow of pos_t
+    | Fun of pos_t
+    | If of pos_t
+    | Then of pos_t
+    | Else of pos_t
+    | Let of pos_t
+    | In of pos_t
+    | Rec of pos_t
+    | AndDef of pos_t
+    | Match of pos_t
+    | When of pos_t
+    | With of pos_t
+    | Builtin of pos_t
+    | Not of pos_t
+    | Ref of pos_t
+    | As of pos_t
+    | Eof of pos_t
 [@@deriving show]
 
 let count_newline s =
@@ -190,103 +190,103 @@ let rec lex s pos =
     let (_, _, _, i) = pos in
     let take e = String.sub s i (e-i) in
     if i = String.length s
-    then [Eof]
+    then [Eof pos]
     else
         match match_strlit s i with
         | Some i ->
             let inner = take i in
-            Str (String.sub inner 1 ((String.length inner) - 2)) :: lex s (update_pos s pos i)
+            Str (String.sub inner 1 ((String.length inner) - 2), pos) :: lex s (update_pos s pos i)
         | None -> match match_charlit s i with
         | Some i ->
             let inner = take i in
-            Char (inner.[(String.length inner) - 2]) :: lex s (update_pos s pos i)
+            Char (inner.[(String.length inner) - 2], pos) :: lex s (update_pos s pos i)
         | None -> match match_tvar s i with
         | Some i -> let inner = take i in
-            TVar (String.sub inner 1 ((String.length inner) - 1)) :: lex s (update_pos s pos i)
+            TVar (String.sub inner 1 ((String.length inner) - 1), pos) :: lex s (update_pos s pos i)
         | None -> match match_space s i with
         | Some i -> lex s (update_pos s pos i)
         | None -> match match_hexint s i with
         | Some i ->
-            Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
+            Int (int_of_string @@ take i, pos) :: lex s (update_pos s pos i)
         | None -> match match_int s i with
         | Some i ->
-            Int (int_of_string @@ take i) :: lex s (update_pos s pos i)
+            Int (int_of_string @@ take i, pos) :: lex s (update_pos s pos i)
 
         (* 愚直すぎ (末尾再帰の最適化を狙っています。許して) *)
         | None -> match match_str "." s i with
-        | Some i -> Dot :: lex s (update_pos s pos i)
-        | None -> match match_str "::" s i with
-        | Some i -> Cons :: lex s (update_pos s pos i)
+        | Some i -> Dot pos :: lex s (update_pos s pos i)
+        | None -> match match_str "pos ::" s i with
+        | Some i -> Cons pos :: lex s (update_pos s pos i)
         | None -> match match_str "->" s i with
-        | Some i -> Arrow :: lex s (update_pos s pos i)
+        | Some i -> Arrow pos :: lex s (update_pos s pos i)
         | None -> match match_str "<-" s i with
-        | Some i -> ArrayAssign :: lex s (update_pos s pos i)
+        | Some i -> ArrayAssign pos :: lex s (update_pos s pos i)
         | None -> match match_str ":=" s i with
-        | Some i -> Assign :: lex s (update_pos s pos i)
+        | Some i -> Assign pos :: lex s (update_pos s pos i)
         | None -> match match_str "+" s i with
-        | Some i -> Add :: lex s (update_pos s pos i)
+        | Some i -> Add pos :: lex s (update_pos s pos i)
         | None -> match match_str "-" s i with
-        | Some i -> Sub :: lex s (update_pos s pos i)
+        | Some i -> Sub pos :: lex s (update_pos s pos i)
         | None -> match match_str "*" s i with
-        | Some i -> Mul :: lex s (update_pos s pos i)
+        | Some i -> Mul pos :: lex s (update_pos s pos i)
         | None -> match match_str "/" s i with
-        | Some i -> Div :: lex s (update_pos s pos i)
+        | Some i -> Div pos :: lex s (update_pos s pos i)
         | None -> match match_str "|>" s i with
-        | Some i -> Pipeline :: lex s (update_pos s pos i)
+        | Some i -> Pipeline pos :: lex s (update_pos s pos i)
         | None -> match match_str "@@" s i with
-        | Some i -> AtAt :: lex s (update_pos s pos i)
+        | Some i -> AtAt pos :: lex s (update_pos s pos i)
         | None -> match match_str "||" s i with
-        | Some i -> Or :: lex s (update_pos s pos i)
+        | Some i -> Or pos :: lex s (update_pos s pos i)
         | None -> match match_str "&&" s i with
-        | Some i -> And :: lex s (update_pos s pos i)
+        | Some i -> And pos :: lex s (update_pos s pos i)
         | None -> match match_str "=" s i with
-        | Some i -> Eq :: lex s (update_pos s pos i)
+        | Some i -> Eq pos :: lex s (update_pos s pos i)
         | None -> match match_str "<>" s i with
-        | Some i -> Neq :: lex s (update_pos s pos i)
+        | Some i -> Neq pos :: lex s (update_pos s pos i)
         | None -> match match_str ">" s i with
-        | Some i -> Gret :: lex s (update_pos s pos i)
+        | Some i -> Gret pos :: lex s (update_pos s pos i)
         | None -> match match_str "<" s i with
-        | Some i -> Less :: lex s (update_pos s pos i)
+        | Some i -> Less pos :: lex s (update_pos s pos i)
         | None -> match match_str "(" s i with
-        | Some i -> LP :: lex s (update_pos s pos i)
+        | Some i -> LP pos :: lex s (update_pos s pos i)
         | None -> match match_str ")" s i with
-        | Some i -> RP :: lex s (update_pos s pos i)
+        | Some i -> RP pos :: lex s (update_pos s pos i)
         | None -> match match_str "[" s i with
-        | Some i -> LB :: lex s (update_pos s pos i)
+        | Some i -> LB pos :: lex s (update_pos s pos i)
         | None -> match match_str "]" s i with
-        | Some i -> RB :: lex s (update_pos s pos i)
+        | Some i -> RB pos :: lex s (update_pos s pos i)
         | None -> match match_str ";" s i with
-        | Some i -> Semicol :: lex s (update_pos s pos i)
+        | Some i -> Semicol pos :: lex s (update_pos s pos i)
         | None -> match match_str "," s i with
-        | Some i -> Comma :: lex s (update_pos s pos i)
+        | Some i -> Comma pos :: lex s (update_pos s pos i)
         | None -> match match_str "|" s i with
-        | Some i -> VBar :: lex s (update_pos s pos i)
+        | Some i -> VBar pos :: lex s (update_pos s pos i)
         | None -> match match_upper_ident s i with
-        | Some i -> UIdent (take i) :: lex s (update_pos s pos i)
+        | Some i -> UIdent (take i, pos) :: lex s (update_pos s pos i)
         | None -> match match_lower_ident s i with
         | Some i -> begin match take i with
-            | "and" -> AndDef :: lex s (update_pos s pos i)
-            | "type" -> Type :: lex s (update_pos s pos i)
-            | "of" -> Of :: lex s (update_pos s pos i)
-            | "as" -> As :: lex s (update_pos s pos i)
-            | "int" -> TInt :: lex s (update_pos s pos i)
-            | "bool" -> TBool :: lex s (update_pos s pos i)
-            | "string" -> TString :: lex s (update_pos s pos i)
-            | "true" -> True :: lex s (update_pos s pos i)
-            | "false" -> False :: lex s (update_pos s pos i)
-            | "if" -> If :: lex s (update_pos s pos i)
-            | "then" -> Then :: lex s (update_pos s pos i)
-            | "else" -> Else :: lex s (update_pos s pos i)
-            | "let" -> Let :: lex s (update_pos s pos i)
-            | "rec" -> Rec :: lex s (update_pos s pos i)
-            | "in" -> In :: lex s (update_pos s pos i)
-            | "fun" -> Fun :: lex s (update_pos s pos i)
-            | "match" -> Match :: lex s (update_pos s pos i)
-            | "when" -> When :: lex s (update_pos s pos i)
-            | "with" -> With :: lex s (update_pos s pos i)
-            | "builtin" -> Builtin :: lex s (update_pos s pos i)
-            | "mod" -> Mod :: lex s (update_pos s pos i)
-            | ident -> LIdent ident :: lex s (update_pos s pos i)
+            | "and" -> AndDef pos :: lex s (update_pos s pos i)
+            | "type" -> Type pos :: lex s (update_pos s pos i)
+            | "of" -> Of pos :: lex s (update_pos s pos i)
+            | "as" -> As pos :: lex s (update_pos s pos i)
+            | "int" -> TInt pos :: lex s (update_pos s pos i)
+            | "bool" -> TBool pos :: lex s (update_pos s pos i)
+            | "string" -> TString pos :: lex s (update_pos s pos i)
+            | "true" -> True pos :: lex s (update_pos s pos i)
+            | "false" -> False pos :: lex s (update_pos s pos i)
+            | "if" -> If pos :: lex s (update_pos s pos i)
+            | "then" -> Then pos :: lex s (update_pos s pos i)
+            | "else" -> Else pos :: lex s (update_pos s pos i)
+            | "let" -> Let pos :: lex s (update_pos s pos i)
+            | "rec" -> Rec pos :: lex s (update_pos s pos i)
+            | "in" -> In pos :: lex s (update_pos s pos i)
+            | "fun" -> Fun pos :: lex s (update_pos s pos i)
+            | "match" -> Match pos :: lex s (update_pos s pos i)
+            | "when" -> When pos :: lex s (update_pos s pos i)
+            | "with" -> With pos :: lex s (update_pos s pos i)
+            | "builtin" -> Builtin pos :: lex s (update_pos s pos i)
+            | "mod" -> Mod pos :: lex s (update_pos s pos i)
+            | ident -> LIdent (ident, pos) :: lex s (update_pos s pos i)
         end
         | None -> raise (LexException pos)
 [@@ocamlformat "disable"]

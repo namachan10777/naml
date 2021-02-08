@@ -4,7 +4,7 @@ type tid_t = Tid of int [@@deriving show]
 
 type cid_t = Cid of int [@@deriving show]
 
-type vid_t = Vid of int [@@deriving show]
+type vid_t = Vid of int | VidSSA of int [@@deriving show]
 
 type pid_t = Pid of int [@@deriving show]
 

@@ -288,3 +288,5 @@ let rec of_expr fun_pre env =
         Type
           ( Util.zip4 (List.map (fun (_, i, _) -> i) names) ps targs_l tys
           , of_expr fun_pre env e )
+
+let f ast = of_expr "" (init ()) ast

@@ -1,7 +1,10 @@
 type t =
-    | LetCosure of Types.vid_t * Types.vid_t list
+    | LetClosure of
+        Types.vid_t * Types.vid_t list * t list * Types.vid_t * string
     | LetCall of Types.vid_t * Types.vid_t * Types.vid_t list
     | LetInt of Types.vid_t * int
+    | Phi of Types.vid_t * Types.vid_t * Types.vid_t
+    | Test of Types.vid_t * t list * t list
     | LetBool of Types.vid_t * bool
     | LetAccess of Types.vid_t * Types.vid_t
     | If of Types.vid_t * t list * t list
@@ -15,6 +18,8 @@ let count_v = ref 0
 let fresh_v () =
     count_v := !count_v + 1 ;
     Types.VidSSA !count_v
+
+let init () = count_v := 0
 
 let rec g env = function
     | Typing.App (f, args) ->
@@ -38,8 +43,34 @@ let rec g env = function
           | LetCall (_, f, args) :: rest, _ -> LetCall (id, f, args) :: rest
           | _ -> failwith "unimplemented" )
         , id )
+    | Typing.LetRec ([(id, _, def)], expr) ->
+        let expr, _ = g env expr in
+        ( ( expr
+          @
+          match g env def with
+          | LetBool (_, b) :: rest, _ -> LetBool (id, b) :: rest
+          | LetInt (_, i) :: rest, _ -> LetInt (id, i) :: rest
+          | LetCall (_, f, args) :: rest, _ -> LetCall (id, f, args) :: rest
+          | Phi (_, x, y) :: rest, _ -> Phi (id, x, y) :: rest
+          | LetClosure (_, args, block, ret, label) :: rest, _ ->
+              LetClosure (id, args, block, ret, label) :: rest
+          | x, _ ->
+              failwith @@ Printf.sprintf "unimplemented %s" @@ show_inst_t x )
+        , id )
+    | Typing.If (cond, then_e, else_e) ->
+        let cond, id = g env cond in
+        let then_e, id_then = g env then_e in
+        let else_e, id_else = g env else_e in
+        let ret_id = fresh_v () in
+        ( Phi (ret_id, id_then, id_else) :: Test (id, then_e, else_e) :: cond
+        , ret_id )
     | Typing.Never -> ([End], fresh_v ())
     | Typing.Var id -> ([], id)
+    (* クロージャ変換しようね *)
+    | Typing.Fun (args, body, _, label, _) ->
+        let id = fresh_v () in
+        let body, ret_id = g env body in
+        ([LetClosure (id, List.map fst args, body, ret_id, label)], id)
     | t -> failwith @@ Printf.sprintf "unimplemented %s" @@ Typing.show t
 
-let f ast = fst @@ g [] ast
+let f ast = List.rev @@ fst @@ g [] ast

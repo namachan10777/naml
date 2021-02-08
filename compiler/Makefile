@@ -15,10 +15,11 @@ clean:
 	rm -f *.pp.ml
 
 .PHONY: test
-test: lex_test parser_test typing_test
+test: lex_test parser_test typing_test closure_test
 	./lex_test
 	./parser_test
 	./typing_test
+	./closure_test
 
 test.cmx: test.ml
 	$(OCAMLOPT) $< -c
@@ -70,6 +71,12 @@ types.cmx: types.ml util.cmx id.cmx
 
 closure.cmx: closure.ml typing.cmx
 	$(OCAMLOPT) $< -c
+
+closure_test.cmx: closure_test.ml closure.cmx  ast.cmx alpha.cmx typing.cmx lex.cmx parser.cmx types.cmx util.cmx
+	$(OCAMLOPT) $< -c
+
+closure_test: util.cmx lex.cmx parser.cmx ast.cmx types.cmx alpha.cmx typing.cmx closure.cmx closure_test.cmx
+	$(OCAMLOPT) $^ -o $@
 
 codegen.cmx: codegen.ml
 	$(OCAMLOPT) $< -c

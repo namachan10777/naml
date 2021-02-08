@@ -99,7 +99,8 @@ let pervasive_vals =
     ; (["ref"], Vid 13, Fun ([Poly (Pid 0)], Variant ([Poly (Pid 0)], Tid 3)))
     ; ( [":="]
       , Vid 14
-      , Fun ([Variant ([Poly (Pid 0)], Tid 3); Poly (Pid 0)], unit_ty) ) ]
+      , Fun ([Variant ([Poly (Pid 0)], Tid 3); Poly (Pid 0)], unit_ty) )
+    ; (["print_int"], Vid 15, Fun ([Int], Tuple [])) ]
 
 let pervasive_types =
     [ (["int"], Tid 0, Int)

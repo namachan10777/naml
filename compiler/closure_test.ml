@@ -14,4 +14,13 @@ let () =
       [ C.LetInt (T.VidSSA 3, 2)
       ; C.LetInt (T.VidSSA 2, 1)
       ; C.LetCall (T.Vid 16, T.Vid 0, [T.VidSSA 2; T.VidSSA 3])
+      ; C.End ] ;
+    test "let f x = x + 2"
+      [ C.LetClosure
+          ( T.Vid 16
+          , [T.Vid 17]
+          , [ C.LetInt (T.VidSSA 7, 2)
+            ; C.LetCall (T.VidSSA 8, T.Vid 0, [T.Vid 17; T.VidSSA 7]) ]
+          , T.VidSSA 8
+          , "_f_1" )
       ; C.End ]

@@ -41,6 +41,9 @@ let rec g env = function
           | LetBool (_, b) :: rest, _ -> LetBool (id, b) :: rest
           | LetInt (_, i) :: rest, _ -> LetInt (id, i) :: rest
           | LetCall (_, f, args) :: rest, _ -> LetCall (id, f, args) :: rest
+          | Phi (_, x, y) :: rest, _ -> Phi (id, x, y) :: rest
+          | LetClosure (_, args, block, ret, label) :: rest, _ ->
+              LetClosure (id, args, block, ret, label) :: rest
           | _ -> failwith "unimplemented" )
         , id )
     | Typing.LetRec ([(id, _, def)], expr) ->
@@ -70,7 +73,7 @@ let rec g env = function
     | Typing.Fun (args, body, _, label, _) ->
         let id = fresh_v () in
         let body, ret_id = g env body in
-        ([LetClosure (id, List.map fst args, body, ret_id, label)], id)
+        ([LetClosure (id, List.map fst args, List.rev body, ret_id, label)], id)
     | t -> failwith @@ Printf.sprintf "unimplemented %s" @@ Typing.show t
 
 let f ast = List.rev @@ fst @@ g [] ast

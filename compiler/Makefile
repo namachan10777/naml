@@ -71,5 +71,8 @@ types.cmx: types.ml util.cmx id.cmx
 closure.cmx: closure.ml typing.cmx
 	$(OCAMLOPT) $< -c
 
-compiler1st: util.cmx lex.cmx parser.cmx ast.cmx id.cmx types.cmx alpha.cmx typing.cmx closure.cmx main.cmx
+codegen.cmx: codegen.ml
+	$(OCAMLOPT) $< -c
+
+compiler1st: util.cmx lex.cmx parser.cmx ast.cmx id.cmx types.cmx alpha.cmx typing.cmx closure.cmx codegen.cmx main.cmx
 	ocamlopt $^ -o $@

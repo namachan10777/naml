@@ -3,6 +3,6 @@ let () =
     else
       let ic = open_in Sys.argv.(1) in
       let src = really_input_string ic (in_channel_length ic) in
-      print_endline @@ Closure.show_inst_t @@ List.rev @@ Closure.f @@ Typing.f
-      @@ Alpha.f
+      print_endline @@ Codegen.f @@ Closure.show_inst_t @@ List.rev @@ Closure.f
+      @@ Typing.f @@ Alpha.f
       @@ Ast.f Sys.argv.(1) src

@@ -23,4 +23,18 @@ let () =
             ; C.LetCall (T.VidSSA 8, T.Vid 0, [T.Vid 17; T.VidSSA 7]) ]
           , T.VidSSA 8
           , "_f_1" )
+      ; C.End ] ;
+    test "let f x = let g y = x + y in g"
+      [ C.LetClosure
+          ( T.Vid 16
+          , [T.Vid 17]
+          , [ C.LetClosure
+                ( T.VidSSA 14
+                , [T.VidSSA 12; T.Vid 19]
+                , [C.LetCall (T.VidSSA 13, T.Vid 0, [T.VidSSA 12; T.Vid 19])]
+                , T.VidSSA 13
+                , "_f_1_g_2" )
+            ; C.LetCall (T.Vid 18, T.VidSSA 14, [T.Vid 17]) ]
+          , T.Vid 18
+          , "_f_1" )
       ; C.End ]

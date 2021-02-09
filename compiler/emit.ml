@@ -56,6 +56,7 @@ type inst_t =
     | Pushq of operand_t
     | Popq of operand_t
     | Movq of operand_t * operand_t
+    | Leaq of operand_t * operand_t
     | Testq of operand_t * operand_t
     | Subq of operand_t * operand_t
     | Addq of operand_t * operand_t
@@ -145,6 +146,8 @@ let print_inst = function
     | Sete op -> Printf.sprintf "sete\t%s" @@ print_operand op
     | Movq (src, dest) ->
         Printf.sprintf "movq\t%s, %s" (print_operand src) (print_operand dest)
+    | Leaq (src, dest) ->
+        Printf.sprintf "leaq\t%s, %s" (print_operand src) (print_operand dest)
     | Testq (a, b) ->
         Printf.sprintf "testq\t%s, %s" (print_operand a) (print_operand a)
     | Movzbq (src, dest) ->

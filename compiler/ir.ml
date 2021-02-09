@@ -178,7 +178,7 @@ let rec codegen = function
         let alloc_container =
             [ E.I (E.Movq (E.Imm (2 + size), E.Reg E.Edi))
             ; E.I (E.Call (E.Label "malloc@PLT"))
-            ; E.I (E.Movq (E.IndL (E.Rip, Some label), E.Ind (E.Rax, None)))
+            ; E.I (E.Leaq (E.IndL (E.Rip, Some label), E.Ind (E.Rax, None)))
             ; E.I (E.Movq (E.Imm (List.length args), E.Ind (E.Rax, Some 8))) ]
         in
         let copy_args =
@@ -210,7 +210,7 @@ let rec codegen = function
         calc_arg_addr @ copy_args @ call @ codegen remain
     | CallTop (Reg r, 0, [Mem lhr; Mem rhr]) :: remain ->
         E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
-        :: E.I (E.Addq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
+        :: E.I (E.Addq (E.Ind (E.Rbp, Some (-8 * rhr)), E.Reg (code2reg r)))
         :: codegen remain
     | CallTop (Reg r, 1, [Mem lhr; Mem rhr]) :: remain ->
         E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
@@ -225,7 +225,7 @@ let rec codegen = function
         :: E.I (E.Movzbq (E.Reg E.Al, E.Reg (code2reg r)))
         :: codegen remain
     | CallTop (Reg r, 15, [Mem arg]) :: remain ->
-        E.I (E.Movq (E.IndL(E.Rip,  Some ".print_int_s"), E.Reg E.Rdi))
+        E.I (E.Leaq (E.IndL(E.Rip,  Some ".print_int_s"), E.Reg E.Rdi))
         :: E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * arg)), E.Reg E.Rsi))
         :: E.I (E.Call (E.Label "printf@PLT"))
         :: codegen remain
@@ -286,7 +286,7 @@ let f clos =
         E.D E.Text;
         E.D (E.Section (".rodata", None));
         E.L ".print_int_s";
-        E.D (E.Asciz "%d");
+        E.D (E.Asciz "%lld");
     ] in
     let footer = [
         E.D (E.Section (".note.GNU-stack", Some ("", Some ("progbits", None))));

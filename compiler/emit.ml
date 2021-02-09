@@ -61,6 +61,7 @@ type inst_t =
     | Testq of operand_t * operand_t
     | Subq of operand_t * operand_t
     | Addq of operand_t * operand_t
+    | Mulq of operand_t
     | Movzbq of operand_t * operand_t
     | Sete of operand_t
     | Cmpq of operand_t * operand_t
@@ -160,6 +161,7 @@ let print_inst = function
         Printf.sprintf "subq\t%s, %s" (print_operand src) (print_operand dest)
     | Addq (src, dest) ->
         Printf.sprintf "addq\t%s, %s" (print_operand src) (print_operand dest)
+    | Mulq src -> Printf.sprintf "mulq\t%s" (print_operand src)
     | Cmpq (src, dest) ->
         Printf.sprintf "cmpq\t%s, %s" (print_operand src) (print_operand dest)
 

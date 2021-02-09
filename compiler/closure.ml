@@ -23,7 +23,7 @@ let fresh_v () =
 
 let init () = count_v := 0
 
-let list_free_variables t =
+let list_free_variables env t =
     let rec f = function
         | Typing.Let ([(Typing.PVar (id, _), def)], expr) ->
             List.filter (( <> ) id) @@ f expr
@@ -34,12 +34,10 @@ let list_free_variables t =
             List.filter (fun id -> List.for_all (( <> ) id) defs) @@ f body
         | Typing.Int _ -> []
         | Typing.Bool _ -> []
+        | Typing.If (c, e1, e2) -> f c @ f e1 @ f e2
         | _ -> failwith "list free vairables unimplemented"
     in
-    List.filter (fun id ->
-        List.for_all (( <> ) id)
-          (List.map (fun (_, id, _) -> id) Types.pervasive_vals))
-    @@ f t
+    List.filter (fun id -> List.for_all (( <> ) id) env) @@ f t
 
 let rec replace_variables map =
     let replace id =
@@ -79,7 +77,7 @@ let rec g env = function
         let id = fresh_v () in
         ([LetBool (id, b)], id)
     | Typing.Let ([(Typing.PVar (id, _), def)], expr) ->
-        let expr, _ = g env expr in
+        let expr, _ = g (id :: env) expr in
         ( ( expr
           @
           match g env def with
@@ -92,7 +90,7 @@ let rec g env = function
           | _ -> failwith "unimplemented" )
         , id )
     | Typing.LetRec ([(id, _, def)], expr) ->
-        let expr, _ = g env expr in
+        let expr, _ = g (id :: env) expr in
         ( ( expr
           @
           match g env def with
@@ -117,7 +115,7 @@ let rec g env = function
     (* クロージャ変換しようね *)
     | Typing.Fun (args, body, _, label, _) as self ->
         let let_id = fresh_v () in
-        ( ( match list_free_variables self with
+        ( ( match list_free_variables env self with
           | [] ->
               let body, ret_id = g env body in
               [ LetClosure
@@ -140,4 +138,6 @@ let rec g env = function
         , let_id )
     | t -> failwith @@ Printf.sprintf "unimplemented %s" @@ Typing.show t
 
-let f ast = List.rev @@ fst @@ g [] ast
+let f ast =
+    List.rev @@ fst
+    @@ g (List.map (fun (_, id, _) -> id) Types.pervasive_vals) ast

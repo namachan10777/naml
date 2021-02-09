@@ -65,14 +65,15 @@ let pos i = ("test.ml", 1, i, i)
 let () =
     test "0" (Typing.Int 0) ;
     test "not" (v ["not"]) ;
-    test "not true" (Typing.App (v ["not"], [Typing.Bool true])) ;
-    test "1+2" (Typing.App (v ["+"], [Typing.Int 1; Typing.Int 2])) ;
+    test "not true" (Typing.App (v ["not"], [Typing.Bool true], Types.Bool)) ;
+    test "1+2" (Typing.App (v ["+"], [Typing.Int 1; Typing.Int 2], Types.Int)) ;
     test "let x = 1 in x"
       (Typing.Let ([(Typing.PVar (vn 0, Ty.Int), Typing.Int 1)], v' 0)) ;
     test "let x = 1 + 1 in x"
       (Typing.Let
          ( [ ( Typing.PVar (vn 0, Ty.Int)
-             , Typing.App (v ["+"], [Typing.Int 1; Typing.Int 1]) ) ]
+             , Typing.App (v ["+"], [Typing.Int 1; Typing.Int 1], Types.Int) )
+           ]
          , v' 0 )) ;
     test "let id = fun x -> x in id 1; id true"
       (Typing.Let
@@ -80,8 +81,9 @@ let () =
              , Typing.Fun ([(vn 1, poly 0)], v' 1, poly 0, "_id_1", pos 19) ) ]
          , Typing.App
              ( v [";"]
-             , [ Typing.App (v' 0, [Typing.Int 1])
-               ; Typing.App (v' 0, [Typing.Bool true]) ] ) )) ;
+             , [ Typing.App (v' 0, [Typing.Int 1], Types.Int)
+               ; Typing.App (v' 0, [Typing.Bool true], Types.Bool) ]
+             , Types.Bool ) )) ;
     test
       "let mk_pair x y = (x, y) in let a = mk_pair 1 in let b = mk_pair true \
        false in a"
@@ -96,10 +98,17 @@ let () =
                  , pos 5 ) ) ]
          , T.Let
              ( [ ( T.PVar (vn 3, Ty.Fun ([poly 0], Ty.Tuple [Ty.Int; poly 0]))
-                 , T.App (v' 0, [T.Int 1]) ) ]
+                 , T.App
+                     ( v' 0
+                     , [T.Int 1]
+                     , Types.Fun ([poly 0], Types.Tuple [Types.Int; poly 0]) )
+                 ) ]
              , T.Let
                  ( [ ( T.PVar (vn 4, Ty.Tuple [Ty.Bool; Ty.Bool])
-                     , T.App (v' 0, [T.Bool true; T.Bool false]) ) ]
+                     , T.App
+                         ( v' 0
+                         , [T.Bool true; T.Bool false]
+                         , Types.Tuple [Types.Bool; Types.Bool] ) ) ]
                  , v' 3 ) ) )) ;
     let f, x, g, y = (0, 1, 2, 3) in
     test "let f x = let g y = x = y in g in\n   f"
@@ -111,7 +120,7 @@ let () =
                      ( [ ( T.PVar (vn g, Ty.Fun ([poly 0], Ty.Bool))
                          , T.Fun
                              ( [(vn y, poly 0)]
-                             , T.App (v ["="], [v' x; v' y])
+                             , T.App (v ["="], [v' x; v' y], Types.Bool)
                              , Ty.Bool
                              , "_f_1_g_2"
                              , pos 15 ) ) ]
@@ -128,17 +137,20 @@ let () =
              , T.Fun
                  ( [(vn n, Ty.Int)]
                  , T.If
-                     ( T.App (v ["="], [v' n; T.Int 1])
+                     ( T.App (v ["="], [v' n; T.Int 1], Types.Bool)
                      , T.Int 1
                      , T.App
                          ( v ["*"]
                          , [ v' n
-                           ; T.App (v' fact, [T.App (v ["-"], [v' n; T.Int 1])])
-                           ] ) )
+                           ; T.App
+                               ( v' fact
+                               , [T.App (v ["-"], [v' n; T.Int 1], Ty.Int)]
+                               , Types.Int ) ]
+                         , Types.Int ) )
                  , Ty.Int
                  , "_fact_1"
                  , pos 9 ) ) ]
-         , T.App (v' fact, [T.Int 5]) )) ;
+         , T.App (v' fact, [T.Int 5], Ty.Int) )) ;
     test "let x,\n   y = 1, 2 in x"
       (T.Let
          ( [ ( T.PTuple
@@ -163,8 +175,11 @@ let () =
                  , "_f_1"
                  , pos 5 ) ) ]
          , T.App
-             (v [";"], [T.App (v' 0, [T.Int 1]); T.App (v' 0, [T.Bool true])])
-         )) ;
+             ( v [";"]
+             , [ T.App (v' 0, [T.Int 1], Ty.Variant ([Ty.Int], lt ["list"]))
+               ; T.App (v' 0, [T.Bool true], Ty.Variant ([Ty.Bool], lt ["list"]))
+               ]
+             , Ty.Variant ([Ty.Bool], lt ["list"]) ) )) ;
     test "let x = match (1, 2) with (x, y) -> x + y in x"
       (T.Let
          ( [ ( T.PVar (vn 0, Ty.Int)
@@ -174,7 +189,7 @@ let () =
                  , [ ( T.PTuple
                          ( [T.PVar (vn 1, Ty.Int); T.PVar (vn 2, Ty.Int)]
                          , [Ty.Int; Ty.Int] )
-                     , T.App (v ["+"], [v' 1; v' 2]) ) ]
+                     , T.App (v ["+"], [v' 1; v' 2], Ty.Int) ) ]
                  , Ty.Int ) ) ]
          , v' 0 )) ;
     let length, l, x = (0, 1, 2) in
@@ -205,8 +220,10 @@ let () =
                              , [poly 0]
                              , Alpha.lookup Lex.nowhere ["::"]
                                  Alpha.pervasive_cenv )
-                         , T.App (v ["+"], [T.Int 1; T.App (v' length, [v' l])])
-                         ) ]
+                         , T.App
+                             ( v ["+"]
+                             , [T.Int 1; T.App (v' length, [v' l], Ty.Int)]
+                             , Ty.Int ) ) ]
                      , Ty.Int )
                  , Ty.Int
                  , "_length_1"
@@ -234,8 +251,8 @@ let () =
                              , lc ["::"] )
                          , T.CtorApp
                              ( lc ["::"]
-                             , [ T.App (v' f, [v' x])
-                               ; T.App (v' map, [v' f; v' xs]) ]
+                             , [ T.App (v' f, [v' x], poly 0)
+                               ; T.App (v' map, [v' f; v' xs], l2_ty) ]
                              , l2_ty ) )
                        ; ( T.PCtor ([], [poly 1], lc ["[]"])
                          , T.CtorApp (lc ["[]"], [], l2_ty) ) ]
@@ -262,7 +279,9 @@ let () =
                              , [Int]
                              , cn 0 )
                          , Typing.App
-                             (v ["+"], [v' 2; Typing.App (v' 0, [v' 3])]) )
+                             ( v ["+"]
+                             , [v' 2; Typing.App (v' 0, [v' 3], Ty.Int)]
+                             , Ty.Int ) )
                        ; (Typing.PCtor ([], [Int], cn 1), Typing.Int 0) ]
                      , Int )
                  , Int

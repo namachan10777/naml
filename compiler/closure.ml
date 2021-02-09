@@ -2,6 +2,7 @@ type t =
     | LetClosure of
         Types.vid_t * Types.vid_t list * t list * Types.vid_t * string
     | LetCall of Types.vid_t * Types.vid_t * Types.vid_t list
+    | LetApp of Types.vid_t * Types.vid_t * Types.vid_t list
     | LetInt of Types.vid_t * int
     | Phi of Types.vid_t * Types.vid_t * Types.vid_t
     | Test of Types.vid_t * t list * t list
@@ -28,7 +29,7 @@ let list_free_variables env t =
         | Typing.Let ([(Typing.PVar (id, _), def)], expr) ->
             List.filter (( <> ) id) @@ f expr
         | Typing.Var id -> [id]
-        | Typing.App (g, args) -> f g @ List.concat (List.map f args)
+        | Typing.App (g, args, _) -> f g @ List.concat (List.map f args)
         | Typing.Fun (args, body, ty, label, p) ->
             let defs = List.map fst args in
             List.filter (fun id -> List.for_all (( <> ) id) defs) @@ f body
@@ -49,9 +50,9 @@ let rec replace_variables map =
         f id map
     in
     function
-    | Typing.App (f, args) ->
+    | Typing.App (f, args, ty) ->
         Typing.App
-          (replace_variables map f, List.map (replace_variables map) args)
+          (replace_variables map f, List.map (replace_variables map) args, ty)
     | Typing.Fun (args, body, ty, label, p) ->
         Typing.Fun
           ( List.map (fun (arg, ty) -> (replace arg, ty)) args
@@ -70,7 +71,7 @@ let rec replace_variables map =
     | _ -> failwith "repalce_vairables unimplemented"
 
 let rec g env = function
-    | Typing.App (f, args) ->
+    | Typing.App (f, args, _) ->
         let f, f_id = g env f in
         let args, arg_ids = Util.unzip @@ List.map (g env) args in
         let ret_id = fresh_v () in

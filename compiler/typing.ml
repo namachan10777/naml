@@ -28,7 +28,7 @@ type t =
     | Int of int
     | Bool of bool
     | Var of Types.vid_t
-    | App of t * t list
+    | App of t * t list * Types.t
     | Let of (pat_t * t) list * t
     | LetRec of (Types.vid_t * Types.t * t) list * t
     | If of t * t * t
@@ -233,7 +233,8 @@ let generalize tbl level =
         | Int i -> Int i
         | Bool b -> Bool b
         | Var id -> Var id
-        | App (g, args) -> App (f g, List.map f args)
+        | App (g, args, ty) ->
+            App (f g, List.map f args, generalize_ty tbl level ty)
         | Fun (args, body, ret_ty, label, p) ->
             Fun
               ( List.map
@@ -431,9 +432,10 @@ let rec g env level =
         | Types.Fun (params, ret_ty) ->
             if List.length params > List.length args then
               let param_tys = Util.drop (List.length arg_tys) params in
-              (App (f, args), Types.Fun (param_tys, ret_ty))
+              ( App (f, args, Types.Fun (param_tys, ret_ty))
+              , Types.Fun (param_tys, ret_ty) )
             else if List.length params = List.length args then
-              (App (f, args), ret_ty)
+              (App (f, args, ret_ty), ret_ty)
             else
               raise
               @@ TypeError

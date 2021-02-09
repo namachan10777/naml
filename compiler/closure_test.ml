@@ -13,14 +13,14 @@ let () =
     test "let x = 1 + 2"
       [ C.LetInt (T.VidSSA 3, 2)
       ; C.LetInt (T.VidSSA 2, 1)
-      ; C.LetCall (T.Vid 16, T.Vid 0, [T.VidSSA 2; T.VidSSA 3])
+      ; C.LetCall (T.Vid 16, T.VidTop 0, [T.VidSSA 2; T.VidSSA 3])
       ; C.End ] ;
     test "let f x = x + 2"
       [ C.LetClosure
           ( T.Vid 16
           , [T.Vid 17]
           , [ C.LetInt (T.VidSSA 7, 2)
-            ; C.LetCall (T.VidSSA 8, T.Vid 0, [T.Vid 17; T.VidSSA 7]) ]
+            ; C.LetCall (T.VidSSA 8, T.VidTop 0, [T.Vid 17; T.VidSSA 7]) ]
           , T.VidSSA 8
           , "_f_1"
           , [] )
@@ -32,7 +32,7 @@ let () =
           , [ C.LetClosure
                 ( T.Vid 18
                 , [T.VidSSA 14; T.Vid 19]
-                , [C.LetCall (T.VidSSA 15, T.Vid 0, [T.VidSSA 14; T.Vid 19])]
+                , [C.LetCall (T.VidSSA 15, T.VidTop 0, [T.VidSSA 14; T.Vid 19])]
                 , T.VidSSA 15
                 , "_f_1_g_2"
                 , [T.Vid 17] ) ]
@@ -59,23 +59,23 @@ let () =
           ( fib_id
           , [self_id; n_id]
           , [ C.LetInt (i0_id, 0)
-            ; C.LetCall (eq1_id, T.Vid 7, [n_id'; i0_id'])
+            ; C.LetCall (eq1_id, T.VidTop 7, [n_id'; i0_id'])
             ; C.Test
                 ( eq1_id'
                 , [C.LetBool (eq_l_id, true)]
                 , [ C.LetInt (i1_id, 1)
-                  ; C.LetCall (eq_r_id, T.Vid 7, [n_id''; i1_id']) ] )
+                  ; C.LetCall (eq_r_id, T.VidTop 7, [n_id''; i1_id']) ] )
             ; C.Phi (cmp_id, eq_l_id', eq_r_id')
             ; C.Test
                 ( cmp_id'
                 , [C.LetInt (fib_l_id, 1)]
                 , [ C.LetInt (i1_2id, 2)
-                  ; C.LetCall (nsub2_id, T.Vid 1, [n_id3; i1_2id'])
+                  ; C.LetCall (nsub2_id, T.VidTop 1, [n_id3; i1_2id'])
                   ; C.LetCall (fibret_1id, self_id', [nsub2_id'])
                   ; C.LetInt (i1_1id, 1)
-                  ; C.LetCall (nsub1_id, T.Vid 1, [n_id4; i1_1id'])
+                  ; C.LetCall (nsub1_id, T.VidTop 1, [n_id4; i1_1id'])
                   ; C.LetCall (fibret_2id, self_id'', [nsub1_id'])
-                  ; C.LetCall (fib_r_id, T.Vid 0, [fibret_2id'; fibret_1id']) ]
+                  ; C.LetCall (fib_r_id, T.VidTop 0, [fibret_2id'; fibret_1id']) ]
                 )
             ; C.Phi (ret_id, fib_l_id', fib_r_id') ]
           , ret_id'

@@ -60,9 +60,6 @@ typing_test.cmx: typing_test.ml util.cmx typing.cmx util.cmx ast.cmx alpha.cmx
 typing_test: lex.cmx parser.cmx ast.cmx util.cmx id.cmx types.cmx alpha.cmx typing.cmx test.cmx  util.cmx alpha.cmx typing_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
-main.cmx: main.ml parser.cmx lex.cmx types.cmx closure.cmx
-	$(OCAMLOPT) $< -c
-
 util.cmx: util.ml
 	$(OCAMLOPT) $< -c
 
@@ -75,11 +72,17 @@ closure.cmx: closure.ml typing.cmx
 closure_test.cmx: closure_test.ml closure.cmx  ast.cmx alpha.cmx typing.cmx lex.cmx parser.cmx types.cmx util.cmx
 	$(OCAMLOPT) $< -c
 
+ir.cmx: ir.ml closure.cmx
+	$(OCAMLOPT) $< -c
+
 closure_test: util.cmx lex.cmx parser.cmx ast.cmx types.cmx alpha.cmx typing.cmx closure.cmx closure_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
 codegen.cmx: codegen.ml
 	$(OCAMLOPT) $< -c
 
-compiler1st: util.cmx lex.cmx parser.cmx ast.cmx id.cmx types.cmx alpha.cmx typing.cmx closure.cmx codegen.cmx main.cmx
+main.cmx: main.ml parser.cmx lex.cmx types.cmx closure.cmx ir.cmx
+	$(OCAMLOPT) $< -c
+
+compiler1st: util.cmx lex.cmx parser.cmx ast.cmx id.cmx types.cmx alpha.cmx typing.cmx closure.cmx codegen.cmx ir.cmx main.cmx
 	ocamlopt $^ -o $@

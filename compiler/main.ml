@@ -5,4 +5,7 @@ let () =
       let src = really_input_string ic (in_channel_length ic) in
       let typed = Typing.f @@ Alpha.f @@ Ast.f Sys.argv.(1) src in
       print_endline @@ Typing.show typed ;
-      print_endline @@ Closure.show_inst_t @@ Closure.f typed
+      let closure = Closure.f typed in
+      print_endline @@ Closure.show_inst_t closure ;
+      let ir = Ir.f closure in
+      print_endline @@ Ir.show_insts_t ir

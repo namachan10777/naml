@@ -4,7 +4,7 @@ type tid_t = Tid of int [@@deriving show]
 
 type cid_t = Cid of int [@@deriving show]
 
-type vid_t = Vid of int | VidSSA of int [@@deriving show]
+type vid_t = Vid of int | VidTop of int | VidSSA of int [@@deriving show]
 
 type pid_t = Pid of int [@@deriving show]
 
@@ -81,26 +81,26 @@ let rec eq a b =
 let unit_ty = Tuple []
 
 let pervasive_vals =
-    [ (["+"], Vid 0, Fun ([Int; Int], Int))
-    ; (["-"], Vid 1, Fun ([Int; Int], Int))
-    ; (["*"], Vid 2, Fun ([Int; Int], Int))
-    ; (["/"], Vid 3, Fun ([Int; Int], Int))
-    ; (["mod"], Vid 4, Fun ([Int; Int], Int))
-    ; ([">"], Vid 5, Fun ([Int; Int], Bool))
-    ; (["<"], Vid 6, Fun ([Int; Int], Bool))
-    ; (["="], Vid 7, Fun ([Poly (Pid 0); Poly (Pid 0)], Bool))
-    ; ([";"], Vid 8, Fun ([Poly (Pid 0); Poly (Pid 1)], Poly (Pid 1)))
-    ; (["."], Vid 9, Fun ([Variant ([Poly (Pid 0)], Tid 2); Int], Poly (Pid 0)))
-    ; (["<neg>"], Vid 10, Fun ([Int], Int))
+    [ (["+"], VidTop 0, Fun ([Int; Int], Int))
+    ; (["-"], VidTop 1, Fun ([Int; Int], Int))
+    ; (["*"], VidTop 2, Fun ([Int; Int], Int))
+    ; (["/"], VidTop 3, Fun ([Int; Int], Int))
+    ; (["mod"], VidTop 4, Fun ([Int; Int], Int))
+    ; ([">"], VidTop 5, Fun ([Int; Int], Bool))
+    ; (["<"], VidTop 6, Fun ([Int; Int], Bool))
+    ; (["="], VidTop 7, Fun ([Poly (Pid 0); Poly (Pid 0)], Bool))
+    ; ([";"], VidTop 8, Fun ([Poly (Pid 0); Poly (Pid 1)], Poly (Pid 1)))
+    ; (["."], VidTop 9, Fun ([Variant ([Poly (Pid 0)], Tid 2); Int], Poly (Pid 0)))
+    ; (["<neg>"], VidTop 10, Fun ([Int], Int))
     ; ( ["<arrayassign>"]
-      , Vid 11
+      , VidTop 11
       , Fun ([Variant ([Poly (Pid 0)], Tid 2); Int; Poly (Pid 0)], Tuple []) )
-    ; (["not"], Vid 12, Fun ([Bool], Bool))
-    ; (["ref"], Vid 13, Fun ([Poly (Pid 0)], Variant ([Poly (Pid 0)], Tid 3)))
+    ; (["not"], VidTop 12, Fun ([Bool], Bool))
+    ; (["ref"], VidTop 13, Fun ([Poly (Pid 0)], Variant ([Poly (Pid 0)], Tid 3)))
     ; ( [":="]
-      , Vid 14
+      , VidTop 14
       , Fun ([Variant ([Poly (Pid 0)], Tid 3); Poly (Pid 0)], unit_ty) )
-    ; (["print_int"], Vid 15, Fun ([Int], Tuple [])) ]
+    ; (["print_int"], VidTop 15, Fun ([Int], Tuple [])) ]
 
 let pervasive_types =
     [ (["int"], Tid 0, Int)

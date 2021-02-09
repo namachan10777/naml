@@ -12,7 +12,6 @@ type t =
     | Phi of Types.vid_t * Types.vid_t * Types.vid_t
     | Test of Types.vid_t * t list * t list
     | LetBool of Types.vid_t * bool
-    | If of Types.vid_t * t list * t list
     | End
 [@@deriving show]
 
@@ -169,7 +168,9 @@ let rec g env = function
               in
               [closure] )
         , let_id )
-    | t -> failwith @@ Printf.sprintf "unimplemented %s" @@ Typing.show t
+    | t ->
+        Printf.printf "unimplemented: \n%s\n" @@ Typing.show t ;
+        failwith @@ Printf.sprintf "Closure.g unimplemented %s" @@ Typing.show t
 
 let f ast =
     List.rev @@ fst

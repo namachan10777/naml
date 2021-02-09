@@ -7,7 +7,6 @@ type t =
     | Phi of Types.vid_t * Types.vid_t * Types.vid_t
     | Test of Types.vid_t * t list * t list
     | LetBool of Types.vid_t * bool
-    | LetAccess of Types.vid_t * Types.vid_t
     | If of Types.vid_t * t list * t list
     | End
 [@@deriving show]

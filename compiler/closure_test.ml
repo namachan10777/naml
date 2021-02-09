@@ -37,4 +37,12 @@ let () =
             ; C.LetCall (T.Vid 18, T.VidSSA 14, [T.Vid 17]) ]
           , T.Vid 18
           , "_f_1" )
+      ; C.End ] ;
+    test "let rec f x = f x"
+      [ C.LetClosure
+          ( T.Vid 16
+          , [T.Vid 17]
+          , [C.LetCall (T.VidSSA 17, T.Vid 16, [T.Vid 17])]
+          , T.VidSSA 17
+          , "_f_1" )
       ; C.End ]

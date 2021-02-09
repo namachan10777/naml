@@ -59,6 +59,11 @@ let rec replace_variables map =
           , ty
           , label
           , p )
+    | Typing.If (c, e1, e2) ->
+        Typing.If
+          ( replace_variables map c
+          , replace_variables map e1
+          , replace_variables map e2 )
     | Typing.Var id -> Typing.Var (replace id)
     | Typing.Int i -> Typing.Int i
     | Typing.Bool b -> Typing.Bool b
@@ -93,7 +98,7 @@ let rec g env = function
         let expr, _ = g (id :: env) expr in
         ( ( expr
           @
-          match g env def with
+          match g (id :: env) def with
           | LetBool (_, b) :: rest, _ -> LetBool (id, b) :: rest
           | LetInt (_, i) :: rest, _ -> LetInt (id, i) :: rest
           | LetCall (_, f, args) :: rest, _ -> LetCall (id, f, args) :: rest

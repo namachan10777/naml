@@ -56,6 +56,7 @@ type inst_t =
     | Pushq of operand_t
     | Popq of operand_t
     | Movq of operand_t * operand_t
+    | Movl of operand_t * operand_t
     | Leaq of operand_t * operand_t
     | Testq of operand_t * operand_t
     | Subq of operand_t * operand_t
@@ -139,6 +140,7 @@ let print_inst = function
     | Je label -> Printf.sprintf "je\t%s" label
     | Jne label -> Printf.sprintf "jne\t%s" label
     | Jmp label -> Printf.sprintf "jmp\t%s" label
+    | Call (Reg r) -> Printf.sprintf "call\t*%s" @@ print_reg r
     | Call op -> Printf.sprintf "call\t%s" @@ print_operand op
     | Retq -> "retq"
     | Leave -> "leave"
@@ -146,6 +148,8 @@ let print_inst = function
     | Sete op -> Printf.sprintf "sete\t%s" @@ print_operand op
     | Movq (src, dest) ->
         Printf.sprintf "movq\t%s, %s" (print_operand src) (print_operand dest)
+    | Movl (src, dest) ->
+        Printf.sprintf "movl\t%s, %s" (print_operand src) (print_operand dest)
     | Leaq (src, dest) ->
         Printf.sprintf "leaq\t%s, %s" (print_operand src) (print_operand dest)
     | Testq (a, b) ->

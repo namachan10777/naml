@@ -7,7 +7,7 @@ type reg_t = Reg of int [@@deriving show]
 
 type mem_t = Mem of int [@@deriving show]
 
-exception Internal
+exception Internal of string
 
 type t =
     | Test of reg_t * mem_t * t list * t list
@@ -50,19 +50,19 @@ let rec vid2stack cnt = function
 type stackmap_t = (Types.vid_t * opr_t) list [@@deriving show]
 
 let rec g stackmap =
-    let lookup id =
-        let rec f = function
-            | (id', stack) :: _ when id = id' -> stack
-            | _ :: remain -> f remain
-            | [] ->
-                Printf.printf "%s in %s\n" (Types.show_vid_t id)
-                  (show_stackmap_t stackmap) ;
-                raise Internal
-        in
-        f stackmap
+    let rec lookup id = function
+        | (id', stack) :: _ when id = id' -> stack
+        | _ :: remain -> lookup id remain
+        | [] ->
+            Printf.printf "%s in %s\n" (Types.show_vid_t id)
+              (show_stackmap_t stackmap) ;
+            raise
+            @@ Internal (Printf.sprintf "undefined %s" @@ Types.show_vid_t id)
     in
     let lookup_mem id =
-        match lookup id with M m -> Mem m | _ -> failwith "mem required"
+        match lookup id stackmap with
+        | M m -> Mem m
+        | _ -> failwith "mem required"
     in
     function
     | Closure.LetInt (mem, i) :: remain ->
@@ -103,28 +103,30 @@ let rec g stackmap =
         let stackmap_inner =
             args_on_stack @ vid2stack (List.length args_on_stack) inner
         in
-        Printf.printf "%s stackmap %s\n" (Types.show_vid_t mem)
-          (show_stackmap_t stackmap_inner) ;
         let blocks, inner = g stackmap_inner inner in
         let blocks', insts = g stackmap remain in
         let n_args = List.length args + List.length pre_applied in
+        let ret_id =
+            match lookup ret stackmap_inner with
+            | M m -> Mem m
+            | _ -> failwith "mem required"
+        in
         let insts =
             match pre_applied with
-            | [] ->
-                MkClosure (Reg 0, label, n_args, [], lookup_mem ret)
-                :: Save (lookup_mem mem, Reg 0)
-                :: insts
+            | [] -> MkClosure (Reg 0, label, n_args, [], ret_id) :: insts
             | pre_applied ->
                 MkClosure
-                  ( Reg 0
-                  , label
-                  , n_args
-                  , List.map lookup_mem pre_applied
-                  , lookup_mem ret )
-                :: Save (lookup_mem mem, Reg 0)
+                  (Reg 0, label, n_args, List.map lookup_mem pre_applied, ret_id)
                 :: insts
         in
-        (((label, n_args, List.length stackmap, inner, lookup_mem ret) :: blocks) @ blocks', insts)
+        ( ( label
+          , n_args
+          , List.length stackmap
+          , inner @ [Save (ret_id, Reg 0)]
+          , ret_id )
+          :: blocks
+          @ blocks'
+        , insts )
     | Closure.Test (cond, block1, block2) :: Closure.Phi (ret, r1, r2) :: remain
       ->
         let blocks1, inner1 = g stackmap block1 in
@@ -161,9 +163,11 @@ let arg_reg = function
 module E = Emit
 
 let prepare_args = []
+
 let cnt = ref 0
+
 let fresh_label () =
-    cnt := !cnt + 1;
+    cnt := !cnt + 1 ;
     ".L" ^ string_of_int !cnt
 
 let rec codegen = function
@@ -176,31 +180,33 @@ let rec codegen = function
         :: codegen remain
     | MkClosure (Reg r, label, size, args, Mem ret) :: remain ->
         let alloc_container =
-            [ E.I (E.Movq (E.Imm (2 + size), E.Reg E.Edi))
+            [ E.I (E.Movl (E.Imm (8 * (2 + size)), E.Reg E.Edi))
             ; E.I (E.Call (E.Label "malloc@PLT"))
-            ; E.I (E.Leaq (E.IndL (E.Rip, Some label), E.Ind (E.Rax, None)))
+            ; E.I (E.Leaq (E.IndL (E.Rip, Some label), E.Reg E.Rbx))
+            ; E.I (E.Movq (E.Reg E.Rbx, E.Ind (E.Rax, None)))
             ; E.I (E.Movq (E.Imm (List.length args), E.Ind (E.Rax, Some 8))) ]
         in
         let copy_args =
             List.mapi
               (fun i (Mem m) ->
-                [E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * m)), E.Ind (E.Rax, Some i)))])
+                [ E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * m)), E.Reg E.Rbx))
+                ; E.I (E.Movq (E.Reg E.Rbx, E.Ind (E.Rax, Some i))) ])
               args
         in
-        alloc_container @ List.concat copy_args @ codegen remain @ [E.I (E.Movq (E.Ind (E.Rbp, Some(-ret)), E.Reg E.Rax))]
+        alloc_container @ List.concat copy_args @ codegen remain
+        @ [E.I (E.Movq (E.Ind (E.Rbp, Some (-ret)), E.Reg E.Rax))]
     | Call (ret, Reg f, args) :: remain ->
         let calc_arg_addr =
             [ E.I (E.Movq (E.Ind (code2reg f, Some 8), E.Reg E.Rbx))
             ; E.I (E.Addq (E.Reg (code2reg f), E.Reg E.Rbx))
-            ; E.I (E.Addq (E.Imm (2*8), E.Reg E.Rbp)) ]
+            ; E.I (E.Addq (E.Imm (2 * 8), E.Reg E.Rbp)) ]
         in
         let copy_args =
             List.concat
             @@ List.mapi
                  (fun i (Mem m) ->
-                   [ E.I
-                       (E.Movq (E.Ind (E.Rbp, Some (-8*m)), E.Ind (E.Rbx, Some i)))
-                   ])
+                   [ E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * m)), E.Reg E.Rbx))
+                   ; E.I (E.Movq (E.Reg E.Rbx, E.Ind (E.Rbx, Some i))) ])
                  args
         in
         let call =
@@ -225,20 +231,15 @@ let rec codegen = function
         :: E.I (E.Movzbq (E.Reg E.Al, E.Reg (code2reg r)))
         :: codegen remain
     | CallTop (Reg r, 15, [Mem arg]) :: remain ->
-        E.I (E.Leaq (E.IndL(E.Rip,  Some ".print_int_s"), E.Reg E.Rdi))
+        E.I (E.Leaq (E.IndL (E.Rip, Some ".print_int_s"), E.Reg E.Rdi))
         :: E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * arg)), E.Reg E.Rsi))
-        :: E.I (E.Call (E.Label "printf@PLT"))
-        :: codegen remain
+        :: E.I (E.Call (E.Label "printf@PLT")) :: codegen remain
     | Test (Reg r, Mem ret, br1, br2) :: remain ->
         let else_l = fresh_label () in
         let goal_l = fresh_label () in
         E.I (E.Testq (E.Reg (code2reg r), E.Reg (code2reg r)))
-        :: E.I (E.Jne else_l)
-        :: (codegen br1)
-        @ [E.L else_l]
-        @ (codegen br2)
-        @ [E.L goal_l]
-        @ codegen remain
+        :: E.I (E.Jne else_l) :: codegen br1
+        @ [E.L else_l] @ codegen br2 @ [E.L goal_l] @ codegen remain
     | Ldb (Reg r, true) :: remain ->
         E.I (E.Movq (E.Imm 1, E.Reg (code2reg r))) :: codegen remain
     | Ldb (Reg r, false) :: remain ->
@@ -250,45 +251,50 @@ let rec codegen = function
 
 let gen_blocks clos =
     let stackmap = vid2stack 3 clos in
-    let store_return_code = [
-        Ldi (Reg 0, 0);
-        Save (Mem 2, Reg 0);
-    ] in
+    let store_return_code = [Ldi (Reg 0, 0); Save (Mem 2, Reg 0)] in
     let blocks, main_inner = g stackmap clos in
-    ("main", 2 , 3 + List.length stackmap, main_inner @ store_return_code, Mem 2) :: blocks
+    ("main", 2, 3 + List.length stackmap, main_inner @ store_return_code, Mem 2)
+    :: blocks
 
 let f clos =
     let blocks = gen_blocks clos in
-    let blocks = List.map (fun (label, n_args, n_vars, codes, Mem ret) ->
-        let header = [
-            E.D E.Text;
-            E.D (E.Global label);
-            E.D (E.Type (label, "function"));
-            E.L label;
-            E.I (E.Pushq (E.Reg E.Rbp));
-            E.I (E.Movq (E.Reg E.Rsp, E.Reg E.Rbp));
-            E.I (E.Pushq (E.Reg E.Rbx));
-            E.I (E.Subq (E.Imm (8*n_vars), E.Reg E.Rsp));
-        ] in
-        let copy_args = List.init n_args (fun i -> E.I (E.Movq (E.Reg (arg_reg i), E.Ind (E.Rbp, Some (-8*i))))) in
-        let footer = [
-            E.I (E.Movq (E.Ind (E.Rbp, Some(-8*ret)), E.Reg E.Rax));
-            E.I E.Leave;
-            E.I E.Retq;
-            E.L (fresh_label ());
-            E.D (E.SizeSub (label, ".", label));
-        ] in
-        header @ copy_args @ codegen codes @ footer
-    ) blocks
-    |> List.concat in
-    let preamble = [
-        E.D (E.File "test.ml");
-        E.D E.Text;
-        E.D (E.Section (".rodata", None));
-        E.L ".print_int_s";
-        E.D (E.Asciz "%lld");
-    ] in
-    let footer = [
-        E.D (E.Section (".note.GNU-stack", Some ("", Some ("progbits", None))));
-    ] in
+    let blocks =
+        List.map
+          (fun (label, n_args, n_vars, codes, Mem ret) ->
+            let header =
+                [ E.D E.Text
+                ; E.D (E.Global label)
+                ; E.D (E.Type (label, "function"))
+                ; E.L label
+                ; E.I (E.Pushq (E.Reg E.Rbp))
+                ; E.I (E.Movq (E.Reg E.Rsp, E.Reg E.Rbp))
+                ; E.I (E.Pushq (E.Reg E.Rbx))
+                ; E.I (E.Subq (E.Imm (8 * n_vars), E.Reg E.Rsp)) ]
+            in
+            let copy_args =
+                List.init n_args (fun i ->
+                    E.I
+                      (E.Movq (E.Reg (arg_reg i), E.Ind (E.Rbp, Some (-8 * i)))))
+            in
+            let footer =
+                [ E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * ret)), E.Reg E.Rax))
+                ; E.I E.Leave
+                ; E.I E.Retq
+                ; E.L (fresh_label ())
+                ; E.D (E.SizeSub (label, ".", label)) ]
+            in
+            header @ copy_args @ codegen codes @ footer)
+          blocks
+        |> List.concat
+    in
+    let preamble =
+        [ E.D (E.File "test.ml")
+        ; E.D E.Text
+        ; E.D (E.Section (".rodata", None))
+        ; E.L ".print_int_s"
+        ; E.D (E.Asciz "%lld") ]
+    in
+    let footer =
+        [E.D (E.Section (".note.GNU-stack", Some ("", Some ("progbits", None))))]
+    in
     Emit.f @@ preamble @ blocks @ footer

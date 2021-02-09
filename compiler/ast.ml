@@ -36,8 +36,8 @@ type t =
     | CtorApp of string list * Lex.pos_t * t list
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
-    | Let of (pat_t * Lex.pos_t * t) list * t
-    | LetRec of (string list * Lex.pos_t * t) list * t
+    | Let of (pat_t * Lex.pos_t * t) list * t * bool
+    | LetRec of (string list * Lex.pos_t * t) list * t * bool
     | Fun of (string * Lex.pos_t) list * t * Lex.pos_t
     | Match of t * (pat_t * Lex.pos_t * t * t) list
     | App of t * t list * Lex.pos_t
@@ -109,16 +109,18 @@ let rec of_parser_t = function
     | Parser.Tuple (elem, p) -> Tuple (List.map of_parser_t elem, p)
     | Parser.If (cond, e1, e2, p) ->
         If (of_parser_t cond, of_parser_t e1, of_parser_t e2, p)
-    | Parser.Let (defs, expr) ->
+    | Parser.Let (defs, expr, is_top) ->
         Let
           ( List.map
               (fun (pat, p, def) -> (of_parser_pat_t pat, p, of_parser_t def))
               defs
-          , of_parser_t expr )
-    | Parser.LetRec (defs, expr) ->
+          , of_parser_t expr
+          , is_top )
+    | Parser.LetRec (defs, expr, is_top) ->
         LetRec
           ( List.map (fun (id, p, def) -> (id, p, of_parser_t def)) defs
-          , of_parser_t expr )
+          , of_parser_t expr
+          , is_top )
     | Parser.Fun (params, expr, p) -> Fun (params, of_parser_t expr, p)
     | Parser.App (f, arg, p) -> App (of_parser_t f, List.map of_parser_t arg, p)
     | Parser.Paren e -> of_parser_t e

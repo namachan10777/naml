@@ -68,13 +68,14 @@ let () =
     test "not true" (Typing.App (v ["not"], [Typing.Bool true], Types.Bool)) ;
     test "1+2" (Typing.App (v ["+"], [Typing.Int 1; Typing.Int 2], Types.Int)) ;
     test "let x = 1 in x"
-      (Typing.Let ([(Typing.PVar (vn 0, Ty.Int), Typing.Int 1)], v' 0)) ;
+      (Typing.Let ([(Typing.PVar (vn 0, Ty.Int), Typing.Int 1)], v' 0, false)) ;
     test "let x = 1 + 1 in x"
       (Typing.Let
          ( [ ( Typing.PVar (vn 0, Ty.Int)
              , Typing.App (v ["+"], [Typing.Int 1; Typing.Int 1], Types.Int) )
            ]
-         , v' 0 )) ;
+         , v' 0
+         , false )) ;
     test "let id = fun x -> x in id 1; id true"
       (Typing.Let
          ( [ ( Typing.PVar (vn 0, Ty.Fun ([poly 0], poly 0))
@@ -83,7 +84,8 @@ let () =
              ( v [";"]
              , [ Typing.App (v' 0, [Typing.Int 1], Types.Int)
                ; Typing.App (v' 0, [Typing.Bool true], Types.Bool) ]
-             , Types.Bool ) )) ;
+             , Types.Bool )
+         , false )) ;
     test
       "let mk_pair x y = (x, y) in let a = mk_pair 1 in let b = mk_pair true \
        false in a"
@@ -109,7 +111,10 @@ let () =
                          ( v' 0
                          , [T.Bool true; T.Bool false]
                          , Types.Tuple [Types.Bool; Types.Bool] ) ) ]
-                 , v' 3 ) ) )) ;
+                 , v' 3
+                 , false )
+             , false )
+         , false )) ;
     let f, x, g, y = (0, 1, 2, 3) in
     test "let f x = let g y = x = y in g in\n   f"
       (T.Let
@@ -124,11 +129,13 @@ let () =
                              , Ty.Bool
                              , "_f_1_g_2"
                              , pos 15 ) ) ]
-                     , v' g )
+                     , v' g
+                     , false )
                  , Ty.Fun ([poly 0], Ty.Bool)
                  , "_f_1"
                  , pos 5 ) ) ]
-         , v' f )) ;
+         , v' f
+         , false )) ;
     let fact, n = (0, 1) in
     test "let rec fact n = if n = 1 then 1 else n * fact (n-1) in\n   fact 5"
       (T.LetRec
@@ -150,14 +157,16 @@ let () =
                  , Ty.Int
                  , "_fact_1"
                  , pos 9 ) ) ]
-         , T.App (v' fact, [T.Int 5], Ty.Int) )) ;
+         , T.App (v' fact, [T.Int 5], Ty.Int)
+         , false )) ;
     test "let x,\n   y = 1, 2 in x"
       (T.Let
          ( [ ( T.PTuple
                  ( [T.PVar (vn 0, Ty.Int); T.PVar (vn 1, Ty.Int)]
                  , [Ty.Int; Ty.Int] )
              , T.Tuple ([T.Int 1; T.Int 2], [Ty.Int; Ty.Int]) ) ]
-         , v' 0 )) ;
+         , v' 0
+         , false )) ;
     test "let f x = [x] in f 1; f true"
       (T.Let
          ( [ ( T.PVar
@@ -179,7 +188,8 @@ let () =
              , [ T.App (v' 0, [T.Int 1], Ty.Variant ([Ty.Int], lt ["list"]))
                ; T.App (v' 0, [T.Bool true], Ty.Variant ([Ty.Bool], lt ["list"]))
                ]
-             , Ty.Variant ([Ty.Bool], lt ["list"]) ) )) ;
+             , Ty.Variant ([Ty.Bool], lt ["list"]) )
+         , false )) ;
     test "let x = match (1, 2) with (x, y) -> x + y in x"
       (T.Let
          ( [ ( T.PVar (vn 0, Ty.Int)
@@ -191,7 +201,8 @@ let () =
                          , [Ty.Int; Ty.Int] )
                      , T.App (v ["+"], [v' 1; v' 2], Ty.Int) ) ]
                  , Ty.Int ) ) ]
-         , v' 0 )) ;
+         , v' 0
+         , false )) ;
     let length, l, x = (0, 1, 2) in
     test
       "let rec length l =\n\
@@ -228,7 +239,8 @@ let () =
                  , Ty.Int
                  , "_length_1"
                  , pos 9 ) ) ]
-         , T.Tuple ([], []) )) ;
+         , T.Tuple ([], [])
+         , false )) ;
     let map, f, l, x, xs = (0, 1, 2, 3, 4) in
     let l1_ty = Ty.Variant ([poly 1], lt ["list"]) in
     let l2_ty = Ty.Variant ([poly 0], lt ["list"]) in
@@ -260,7 +272,8 @@ let () =
                  , l2_ty
                  , "_map_1"
                  , pos 9 ) ) ]
-         , v' map )) ;
+         , v' map
+         , false )) ;
     test_stmt
       "type 'a t = A of 'a * ('a t) | B let rec total l = match l with | A (x, \
        xs) -> x + total xs | B -> 0"
@@ -287,7 +300,8 @@ let () =
                  , Int
                  , "_total_1"
                  , pos 42 ) ) ]
-         , Typing.Never ))
+         , Typing.Never
+         , true ))
 
 let () =
     let t1 = Types.Int in

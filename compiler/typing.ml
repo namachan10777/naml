@@ -29,8 +29,8 @@ type t =
     | Bool of bool
     | Var of Types.vid_t
     | App of t * t list * Types.t
-    | Let of (pat_t * t) list * t
-    | LetRec of (Types.vid_t * Types.t * t) list * t
+    | Let of (pat_t * t) list * t * bool
+    | LetRec of (Types.vid_t * Types.t * t) list * t * bool
     | If of t * t * t
     | Fun of (Types.vid_t * Types.t) list * t * Types.t * string * Lex.pos_t
     | Tuple of t list * Types.t list
@@ -246,19 +246,21 @@ let generalize tbl level =
               , p )
         | Tuple (vals, types) ->
             Tuple (List.map f vals, List.map (generalize_ty tbl level) types)
-        | Let (defs, expr) ->
+        | Let (defs, expr, is_top) ->
             Let
               ( List.map
                   (fun (pat, def) -> (generalize_pat tbl level pat, f def))
                   defs
-              , f expr )
-        | LetRec (defs, expr) ->
+              , f expr
+              , is_top )
+        | LetRec (defs, expr, is_top) ->
             LetRec
               ( List.map
                   (fun (name, ty, def) ->
                     (name, generalize_ty tbl level ty, f def))
                   defs
-              , f expr )
+              , f expr
+              , is_top )
         | If (cond, e1, e2) -> If (f cond, f e1, f e2)
         | Match (target, target_ty, arms, ty) ->
             Match
@@ -443,7 +445,7 @@ let rec g env level =
                      @@ Types.show @@ deref_ty f_ty
                    , p )
         | _ -> raise @@ TypeError ("unmatched app", p) )
-    | Alpha.Let (defs, expr) ->
+    | Alpha.Let (defs, expr, is_top) ->
         let pat_vars, defs =
             Util.unzip
             @@ List.map
@@ -469,8 +471,8 @@ let rec g env level =
                  defs
         in
         let expr, ty = g (List.concat pat_vars @ venv, tenv, cenv) level expr in
-        (Let (defs, expr), ty)
-    | Alpha.LetRec (defs, expr) ->
+        (Let (defs, expr, is_top), ty)
+    | Alpha.LetRec (defs, expr, is_top) ->
         let vars =
             List.map (fun (name, p, _) -> (name, p, fresh (level + 1))) defs
         in
@@ -493,7 +495,7 @@ let rec g env level =
               defs
         in
         let expr, ty = g env level expr in
-        (LetRec (defs, expr), ty)
+        (LetRec (defs, expr, is_top), ty)
     | Alpha.Fun (args, body, label, p) ->
         let args = List.map (fun arg -> (arg, fresh level)) args in
         let arg_as_vars = List.map (fun (arg, ty) -> (arg, ty)) args in

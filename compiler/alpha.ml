@@ -42,8 +42,8 @@ type t =
     | CtorApp of Types.cid_t * Lex.pos_t * t list
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
-    | Let of (pat_t * Lex.pos_t * t) list * t
-    | LetRec of (Types.vid_t * Lex.pos_t * t) list * t
+    | Let of (pat_t * Lex.pos_t * t) list * t * bool
+    | LetRec of (Types.vid_t * Lex.pos_t * t) list * t * bool
     | Fun of Types.vid_t list * t * string * Lex.pos_t
     | Match of t * (pat_t * Lex.pos_t * t * t) list
     | App of t * t list * Lex.pos_t
@@ -205,7 +205,7 @@ let rec of_expr fun_pre env =
           , of_expr fun_pre env e1
           , of_expr fun_pre env e2
           , p )
-    | Ast.Let (defs, e) ->
+    | Ast.Let (defs, e, is_top) ->
         let ps = List.map (fun (_, p, _) -> p) defs in
         let pat_vars, pats, defs =
             Util.unzip3
@@ -228,8 +228,9 @@ let rec of_expr fun_pre env =
         assert_dup @@ List.map (fun (id, p, _, _) -> (id, p)) venv' ;
         Let
           ( Util.zip3 pats ps defs
-          , of_expr fun_pre (drop_pos venv' @ venv, tenv, cenv) e )
-    | Ast.LetRec (defs, e) ->
+          , of_expr fun_pre (drop_pos venv' @ venv, tenv, cenv) e
+          , is_top )
+    | Ast.LetRec (defs, e, is_top) ->
         let ids = List.map (fun (n, p, _) -> (n, p, fresh_v (), true)) defs in
         assert_dup @@ List.map (fun (id, p, _, _) -> (id, p)) ids ;
         let env = (drop_pos ids @ venv, tenv, cenv) in
@@ -245,7 +246,8 @@ let rec of_expr fun_pre env =
           ( List.map
               (fun ((_, id, _), p, e) -> (id, p, e))
               (Util.zip3 (drop_pos ids) ps exprs)
-          , of_expr (fun_pre hd_id) env e )
+          , of_expr (fun_pre hd_id) env e
+          , is_top )
     | Ast.Fun (args, body, p) ->
         let ids = List.map (fun (n, _) -> ([n], fresh_v (), true)) args in
         let env = (ids @ venv, tenv, cenv) in

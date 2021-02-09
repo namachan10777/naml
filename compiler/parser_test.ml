@@ -78,13 +78,13 @@ let rec eq l r =
     | P.Pipeline (a1, f1, _), P.Pipeline (a2, f2, _) -> eq f1 f2 && eq a1 a2
     | P.Tuple (es1, _), P.Tuple (es2, _) ->
         List.for_all (fun (a, b) -> eq a b) @@ Util.zip es1 es2
-    | P.Let (defs1, e1), P.Let (defs2, e2) ->
-        eq e1 e2
+    | P.Let (defs1, e1, is_top), P.Let (defs2, e2, is_top') ->
+        eq e1 e2 && is_top = is_top'
         && List.for_all (fun ((pat1, _, def1), (pat2, _, def2)) ->
                eq_pat pat1 pat2 && eq def1 def2)
            @@ Util.zip defs1 defs2
-    | P.LetRec (defs1, e1), P.LetRec (defs2, e2) ->
-        eq e1 e2
+    | P.LetRec (defs1, e1, is_top), P.LetRec (defs2, e2, is_top') ->
+        eq e1 e2 && is_top = is_top'
         && List.for_all (fun ((id1, _, def1), (id2, _, def2)) ->
                id1 = id2 && eq def1 def2)
            @@ Util.zip defs1 defs2
@@ -178,37 +178,48 @@ let () =
              (P.Eq (P.Int (1, nw), P.Int (2, nw), nw), P.Bool (false, nw), nw)
          , nw )) ;
     test "let\n   simple" "let x = 1 in\n x"
-      (P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw))) ;
+      (P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw), false)) ;
     test "let rec" "let rec x\n = 1 in x"
-      (P.LetRec ([(["x"], nw, P.Int (1, nw))], P.Var (["x"], nw))) ;
+      (P.LetRec ([(["x"], nw, P.Int (1, nw))], P.Var (["x"], nw), false)) ;
     test "let add left" "1 + let x = 1 in x"
       (P.Add
          ( P.Int (1, nw)
-         , P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw))
+         , P.Let
+             ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw), false)
          , nw )) ;
     test "let add right" "(let x = 1\n   in x) + 1"
       (P.Add
          ( P.Paren
-             (P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw)))
+             (P.Let
+                ( [(P.PVar ("x", nw), nw, P.Int (1, nw))]
+                , P.Var (["x"], nw)
+                , false ))
          , P.Int (1, nw)
          , nw )) ;
     test "let complex" "let\n x = let y = 1 in y in let z = x in z"
       (P.Let
          ( [ ( P.PVar ("x", nw)
              , nw
-             , P.Let ([(P.PVar ("y", nw), nw, P.Int (1, nw))], P.Var (["y"], nw))
-             ) ]
-         , P.Let ([(P.PVar ("z", nw), nw, P.Var (["x"], nw))], P.Var (["z"], nw))
-         )) ;
+             , P.Let
+                 ( [(P.PVar ("y", nw), nw, P.Int (1, nw))]
+                 , P.Var (["y"], nw)
+                 , false ) ) ]
+         , P.Let
+             ( [(P.PVar ("z", nw), nw, P.Var (["x"], nw))]
+             , P.Var (["z"], nw)
+             , false )
+         , false )) ;
     test "let and" "let x = 1 and\n   y = 2 in y"
       (P.Let
          ( [ (P.PVar ("x", nw), nw, P.Int (1, nw))
            ; (P.PVar ("y", nw), nw, P.Int (2, nw)) ]
-         , P.Var (["y"], nw) )) ;
+         , P.Var (["y"], nw)
+         , false )) ;
     test "let rec and" "let rec\n x = 1 and y = 2 in y"
       (P.LetRec
          ( [(["x"], nw, P.Int (1, nw)); (["y"], nw, P.Int (2, nw))]
-         , P.Var (["y"], nw) )) ;
+         , P.Var (["y"], nw)
+         , false )) ;
     test "letfun" "let add\n   x y = x + y in add"
       (P.Let
          ( [ ( P.PVar ("add", nw)
@@ -217,7 +228,8 @@ let () =
                  ( [("x", nw); ("y", nw)]
                  , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
                  , nw ) ) ]
-         , P.Var (["add"], nw) )) ;
+         , P.Var (["add"], nw)
+         , false )) ;
     Parser.count := 0 ;
     test "letfun_pat" "let add (x, y) (z, w) = x + y in add"
       (P.Let
@@ -243,7 +255,8 @@ let () =
                                      (P.Var (["x"], nw), P.Var (["y"], nw), nw)
                                  ) ] ) ) ] )
                  , nw ) ) ]
-         , P.Var (["add"], nw) )) ;
+         , P.Var (["add"], nw)
+         , false )) ;
     test "letrecfun" "let rec add x\n y = x + y in add"
       (P.LetRec
          ( [ ( ["add"]
@@ -252,7 +265,8 @@ let () =
                  ( [("x", nw); ("y", nw)]
                  , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
                  , nw ) ) ]
-         , P.Var (["add"], nw) )) ;
+         , P.Var (["add"], nw)
+         , false )) ;
     Parser.count := 0 ;
     test "letrecfun_pat" "let rec add (x, y) (z,\n   w) = x + y in add"
       (P.LetRec
@@ -278,7 +292,8 @@ let () =
                                      (P.Var (["x"], nw), P.Var (["y"], nw), nw)
                                  ) ] ) ) ] )
                  , nw ) ) ]
-         , P.Var (["add"], nw) )) ;
+         , P.Var (["add"], nw)
+         , false )) ;
     test "fun" "fun x\n   y z -> x + y + z"
       (P.Fun
          ( [("x", nw); ("y", nw); ("z", nw)]
@@ -378,8 +393,10 @@ let () =
          , [ ( P.PVar ("y", nw)
              , nw
              , P.Bool (true, nw)
-             , P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw))
-             )
+             , P.Let
+                 ( [(P.PVar ("x", nw), nw, P.Int (1, nw))]
+                 , P.Var (["x"], nw)
+                 , false ) )
            ; (P.PVar ("z", nw), nw, P.Bool (true, nw), P.Int (1, nw)) ] )) ;
     test "match nested" "match match [] with [] -> [] with [] ->\n   []"
       (P.Match
@@ -517,7 +534,8 @@ let () =
          ( [ ( P.PTuple ([P.PVar ("x", nw); P.PVar ("y", nw)], nw)
              , nw
              , P.Var (["z"], nw) ) ]
-         , P.Var (["x"], nw) )) ;
+         , P.Var (["x"], nw)
+         , false )) ;
     test "app1" "1 + f 2"
       (P.Add (P.Int (1, nw), P.App (P.Var (["f"], nw), [P.Int (2, nw)], nw), nw)) ;
     test "app2" "- f 2"
@@ -538,7 +556,8 @@ let () =
       (P.If
          ( P.App (P.Var (["f"], nw), [P.Var (["x"], nw)], nw)
          , P.Int (1, nw)
-         , P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw))
+         , P.Let
+             ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Var (["x"], nw), false)
          , nw )) ;
     test "if_nested"
       "if if x then\n\
@@ -577,7 +596,8 @@ let () =
          , P.Add (P.Int (1, nw), P.Int (1, nw), nw)
          , nw )) ;
     test "unit" "let () = () in ()"
-      (P.Let ([(P.PTuple ([], nw), nw, P.Tuple ([], nw))], P.Tuple ([], nw))) ;
+      (P.Let
+         ([(P.PTuple ([], nw), nw, P.Tuple ([], nw))], P.Tuple ([], nw), false)) ;
     test_ty "tuple1" "t * t"
       (P.TTuple ([P.TApp ([], ["t"], nw); P.TApp ([], ["t"], nw)], nw)) ;
     test_ty "tuple2" "t *\n   (t * t)"
@@ -604,7 +624,7 @@ let () =
       (P.TApp ([P.TApp ([], ["a"], nw); P.TApp ([], ["a"], nw)], ["list"], nw)) ;
     test_ty "tvar" "'a\n   list" (P.TApp ([P.TVar ("a", nw)], ["list"], nw)) ;
     test_stmts "let stmt" "let x = 1"
-      (P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Never)) ;
+      (P.Let ([(P.PVar ("x", nw), nw, P.Int (1, nw))], P.Never, true)) ;
     test_stmts "letfun stmt" "let\n   add x y =\n x + y"
       (P.Let
          ( [ ( P.PVar ("add", nw)
@@ -613,15 +633,19 @@ let () =
                  ( [("x", nw); ("y", nw)]
                  , P.Add (P.Var (["x"], nw), P.Var (["y"], nw), nw)
                  , nw ) ) ]
-         , P.Never )) ;
+         , P.Never
+         , true )) ;
     test_stmts "letrec and" "let rec f = 1\n   and g = 2"
       (P.LetRec
-         ([(["f"], nw, P.Int (1, nw)); (["g"], nw, P.Int (2, nw))], P.Never)) ;
+         ( [(["f"], nw, P.Int (1, nw)); (["g"], nw, P.Int (2, nw))]
+         , P.Never
+         , true )) ;
     test_stmts "let\n and" "let f = 1 and g = 2"
       (P.Let
          ( [ (P.PVar ("f", nw), nw, P.Int (1, nw))
            ; (P.PVar ("g", nw), nw, P.Int (2, nw)) ]
-         , P.Never )) ;
+         , P.Never
+         , true )) ;
     P.count := 0 ;
     test_stmts "letfun and" "let add (x, y) (z,\n w) = x + y and add2 = add"
       (P.Let
@@ -648,7 +672,8 @@ let () =
                                  ) ] ) ) ] )
                  , nw ) )
            ; (P.PVar ("add2", nw), nw, P.Var (["add"], nw)) ]
-         , P.Never )) ;
+         , P.Never
+         , true )) ;
     test_stmts "type variant" "type t =\n   Leaf of\n int | Node of t * t"
       (P.Type
          ( [ ( "t"

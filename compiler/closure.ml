@@ -1,6 +1,11 @@
 type t =
     | LetClosure of
-        Types.vid_t * Types.vid_t list * t list * Types.vid_t * string
+        Types.vid_t
+        * Types.vid_t list
+        * t list
+        * Types.vid_t
+        * string
+        * Types.vid_t list
     | LetCall of Types.vid_t * Types.vid_t * Types.vid_t list
     | LetApp of Types.vid_t * Types.vid_t * Types.vid_t list
     | LetInt of Types.vid_t * int
@@ -25,7 +30,9 @@ let init () = count_v := 0
 
 let list_free_variables env t =
     let rec f = function
-        | Typing.Let ([(Typing.PVar (id, _), def)], expr) ->
+        | Typing.Let ([(Typing.PVar (id, _), def)], expr, _) ->
+            List.filter (( <> ) id) @@ f expr
+        | Typing.LetRec ([(id, _, def)], expr, _) ->
             List.filter (( <> ) id) @@ f expr
         | Typing.Var id -> [id]
         | Typing.App (g, args, _) -> f g @ List.concat (List.map f args)
@@ -67,7 +74,20 @@ let rec replace_variables map =
     | Typing.Var id -> Typing.Var (replace id)
     | Typing.Int i -> Typing.Int i
     | Typing.Bool b -> Typing.Bool b
-    | _ -> failwith "repalce_vairables unimplemented"
+    | Typing.Let ([(Typing.PVar (id, ty), def)], expr, flag) ->
+        Typing.Let
+          ( [(Typing.PVar (replace id, ty), replace_variables map def)]
+          , replace_variables map expr
+          , flag )
+    | Typing.LetRec ([(id, ty, def)], expr, flag) ->
+        Typing.LetRec
+          ( [(replace id, ty, replace_variables map def)]
+          , replace_variables map expr
+          , flag )
+    | x ->
+        failwith
+        @@ Printf.sprintf "repalce_vairables unimplemented %s"
+        @@ Typing.show x
 
 let rec g env = function
     | Typing.App (f, args, ty) ->
@@ -86,8 +106,8 @@ let rec g env = function
     | Typing.Bool b ->
         let id = fresh_v () in
         ([LetBool (id, b)], id)
-    | Typing.Let ([(Typing.PVar (id, _), def)], expr) ->
-        let expr, _ = g (id :: env) expr in
+    | Typing.Let ([(Typing.PVar (id, _), def)], expr, _) ->
+        let expr, _ = g env expr in
         ( ( expr
           @
           match g env def with
@@ -96,21 +116,21 @@ let rec g env = function
           | LetCall (_, f, args) :: rest, _ -> LetCall (id, f, args) :: rest
           | LetApp (_, f, args) :: rest, _ -> LetApp (id, f, args) :: rest
           | Phi (_, x, y) :: rest, _ -> Phi (id, x, y) :: rest
-          | LetClosure (_, args, block, ret, label) :: rest, _ ->
-              LetClosure (id, args, block, ret, label) :: rest
+          | LetClosure (_, args, block, ret, label, pre_applied) :: rest, _ ->
+              LetClosure (id, args, block, ret, label, pre_applied) :: rest
           | _ -> failwith "unimplemented" )
         , id )
-    | Typing.LetRec ([(id, _, def)], expr) ->
-        let expr, _ = g (id :: env) expr in
+    | Typing.LetRec ([(id, _, def)], expr, _) ->
+        let expr, _ = g env expr in
         ( ( expr
           @
-          match g (id :: env) def with
+          match g env def with
           | LetBool (_, b) :: rest, _ -> LetBool (id, b) :: rest
           | LetInt (_, i) :: rest, _ -> LetInt (id, i) :: rest
           | LetCall (_, f, args) :: rest, _ -> LetCall (id, f, args) :: rest
           | Phi (_, x, y) :: rest, _ -> Phi (id, x, y) :: rest
-          | LetClosure (_, args, block, ret, label) :: rest, _ ->
-              LetClosure (id, args, block, ret, label) :: rest
+          | LetClosure (_, args, block, ret, label, pre_applied) :: rest, _ ->
+              LetClosure (id, args, block, ret, label, pre_applied) :: rest
           | x, _ ->
               failwith @@ Printf.sprintf "unimplemented %s" @@ show_inst_t x )
         , id )
@@ -128,26 +148,26 @@ let rec g env = function
     (* クロージャ変換しようね *)
     | Typing.Fun (args, body, _, label, _) as self ->
         let let_id = fresh_v () in
-        ( ( match list_free_variables env self with
+        ( ( match Util.uniq @@ list_free_variables env self with
           | [] ->
               let body, ret_id = g env body in
               [ LetClosure
-                  (let_id, List.map fst args, List.rev body, ret_id, label) ]
+                  (let_id, List.map fst args, List.rev body, ret_id, label, [])
+              ]
           | frees ->
               let map = List.map (fun free -> (free, fresh_v ())) frees in
               let body = replace_variables map body in
               let body, ret_id = g env body in
-              let closure_id = fresh_v () in
               let closure =
                   LetClosure
-                    ( closure_id
+                    ( let_id
                     , List.map snd map @ List.map fst args
                     , List.rev body
                     , ret_id
-                    , label )
+                    , label
+                    , List.map fst map )
               in
-              let let_call = LetCall (let_id, closure_id, List.map fst map) in
-              [let_call; closure] )
+              [closure] )
         , let_id )
     | t -> failwith @@ Printf.sprintf "unimplemented %s" @@ Typing.show t
 

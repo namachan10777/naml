@@ -42,3 +42,7 @@ let rec drop n l =
     | 0, l -> l
     | n, h :: l -> drop (n - 1) l
     | _ -> raise @@ Invalid_argument "cannot drop"
+
+let rec uniq = function
+    | x :: remain -> x :: (uniq @@ List.filter (( <> ) x) remain)
+    | [] -> []

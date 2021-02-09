@@ -24,26 +24,28 @@ let () =
           , T.VidSSA 8
           , "_f_1" )
       ; C.End ] ;
-    test "let f x = let g y = x + y in g"
+    test "let f x = let g y = x + y in g let x = f 1"
       [ C.LetClosure
           ( T.Vid 16
           , [T.Vid 17]
           , [ C.LetClosure
-                ( T.VidSSA 14
-                , [T.VidSSA 12; T.Vid 19]
-                , [C.LetCall (T.VidSSA 13, T.Vid 0, [T.VidSSA 12; T.Vid 19])]
-                , T.VidSSA 13
+                ( T.VidSSA 16
+                , [T.VidSSA 14; T.Vid 19]
+                , [C.LetCall (T.VidSSA 15, T.Vid 0, [T.VidSSA 14; T.Vid 19])]
+                , T.VidSSA 15
                 , "_f_1_g_2" )
-            ; C.LetCall (T.Vid 18, T.VidSSA 14, [T.Vid 17]) ]
+            ; C.LetCall (T.Vid 18, T.VidSSA 16, [T.Vid 17]) ]
           , T.Vid 18
           , "_f_1" )
+      ; C.LetInt (T.VidSSA 10, 1)
+      ; C.LetApp (T.Vid 20, T.Vid 16, [T.VidSSA 10])
       ; C.End ] ;
     test "let rec f x = f x"
       [ C.LetClosure
           ( T.Vid 16
           , [T.Vid 17]
-          , [C.LetCall (T.VidSSA 17, T.Vid 16, [T.Vid 17])]
-          , T.VidSSA 17
+          , [C.LetCall (T.VidSSA 19, T.Vid 16, [T.Vid 17])]
+          , T.VidSSA 19
           , "_f_1" )
       ; C.End ] ;
     let src =

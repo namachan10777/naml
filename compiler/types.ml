@@ -90,7 +90,9 @@ let pervasive_vals =
     ; (["<"], VidTop 6, Fun ([Int; Int], Bool))
     ; (["="], VidTop 7, Fun ([Poly (Pid 0); Poly (Pid 0)], Bool))
     ; ([";"], VidTop 8, Fun ([Poly (Pid 0); Poly (Pid 1)], Poly (Pid 1)))
-    ; (["."], VidTop 9, Fun ([Variant ([Poly (Pid 0)], Tid 2); Int], Poly (Pid 0)))
+    ; ( ["."]
+      , VidTop 9
+      , Fun ([Variant ([Poly (Pid 0)], Tid 2); Int], Poly (Pid 0)) )
     ; (["<neg>"], VidTop 10, Fun ([Int], Int))
     ; ( ["<arrayassign>"]
       , VidTop 11
@@ -100,7 +102,7 @@ let pervasive_vals =
     ; ( [":="]
       , VidTop 14
       , Fun ([Variant ([Poly (Pid 0)], Tid 3); Poly (Pid 0)], unit_ty) )
-    ; (["print_int"], VidTop 15, Fun ([Int], Tuple [])) ]
+    ; (["print_int"], VidTop 15, Fun ([Int], Int)) ]
 
 let pervasive_types =
     [ (["int"], Tid 0, Int)

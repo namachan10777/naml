@@ -75,8 +75,8 @@ let () =
                   ; C.LetInt (i1_1id, 1)
                   ; C.LetCall (nsub1_id, T.VidTop 1, [n_id4; i1_1id'])
                   ; C.LetCall (fibret_2id, self_id'', [nsub1_id'])
-                  ; C.LetCall (fib_r_id, T.VidTop 0, [fibret_2id'; fibret_1id']) ]
-                )
+                  ; C.LetCall (fib_r_id, T.VidTop 0, [fibret_2id'; fibret_1id'])
+                  ] )
             ; C.Phi (ret_id, fib_l_id', fib_r_id') ]
           , ret_id'
           , "_fib_1"

@@ -113,7 +113,9 @@ let rec g env = function
         let then_e, id_then = g env then_e in
         let else_e, id_else = g env else_e in
         let ret_id = fresh_v () in
-        ( Phi (ret_id, id_then, id_else) :: Test (id, then_e, else_e) :: cond
+        ( Phi (ret_id, id_then, id_else)
+          :: Test (id, List.rev then_e, List.rev else_e)
+          :: cond
         , ret_id )
     | Typing.Never -> ([End], fresh_v ())
     | Typing.Var id -> ([], id)

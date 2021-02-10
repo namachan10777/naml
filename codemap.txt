@@ -1,0 +1,90 @@
+.
+├── code # コンパイラ1のディレクトリ
+│  ├── bin # main.mlのみが入る。libに依存
+│  │  ├── dune # ビルド設定ファイル
+│  │  └── main.ml
+│  ├── dune-project
+│  ├── example           # テストコード
+│  │  ├── ack.ml         # アッカーマン関数
+│  │  ├── fib.ml         # フィボナッチ数列
+│  │  ├── maccarthy91.ml # McCarthy 91関数
+│  │  ├── tarai.ml       # たらい回し関数
+│  │  └── z.ml           # Zコンビネータ
+│  ├── format-check.sh   # フォーマットされているか検査 (CI用)
+│  ├── format.sh         # フォーマット用スクリプト
+│  ├── lib               # 本実装。前半の実験などコンパイラ1には入ってないコードもある
+│  │  ├── cam.ml             # CAMのVM
+│  │  ├── compile_to_cam.ml  # CAMへのコンパイラ
+│  │  ├── compile_to_zam.ml  # ZAMへのコンパイラ
+│  │  ├── dune               # ビルド設定ファイル
+│  │  ├── env.ml             # 使用していない
+│  │  ├── k1main.ml          # 課題1
+│  │  ├── k4ast.ml           # 課題4抽象構文木定義。構文木の評価関数も同時に定義
+│  │  ├── k4lex.ml           # 課題4用の軸解析器。sedlexを用いている
+│  │  ├── k4parser.mly       # 課題4用の構文解析器。Menhir
+│  │  ├── k4top.ml           # 課題4のデバッグ用のユーティリティ関数を纏めたもの。主にtoplevelから使うことを意図している
+│  │  ├── k5ast.ml           # 課題5抽象構文木定義。構文木の評価関数も同時に定義
+│  │  ├── k5lex.ml           # 課題5用の軸解析器。sedlexを用いている
+│  │  ├── k5parser.mly       # 課題5用の構文解析器。Menhir
+│  │  ├── k5top.ml           # 課題5のデバッグ用のユーティリティ関数を纏めたもの。主にtoplevelから使うことを意図している
+│  │  ├── k6ast.ml           # 課題6抽象構文木定義。構文木の評価関数も同時に定義
+│  │  ├── k6lex.ml           # 課題6用の軸解析器。sedlexを用いている
+│  │  ├── k6parser.mly       # 課題6用の構文解析器。Menhir
+│  │  ├── k6top.ml           # 課題6のデバッグ用のユーティリティ関数を纏めたもの。主にtoplevelから使うことを意図している
+│  │  ├── k7ast.ml           # 課題7抽象構文木定義。構文木の評価関数も同時に定義。ZAM、CAMでも流用
+│  │  ├── k7lex.ml           # 課題7用の軸解析器。sedlexを用いている。ZAM、CAMでも流用
+│  │  ├── k7parser.mly       # 課題7用の構文解析器。Menhir。ZAM、CAMでも流用
+│  │  ├── k7top.ml           # 課題7のデバッグ用のユーティリティ関数を纏めたもの。主にtoplevelから使うことを意図している。ZAM、CAMでも流用
+│  │  ├── kadai2_2.ml        # 課題2-2
+│  │  ├── kadai2_4.ml        # 課題2-4
+│  │  ├── kadai2_5.ml        # 課題2-5
+│  │  ├── kadai3_2.ml        # 課題3-2
+│  │  └── zam.ml             # ZAMのVM
+│  └── test                  # テストコードのディレクトリ。OUnit2を用いている
+│     ├── cam.ml
+│     ├── compile_to_cam.ml
+│     ├── compile_to_zam.ml
+│     ├── dune
+│     ├── kadai4.ml
+│     ├── kadai5.ml
+│     ├── kadai6.ml
+│     ├── kadai7.ml
+│     ├── main.ml
+│     └── zam.ml
+├── compiler                 # コンパイラ2のディレクトリ
+│  ├── alpha.ml              # アルファ変換の実装
+│  ├── alpha_test.ml         # アルファ変換のテスト
+│  ├── ast.ml                # parser.mlの吐いた抽象構文木を以降のパスで扱いやすいように変換
+│  ├── closure.ml            # 外部の変数をキャプチャする関数をクロージャへと変換
+│  ├── closure_test.ml       # クロージャ変換のテスト
+│  ├── codegen.ml            # クロージャをアセンブリに変換
+│  ├── emit.ml               # アセンブリを文字列に整形
+│  ├── example               # テストコード
+│  │  ├── ack.ml             # 実行可能
+│  │  ├── add.ml             # 実行可能
+│  │  ├── and_let.ml         # 型付けは可能
+│  │  ├── call.ml            # 実行可能
+│  │  ├── fib.ml             # 実行可能
+│  │  ├── fib_match.ml       # 型付けは可能
+│  │  ├── let_match.ml       # 型付けは可能　
+│  │  ├── map.ml             # 型付けは可能
+│  │  ├── tarai.ml           # 型付けは可能
+│  │  ├── total.ml           # 実行可能
+│  │  └── typedef.ml         # 型付けは可能
+│  ├── format-check.sh       # フォーマットされているか検査（CI用）
+│  ├── format.sh             # フォーマットスクリプト
+│  ├── id.ml                 # 使用していない
+│  ├── lex.ml                # 字句解析
+│  ├── lex_test.ml           # 字句解析のテスト
+│  ├── main.ml               # エントリポイント
+│  ├── Makefile              # Makefile
+│  ├── parser.ml             # パーサ
+│  ├── parser_test.ml        # パーサのテスト
+│  ├── README.md             # README.md
+│  ├── test.ml               # テスト用ユーティリティ
+│  ├── types.ml              # 型定義
+│  ├── typing.ml             # 型推論器の実装
+│  ├── typing_test.ml        # 型推論器のテスト
+│  └── util.ml               # ユーティリティ関数の提供zip, unzipなど
+└── Dockerfile # テスト用Docker
+

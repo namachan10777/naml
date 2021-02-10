@@ -80,7 +80,7 @@ let rec g stackmap =
     | Closure.LetApp (mem, Types.VidTop f, args) :: remain ->
         let blocks, insts = g stackmap remain in
         ( blocks
-          , AppTop (Reg 0, f, List.map lookup_mem args)
+        , AppTop (Reg 0, f, List.map lookup_mem args)
           :: Save (lookup_mem mem, Reg 0)
           :: insts )
     | Closure.LetCall (mem, f, args) :: remain ->
@@ -99,7 +99,7 @@ let rec g stackmap =
           :: insts )
     | Closure.LetClosure (mem, args, inner, ret, label, pre_applied) :: remain
       ->
-        let args_on_stack = List.mapi (fun i id -> (id, M (1+i))) args in
+        let args_on_stack = List.mapi (fun i id -> (id, M (1 + i))) args in
         let stackmap_inner =
             args_on_stack @ vid2stack (1 + List.length args_on_stack) inner
         in
@@ -178,7 +178,7 @@ let set_args () =
     let app4 = fresh_label () in
     let app5 = fresh_label () in
     [ E.C "関数呼び出し準備"
-    ; E.I (E.Movq (E.Ind (E.Rbx, Some 8), E.Reg Rcx))
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 16), E.Reg Rcx))
     ; E.I (E.Cmpq (E.Imm 1, E.Reg Rcx))
     ; E.I (E.Je app1)
     ; E.I (E.Cmpq (E.Imm 2, E.Reg Rcx))
@@ -189,17 +189,63 @@ let set_args () =
     ; E.I (E.Je app4)
     ; E.I (E.Cmpq (E.Imm 5, E.Reg Rcx))
     ; E.I (E.Je app5)
-    ; E.I (E.Movq (E.Ind (E.Rbx, Some 56), E.Reg (arg_reg 5)))
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 64), E.Reg (arg_reg 5)))
     ; E.L app5
-    ; E.I (E.Movq (E.Ind (E.Rbx, Some 48), E.Reg (arg_reg 4)))
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 56), E.Reg (arg_reg 4)))
     ; E.L app4
-    ; E.I (E.Movq (E.Ind (E.Rbx, Some 40), E.Reg (arg_reg 3)))
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 48), E.Reg (arg_reg 3)))
     ; E.L app3
-    ; E.I (E.Movq (E.Ind (E.Rbx, Some 36), E.Reg (arg_reg 2)))
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 40), E.Reg (arg_reg 2)))
     ; E.L app2
-    ; E.I (E.Movq (E.Ind (E.Rbx, Some 24), E.Reg (arg_reg 1)))
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 32), E.Reg (arg_reg 1)))
     ; E.L app1
-    ; E.I (E.Movq (E.Ind (E.Rbx, Some 16), E.Reg (arg_reg 0))) ]
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 24), E.Reg (arg_reg 0))) ]
+
+let copy_stored_args () =
+    let app0 = fresh_label () in
+    let app1 = fresh_label () in
+    let app2 = fresh_label () in
+    let app3 = fresh_label () in
+    let app4 = fresh_label () in
+    let app5 = fresh_label () in
+    [ E.I (E.Movq (E.Ind (E.Rbx, None), E.Reg E.Rdi))
+    ; E.I (E.Movq (E.Reg E.Rdi, E.Ind (E.Rax, None)))
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 8), E.Reg E.Rdi))
+    ; E.I (E.Movq (E.Reg E.Rdi, E.Ind (E.Rax, Some 8)))
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 16), E.Reg E.Rdi))
+    ; E.I (E.Movq (E.Reg E.Rdi, E.Ind (E.Rax, Some 16)))
+    ; E.C "引数をコピー"
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 16), E.Reg Rcx))
+    ; E.I (E.Cmpq (E.Imm 0, E.Reg Rcx))
+    ; E.I (E.Je app0)
+    ; E.I (E.Cmpq (E.Imm 1, E.Reg Rcx))
+    ; E.I (E.Je app1)
+    ; E.I (E.Cmpq (E.Imm 2, E.Reg Rcx))
+    ; E.I (E.Je app2)
+    ; E.I (E.Cmpq (E.Imm 3, E.Reg Rcx))
+    ; E.I (E.Je app3)
+    ; E.I (E.Cmpq (E.Imm 4, E.Reg Rcx))
+    ; E.I (E.Je app4)
+    ; E.I (E.Cmpq (E.Imm 5, E.Reg Rcx))
+    ; E.I (E.Je app5)
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 64), E.Reg E.Rdi))
+    ; E.I (E.Movq (E.Reg E.Rdi, E.Ind (E.Rax, Some 64)))
+    ; E.L app5
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 56), E.Reg E.Rdi))
+    ; E.I (E.Movq (E.Reg E.Rdi, E.Ind (E.Rax, Some 56)))
+    ; E.L app4
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 48), E.Reg E.Rdi))
+    ; E.I (E.Movq (E.Reg E.Rdi, E.Ind (E.Rax, Some 48)))
+    ; E.L app3
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 40), E.Reg E.Rdi))
+    ; E.I (E.Movq (E.Reg E.Rdi, E.Ind (E.Rax, Some 40)))
+    ; E.L app2
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 32), E.Reg E.Rdi))
+    ; E.I (E.Movq (E.Reg E.Rdi, E.Ind (E.Rax, Some 32)))
+    ; E.L app1
+    ; E.I (E.Movq (E.Ind (E.Rbx, Some 24), E.Reg E.Rdi))
+    ; E.I (E.Movq (E.Reg E.Rdi, E.Ind (E.Rax, Some 24)))
+    ; E.L app0 ]
 
 let rec codegen = function
     | Load (Reg r, Mem m) :: remain ->
@@ -212,36 +258,42 @@ let rec codegen = function
     | MkClosure (Mem m, label, size, args, Mem ret) :: remain ->
         let alloc_container =
             [ E.C ("mkclosure " ^ label)
-            ; E.I (E.Movl (E.Imm (8 * (2 + size)), E.Reg E.Edi))
+            ; E.I (E.Movl (E.Imm (8 * (3 + size)), E.Reg E.Edi))
             ; E.I (E.Call (E.Label "malloc@PLT"))
             ; E.I (E.Leaq (E.IndL (E.Rip, Some label), E.Reg E.Rbx))
             ; E.I (E.Movq (E.Reg E.Rbx, E.Ind (E.Rax, None)))
-            ; E.I (E.Movq (E.Imm 0, E.Ind (E.Rax, Some 8)))
+            ; E.I (E.Movq (E.Imm (8 * (3 + size)), E.Ind (E.Rax, Some 8)))
+            ; E.I (E.Movq (E.Imm 0, E.Ind (E.Rax, Some 16)))
             ; E.I (E.Movq (E.Reg E.Rax, E.Ind (E.Rbp, Some (-8 * m)))) ]
         in
         let copy_args =
             List.mapi
               (fun i (Mem m) ->
                 [ E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * m)), E.Reg E.Rbx))
-                ; E.I (E.Movq (E.Reg E.Rbx, E.Ind (E.Rax, Some (8 * (i + 2)))))
+                ; E.I (E.Movq (E.Reg E.Rbx, E.Ind (E.Rax, Some (8 * (i + 3)))))
                 ])
               args
         in
         alloc_container
         @ [E.C ("mkclosure (copy args)" ^ label)]
-        @ List.concat copy_args
-        @ codegen remain
-        @ [E.I (E.Movq (E.Ind (E.Rbp, Some (-8*ret)), E.Reg E.Rax))]
+        @ List.concat copy_args @ codegen remain
+        @ [E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * ret)), E.Reg E.Rax))]
     | Call (ret, Reg f, args) :: remain ->
-        let calc_arg_addr =
-            [ E.C "適用された引数の数を取得"
-            ; E.I (E.Movq (E.Ind (code2reg f, Some 8), E.Reg E.Rax))
-            ; E.I (E.Movq (E.Imm 8, E.Reg E.Rdx ))
+        let alloc_new_closure =
+            [ E.C "コンテナサイズを取得"
+            ; E.I (E.Movq (E.Ind (code2reg f, Some 8), E.Reg E.Rdi))
+            ; E.I (E.Call (E.Label "malloc@PLT")) ]
+        in
+        let apply_args =
+            [ E.I (E.Movq (E.Reg E.Rax, E.Reg E.Rbx))
+            ; E.C "適用された引数の文だけカウンタ加算"
+            ; E.I (E.Movq (E.Ind (E.Rbx, Some 16), E.Reg E.Rax))
+            ; E.I (E.Movq (E.Imm 8, E.Reg E.Rdx))
             ; E.I (E.Mulq (E.Reg E.Rdx))
             ; E.C "クロージャのアドレスを加算"
             ; E.I (E.Addq (E.Reg (code2reg f), E.Reg E.Rax))
             ; E.C "関数ポインタ+引数カウンタ分加算"
-            ; E.I (E.Addq (E.Imm (2 * 8), E.Reg E.Rax)) ]
+            ; E.I (E.Addq (E.Imm (3 * 8), E.Reg E.Rax)) ]
         in
         let copy_args =
             List.concat
@@ -251,18 +303,17 @@ let rec codegen = function
                    ; E.I (E.Movq (E.Reg E.Rdx, E.Ind (E.Rax, Some (8 * i)))) ])
                  args
         in
-        let update_arg_n = [
-            E.I(E.Addq (E.Imm (List.length args), E.Ind (E.Rbx, Some 8)))
-        ] in
+        let update_arg_n =
+            [E.I (E.Addq (E.Imm (List.length args), E.Ind (E.Rbx, Some 16)))]
+        in
         let call =
             [ E.C "呼び出し"
             ; E.I (E.Movq (E.Ind (code2reg f, None), E.Reg E.Rax))
             ; E.I (E.Call (E.Reg E.Rax)) ]
         in
-        (E.C "call" :: calc_arg_addr)
+        ((E.C "call" :: alloc_new_closure) @ copy_stored_args () @ apply_args)
         @ (E.C "引数をクロージャにコピー" :: copy_args)
-        @ update_arg_n
-        @ set_args () @ call @ codegen remain
+        @ update_arg_n @ set_args () @ call @ codegen remain
     | CallTop (Reg r, 0, [Mem lhr; Mem rhr]) :: remain ->
         E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
         :: E.I (E.Addq (E.Ind (E.Rbp, Some (-8 * rhr)), E.Reg (code2reg r)))
@@ -307,7 +358,7 @@ let rec codegen = function
 
 let gen_blocks clos =
     let stackmap = vid2stack 4 clos in
-    let store_return_code = [Ldi (Reg 0, 0);Save (Mem 2, Reg 0)] in
+    let store_return_code = [Ldi (Reg 0, 0); Save (Mem 2, Reg 0)] in
     let blocks, main_inner = g stackmap clos in
     ("main", 2, 4 + List.length stackmap, main_inner @ store_return_code, Mem 2)
     :: blocks
@@ -329,7 +380,8 @@ let f clos =
             let copy_args =
                 List.init n_args (fun i ->
                     E.I
-                      (E.Movq (E.Reg (arg_reg i), E.Ind (E.Rbp, Some (-8 * (i+1))))))
+                      (E.Movq
+                         (E.Reg (arg_reg i), E.Ind (E.Rbp, Some (-8 * (i + 1))))))
             in
             let footer =
                 [ E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * ret)), E.Reg E.Rax))

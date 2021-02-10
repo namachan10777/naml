@@ -50,7 +50,10 @@
       参考までに\texttt{ocaml}と\texttt{ocamlopt}によって生成されたバイナリの実行結果を示す。
       ソースコードはコンパイラ2のものと同一である。
       \lstinputlisting[caption = OCamlによるfibの実行結果]{./figures/fib_ocaml.sh}
-    \subsection{実行速度のまとめ}
+    \subsection{Ack関数とTarai関数}
+    　また上記の関数の他に図\ref{ack}に示すAck関数と図\ref{tarai}に示すたらい回し関数でも試験した。
+      \lstinputlisting[caption = Ack関数,   label=ack]{./code/example/ack.ml}
+      \lstinputlisting[caption = Tarai関数, label=tarai]{./code/example/tarai.ml}
       \begin{table}[t]
         \centering
         \caption{実行速度の比較表}

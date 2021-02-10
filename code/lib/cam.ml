@@ -126,20 +126,22 @@ let exec insts =
         | Not :: rest -> (
           match stack with
           | Bool b :: stack -> exec env (Bool (not b) :: stack) rest
-          | _ -> failwith "cannot not" )
+          | _ -> failwith "cannot not" @@ show_stack_t stack )
         | Eq :: rest -> (
           match stack with
           | Int lhr :: Int rhr :: stack ->
               exec env (Bool (lhr = rhr) :: stack) rest
           | Bool lhr :: Bool rhr :: stack ->
               exec env (Bool (lhr = rhr) :: stack) rest
-          | _ -> failwith "cannot add" )
+          | _ -> failwith @@ Printf.sprintf "cannot eq %s" @@ show_stack_t stack
+          )
         | Neq :: rest -> (
           match stack with
           | Int lhr :: Int rhr :: stack ->
               exec env (Bool (lhr = rhr) :: stack) rest
           | Bool lhr :: Bool rhr :: stack ->
               exec env (Bool (lhr = rhr) :: stack) rest
-          | _ -> failwith "cannot add" )
+          | _ -> failwith @@ Printf.sprintf "cannot eq %s" @@ show_stack_t stack
+          )
     in
     exec [] [] insts

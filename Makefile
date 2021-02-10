@@ -69,7 +69,8 @@ OUTPUTS= \
 	final.pdf
 
 .PHONY: all
-all: $(OUTPUTS)
+all: $(OUTPUTS) compiler
+
 
 .PHONY: clean
 clean:
@@ -77,7 +78,16 @@ clean:
 	rm -f $(shell find . -type f -name '*.pdf')
 	rm -f $(shell find . -type f -name '*.tar.gz')
 	rm -rf $(shell find . -type d -name '_build')
-	rm -rf *.fdb *.aux *.logs
+	rm -rf *.fdb *.aux *.log *.blg *.fls *.bbl *.dvi *.fdb_latexmk sourcelist.tex
+	rm -f compiler/*.cmo
+	rm -f compiler/*.cmx
+	rm -f compiler/*.cmi
+	rm -f compiler/*.cmt
+	rm -f compiler/*.o
+	rm -f compiler/*_test
+	rm -f compiler2 compiler1
+	rm -f compiler/*.pp.ml
+
 
 $(DIST)/kadai1.tar.gz: $(REPORT1_OUTPUTS)
 	mkdir -p $(DIST)
@@ -111,11 +121,118 @@ $(DIST)/kadai8.tar.gz: $(REPORT8_OUTPUTS)
 	mkdir -p $(DIST)
 	tar czf $@ $(REPORT8_OUTPUTS)
 
+BENCHS = dist/fib_result.txt dist/ack_result.txt dist/tarai_result.txt
+
+dist/fib_result.txt: compiler1 compiler2 ./code/example/fib.ml compiler/example/fib.ml ./gen_bench.fish
+	fish ./gen_bench.fish fib &> $@
+
+dist/ack_result.txt: compiler1 compiler2 ./code/example/ack.ml compiler/example/ack.ml ./gen_bench.fish
+	fish ./gen_bench.fish ack &> $@
+
+dist/tarai_result.txt: compiler1 compiler2 ./code/example/tarai.ml compiler/example/tarai.ml ./gen_bench.fish
+	fish ./gen_bench.fish tarai &> $@
+
+TYPETEST_SOURCES = $(wildcard typetest/*)
+TYPETEST_TARGETS = $(patsubst %.ml,%.txt,$(TYPETEST_SOURCES))
+
+typetest/%.txt: typetest/%.ml compiler2 Makefile
+	cat $<  > $@
+	compiler2 typing $< &>> $@ || true
+
+compiler1: $(find code -type f -name "*.ml")
+	cd code && dune build && cp _build/default/bin/main.exe ../compiler1
+
 sourcelist.tex: $(shell find . -type f -name "*.ml") gen_source_list.sh
 	./gen_source_list.sh > $@
 
-final.pdf: final.tex $(wildcard figures/*) sourcelist.tex
+typetestlist.tex: $(TYPETEST_TARGETS) ./gen_typetest_list.sh
+	./gen_typetest_list.sh > $@
+
+bench_list.tex: $(BENCHS)
+	./gen_bench_list.sh > $@
+
+final.pdf: final.tex $(wildcard figures/*) sourcelist.tex bench_list.tex typetestlist.tex
 	latexmk $<
 
 %.pdf: %.saty
 	satysfi -b $< -o $@
+
+OCAMLOPT=ocamlfind ocamlopt -package ppx_deriving.show
+
+.PHONY: test
+test: compiler/lex_test compiler/parser_test compiler/typing_test compiler/closure_test
+	./compiler/lex_test
+	./compiler/parser_test
+	./compiler/typing_test
+	./compiler/closure_test
+	cd code && dune runtest
+
+compiler/test.cmx: compiler/test.ml
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/ast.cmx: compiler/ast.ml compiler/parser.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/lex.cmx: compiler/lex.ml compiler/test.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/lex_test.cmx: compiler/lex_test.ml compiler/parser.cmx compiler/test.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/lex_test: compiler/test.cmx compiler/lex.cmx compiler/lex_test.cmx 
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$^) -o $(patsubst compiler/%,%,$@)
+
+compiler/parser_test.cmx: compiler/parser_test.ml compiler/parser.cmx compiler/lex.cmx compiler/util.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/id.cmx: compiler/id.ml
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/parser.cmx: compiler/parser.ml compiler/lex.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/parser_test: compiler/lex.cmx compiler/test.cmx compiler/parser.cmx compiler/util.cmx compiler/parser_test.cmx 
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$^) -o $(patsubst compiler/%,%,$@)
+
+compiler/alpha.cmx: compiler/alpha.ml compiler/types.cmx compiler/ast.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/typing.cmx: compiler/typing.ml compiler/util.cmx compiler/types.cmx compiler/alpha.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/typing_test.cmx: compiler/typing_test.ml compiler/util.cmx compiler/typing.cmx compiler/util.cmx compiler/ast.cmx compiler/alpha.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/typing_test: compiler/lex.cmx compiler/parser.cmx compiler/ast.cmx compiler/util.cmx \
+	compiler/id.cmx compiler/types.cmx compiler/alpha.cmx compiler/typing.cmx compiler/test.cmx  compiler/util.cmx compiler/alpha.cmx compiler/typing_test.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$^) -o $(patsubst compiler/%,%,$@)
+
+compiler/util.cmx: compiler/util.ml
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/types.cmx: compiler/types.ml compiler/util.cmx compiler/id.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/closure.cmx: compiler/closure.ml compiler/typing.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/closure_test.cmx: compiler/closure_test.ml compiler/closure.cmx  compiler/ast.cmx \
+	compiler/alpha.cmx compiler/typing.cmx compiler/lex.cmx compiler/parser.cmx compiler/types.cmx compiler/util.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/codegen.cmx: compiler/codegen.ml compiler/closure.cmx compiler/emit.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/closure_test: compiler/util.cmx compiler/lex.cmx compiler/parser.cmx compiler/ast.cmx \
+	compiler/types.cmx compiler/alpha.cmx compiler/typing.cmx compiler/closure.cmx compiler/closure_test.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$^) -o $(patsubst compiler/%,%,$@)
+
+compiler/emit.cmx: compiler/emit.ml
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler/main.cmx: compiler/main.ml compiler/parser.cmx compiler/lex.cmx compiler/types.cmx compiler/closure.cmx compiler/codegen.cmx compiler/emit.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$<) -c
+
+compiler2: compiler/util.cmx compiler/lex.cmx compiler/parser.cmx compiler/ast.cmx \
+	compiler/id.cmx compiler/types.cmx compiler/alpha.cmx compiler/typing.cmx compiler/closure.cmx compiler/emit.cmx compiler/codegen.cmx compiler/main.cmx
+	cd compiler && $(OCAMLOPT) $(patsubst compiler/%,%,$^) -o ../$@

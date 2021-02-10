@@ -65,19 +65,19 @@ let exec insts =
             | Int lhr :: Int rhr :: stack ->
                 exec env (Int (op lhr rhr) :: stack) rest
             | _ ->
-                failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+                failwith @@ Printf.sprintf "cannot add"
         in
         let binop_bool_bool op rest = function
             | Bool lhr :: Bool rhr :: stack ->
                 exec env (Bool (op lhr rhr) :: stack) rest
             | _ ->
-                failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+                failwith @@ Printf.sprintf "cannot add"
         in
         let binop_int_bool op rest = function
             | Int lhr :: Int rhr :: stack ->
                 exec env (Bool (op lhr rhr) :: stack) rest
             | _ ->
-                failwith @@ Printf.sprintf "cannot add %s" @@ show_stack_t stack
+                failwith @@ Printf.sprintf "cannot add"
         in
         function
         | [] -> List.hd stack
@@ -94,9 +94,7 @@ let exec insts =
                 (ClosureVal (rest, env) :: stack)
                 code
           | _ ->
-              failwith
-              @@ Printf.sprintf "cannot apply function %s"
-              @@ show_stack_t stack )
+              failwith "cannot apply funct")
         | Return :: _ -> (
           match stack with
           | v :: ClosureVal (code, env') :: stack -> exec env' (v :: stack) code
@@ -133,7 +131,7 @@ let exec insts =
               exec env (Bool (lhr = rhr) :: stack) rest
           | Bool lhr :: Bool rhr :: stack ->
               exec env (Bool (lhr = rhr) :: stack) rest
-          | _ -> failwith @@ Printf.sprintf "cannot eq %s" @@ show_stack_t stack
+          | _ -> failwith @@ Printf.sprintf "cannot eq"
           )
         | Neq :: rest -> (
           match stack with
@@ -141,7 +139,7 @@ let exec insts =
               exec env (Bool (lhr = rhr) :: stack) rest
           | Bool lhr :: Bool rhr :: stack ->
               exec env (Bool (lhr = rhr) :: stack) rest
-          | _ -> failwith @@ Printf.sprintf "cannot eq %s" @@ show_stack_t stack
+          | _ -> failwith @@ Printf.sprintf "cannot eq"
           )
     in
     exec [] [] insts

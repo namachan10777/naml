@@ -1,5 +1,5 @@
 let () =
-    if Array.length Sys.argv != 3 then
+    if Array.length Sys.argv < 3 then
       print_endline "compiler <typing|asmgen> <filename>"
     else
       let ic = open_in Sys.argv.(2) in
@@ -9,10 +9,11 @@ let () =
       match Sys.argv.(1) with
       | "typing" -> print_endline @@ Typing.show typed
       | "asmgen" ->
+          let out = if Sys.argv.(3) = "-o" then Sys.argv.(4) else "a.out" in
           let closure = Closure.f typed in
           let asm_src = Codegen.f closure in
           let oc = open_out "out.s" in
           output_string oc asm_src ;
           close_out oc ;
-          exit @@ Sys.command "gcc out.s"
+          exit @@ Sys.command ("gcc out.s -o " ^ out)
       | mode -> Printf.printf "unsupported mode \"%s\"" mode

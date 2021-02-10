@@ -62,6 +62,8 @@
       Ack関数でインタプリタが非常に低速になっている反面コンパイラはOCaml処理系と概ね同等の速度を維持しているのが特徴的である。
       これはバイナリコンパイラは非効率な部分はあるもの、\texttt{x86\_64}のアセンブリに変換する以上
       関数のコードを静的に配置せざるをえず、動的に再帰コードを生成するインタプリタに対してパフォーマンス上の優位があるのではないかと考えられる。
+      CAMのみN/Aの項目があるが、これはVMのバグで途中で計算に失敗しているためである。
+      デバッグの時間が無く直せなかった。
       \lstinputlisting[caption = Ack関数,   label=ack]{./code/example/ack.ml}
       \lstinputlisting[caption = Tarai関数, label=tarai]{./code/example/tarai.ml}
       \begin{table}[t]
@@ -72,7 +74,7 @@
         implementation & fib 35             & tarai 12 6 0         & ack 3 11            \\ \hline
         ocamlopt       & $64.86           $ & $ 30.01            $ & $ 69.74            $ \\
         ocaml          & $387.18          $ & $ 161.78           $ & $ 373.41           $ \\
-        compiler2      & $932.89          $ & $ \mathrm{N/A}     $ & $ 873.88           $ \\
+        compiler2      & $932.89          $ & $ 697.62           $ & $ 873.88           $ \\
         compiler1 tree & $2.71 \cdot 10^3 $ & $ 2.11 \cdot 10^3  $ & $ 12.47 \cdot 10^3 $ \\
         compiler1 cam  & $1.83 \cdot 10^3 $ & $ \mathrm{N/A}     $ & $ \mathrm{N/A}     $ \\
         compiler1 zam  & $2.70 \cdot 10^3 $ & $ 1937.38          $ & $ 16.03 \cdot 10^3 $
@@ -253,6 +255,8 @@
   \chapter{ソースコード}
     \lstinputlisting[caption = Typing Z combinator]{./codemap.txt}
     \include{./sourcelist.tex}
+    \include{./typetestlist.tex}
+    \include{./bench_list.tex}
   \bibliographystyle{plain}
   \bibliography{refs}
 \end{document}

@@ -68,6 +68,7 @@ type inst_t =
     | Je of string
     | Jne of string
     | Jz of string
+    | Jl of string
     | Jmp of string
     | Call of operand_t
     | Retq
@@ -142,6 +143,7 @@ let print_inst = function
     | Je label -> Printf.sprintf "je\t%s" label
     | Jne label -> Printf.sprintf "jne\t%s" label
     | Jz label -> Printf.sprintf "jz\t%s" label
+    | Jl label -> Printf.sprintf "jl\t%s" label
     | Jmp label -> Printf.sprintf "jmp\t%s" label
     | Call (Reg r) -> Printf.sprintf "call\t*%s" @@ print_reg r
     | Call op -> Printf.sprintf "call\t%s" @@ print_operand op

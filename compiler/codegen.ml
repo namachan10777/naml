@@ -323,6 +323,32 @@ let rec codegen = function
         :: E.I (E.Subq (E.Ind (E.Rbp, Some (-8 * rhr)), E.Reg (code2reg r)))
         :: codegen remain
     (* 実装サボってます。CtorやTupleを比較するために再帰的に比較する必要があるんですが、実装サボってます。 *)
+    | CallTop (Reg r, 5, [Mem lhr; Mem rhr]) :: remain ->
+        let true_l = fresh_label () in
+        let goal_l = fresh_label () in
+        E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * rhr)), E.Reg (code2reg r)))
+        :: E.I (E.Subq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
+        :: E.I (E.Jl true_l)
+        :: E.I (E.Movq (E.Imm 0, E.Reg (code2reg r)))
+        :: E.I (E.Jmp goal_l)
+        :: E.L true_l
+        :: E.I (E.Movq (E.Imm 1, E.Reg (code2reg r)))
+        :: E.L goal_l
+        :: codegen remain
+    (* 実装サボってます。CtorやTupleを比較するために再帰的に比較する必要があるんですが、実装サボってます。 *)
+    | CallTop (Reg r, 6, [Mem lhr; Mem rhr]) :: remain ->
+        let true_l = fresh_label () in
+        let goal_l = fresh_label () in
+        E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
+        :: E.I (E.Subq (E.Ind (E.Rbp, Some (-8 * rhr)), E.Reg (code2reg r)))
+        :: E.I (E.Jl true_l)
+        :: E.I (E.Movq (E.Imm 0, E.Reg (code2reg r)))
+        :: E.I (E.Jmp goal_l)
+        :: E.L true_l
+        :: E.I (E.Movq (E.Imm 1, E.Reg (code2reg r)))
+        :: E.L goal_l
+        :: codegen remain
+    (* 実装サボってます。CtorやTupleを比較するために再帰的に比較する必要があるんですが、実装サボってます。 *)
     | CallTop (Reg r, 7, [Mem lhr; Mem rhr]) :: remain ->
         E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
         :: E.C "calltop"

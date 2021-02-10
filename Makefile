@@ -77,6 +77,7 @@ clean:
 	rm -f $(shell find . -type f -name '*.pdf')
 	rm -f $(shell find . -type f -name '*.tar.gz')
 	rm -rf $(shell find . -type d -name '_build')
+	rm -rf *.fdb *.aux *.logs
 
 $(DIST)/kadai1.tar.gz: $(REPORT1_OUTPUTS)
 	mkdir -p $(DIST)
@@ -110,8 +111,11 @@ $(DIST)/kadai8.tar.gz: $(REPORT8_OUTPUTS)
 	mkdir -p $(DIST)
 	tar czf $@ $(REPORT8_OUTPUTS)
 
-final.pdf: final.tex $(wildcard figures/*)
-	lualatex $< --halt-on-error -interaction=batchmode -shell-escape
+sourcelist.tex: $(shell find . -type f -name "*.ml") gen_source_list.sh
+	./gen_source_list.sh > $@
+
+final.pdf: final.tex $(wildcard figures/*) sourcelist.tex
+	latexmk $<
 
 %.pdf: %.saty
 	satysfi -b $< -o $@

@@ -31,3 +31,11 @@ _opam/
 *.tar.gz
 
 .nvimlog
+
+*.aux
+*.fdb_latexmk
+*.fls
+*.pdf
+*.dvi
+*.log
+*.s

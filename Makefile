@@ -65,7 +65,8 @@ OUTPUTS= \
 	$(DIST)/kadai5.tar.gz \
 	$(DIST)/kadai6.tar.gz \
 	$(DIST)/kadai7.tar.gz \
-	$(DIST)/kadai8.tar.gz
+	$(DIST)/kadai8.tar.gz \
+	final.pdf
 
 .PHONY: all
 all: $(OUTPUTS)
@@ -108,6 +109,9 @@ $(DIST)/kadai7.tar.gz: $(REPORT7_OUTPUTS)
 $(DIST)/kadai8.tar.gz: $(REPORT8_OUTPUTS)
 	mkdir -p $(DIST)
 	tar czf $@ $(REPORT8_OUTPUTS)
+
+final.pdf: final.tex
+	lualatex $< --halt-on-error -interaction=batchmode -shell-escape
 
 %.pdf: %.saty
 	satysfi -b $< -o $@

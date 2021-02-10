@@ -1,0 +1,1 @@
+let f (x: int -> int -> bool) = g (y: int) = x = y in g 1; (g: int -> bool)

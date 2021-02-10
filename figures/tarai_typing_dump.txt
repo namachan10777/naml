@@ -1,0 +1,48 @@
+(Typing.LetRec (
+   [((Types.Vid 16), (Int -> Int -> Int -> Int),
+     (Typing.Fun (
+        [((Types.Vid 17), Int); ((Types.Vid 18), Int); ((Types.Vid 19), Int)],
+        (Typing.If (
+           (Typing.If (
+              (Typing.App ((Typing.Var (Types.VidTop 6)),
+                 [(Typing.Var (Types.Vid 17)); (Typing.Var (Types.Vid 18))],
+                 Bool)),
+              (Typing.Bool true),
+              (Typing.App ((Typing.Var (Types.VidTop 7)),
+                 [(Typing.Var (Types.Vid 17)); (Typing.Var (Types.Vid 18))],
+                 Bool))
+              )),
+           (Typing.Var (Types.Vid 18)),
+           (Typing.App ((Typing.Var (Types.Vid 16)),
+              [(Typing.App ((Typing.Var (Types.Vid 16)),
+                  [(Typing.App ((Typing.Var (Types.VidTop 1)),
+                      [(Typing.Var (Types.Vid 17)); (Typing.Int 1)], Int));
+                    (Typing.Var (Types.Vid 18)); (Typing.Var (Types.Vid 19))],
+                  Int));
+                (Typing.App ((Typing.Var (Types.Vid 16)),
+                   [(Typing.App ((Typing.Var (Types.VidTop 1)),
+                       [(Typing.Var (Types.Vid 18)); (Typing.Int 1)], Int));
+                     (Typing.Var (Types.Vid 19)); (Typing.Var (Types.Vid 17))
+                     ],
+                   Int));
+                (Typing.App ((Typing.Var (Types.Vid 16)),
+                   [(Typing.App ((Typing.Var (Types.VidTop 1)),
+                       [(Typing.Var (Types.Vid 19)); (Typing.Int 1)], Int));
+                     (Typing.Var (Types.Vid 17)); (Typing.Var (Types.Vid 18))
+                     ],
+                   Int))
+                ],
+              Int))
+           )),
+        Int, "_tarai_1", ("example/tarai.ml", 1, 9, 9))))
+     ],
+   (Typing.Let (
+      [((Typing.PVar ((Types.Vid 20), Int)),
+        (Typing.App ((Typing.Var (Types.VidTop 15)),
+           [(Typing.App ((Typing.Var (Types.Vid 16)),
+               [(Typing.Int 12); (Typing.Int 6); (Typing.Int 0)], Int))
+             ],
+           Int)))
+        ],
+      Typing.Never, true)),
+   true))

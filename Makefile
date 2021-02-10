@@ -110,7 +110,7 @@ $(DIST)/kadai8.tar.gz: $(REPORT8_OUTPUTS)
 	mkdir -p $(DIST)
 	tar czf $@ $(REPORT8_OUTPUTS)
 
-final.pdf: final.tex
+final.pdf: final.tex $(wildcard figures/*)
 	lualatex $< --halt-on-error -interaction=batchmode -shell-escape
 
 %.pdf: %.saty

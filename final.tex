@@ -7,7 +7,13 @@
 \title{S8 最終レポート}
 
 \lstset {
-  language = caml
+  language = caml,
+  breaklines = true,
+  tabsize = 2,
+  numberstyle = \tiny,
+  basicstyle = \ttfamily\small,
+  numbers = left,
+  frame = TBrl
 }
 
 \begin{document}
@@ -52,21 +58,64 @@
       \lstinputlisting[caption = OCamlによるfibの実行結果]{./figures/fib_ocaml.sh}
     \subsection{Ack関数とTarai関数}
     　また上記の関数の他に図\ref{ack}に示すAck関数と図\ref{tarai}に示すたらい回し関数でも試験した。
+      実行結果を表\ref{compare-tbl}に示す。
+      バイナリコンパイラはインタプリタと比較して明らかに高速である。
+      Ack関数でインタプリタが非常に低速になっている反面コンパイラはOCaml処理系と概ね同等の速度を維持しているのが特徴的である。
+      これはバイナリコンパイラは非効率な部分はあるもの、\texttt{x86\_64}のアセンブリに変換する以上
+      関数のコードを静的に配置せざるをえず、動的に再帰コードを生成するインタプリタに対してパフォーマンス上の優位があるのではないかと考えられる。
       \lstinputlisting[caption = Ack関数,   label=ack]{./code/example/ack.ml}
       \lstinputlisting[caption = Tarai関数, label=tarai]{./code/example/tarai.ml}
       \begin{table}[t]
         \centering
+        \label{compare-tbl}
         \caption{実行速度の比較表}
         \begin{tabular}{l|lll}
-        implementation & fib 35         & tarai 12 6 0                 & ack 3 11                      \\ \hline
-        ocamlopt       & $64.86       $ & $ 30.01        $ & $ 69.74        $ \\
-        ocaml          & $387.18      $ & $ 161.78       $ & $ 373.41       $ \\
-        compiler2      & $932.89      $ & $ \mathrm{N/A} $ & $ 873.88       $ \\
-        compiler1 tree & $2.71 * 10^3 $ & $ 2.11 * 10^3  $ & $ 12.47 * 10^3 $ \\
-        compiler1 cam  & $1.83 * 10^3 $ & $ \mathrm{N/A} $ & $ \mathrm{N/A} $ \\
-        compiler1 zam  & $2.70 * 10^3 $ & $ 1937.38      $ & $ 16.03 * 10^3 $
+        implementation & fib 35             & tarai 12 6 0         & ack 3 11            \\ \hline
+        ocamlopt       & $64.86           $ & $ 30.01            $ & $ 69.74            $ \\
+        ocaml          & $387.18          $ & $ 161.78           $ & $ 373.41           $ \\
+        compiler2      & $932.89          $ & $ \mathrm{N/A}     $ & $ 873.88           $ \\
+        compiler1 tree & $2.71 \cdot 10^3 $ & $ 2.11 \cdot 10^3  $ & $ 12.47 \cdot 10^3 $ \\
+        compiler1 cam  & $1.83 \cdot 10^3 $ & $ \mathrm{N/A}     $ & $ \mathrm{N/A}     $ \\
+        compiler1 zam  & $2.70 \cdot 10^3 $ & $ 1937.38          $ & $ 16.03 \cdot 10^3 $
         \end{tabular}
       \end{table}
+    \subsection{型推論器の検証}
+      型推論器の動作を示す。
+      \subsubsection{たらい回し関数に対する単相型付け}
+        図\ref{tarai}のたらい回し関数に対して型推論を行った結果が図\ref{tarai-type-dump}である。
+        これは変数がアルファ変換されておりかなり読みづらいので手で整形したのが図\ref{tarai-type-pretty}である。
+        短絡or演算子がifに、二項演算子を関数適用に変換する事でコードを一般化している。
+        let宣言はinを使って纏めて一つの式として扱う事で型推論器のコードを減らしている。末尾のNeverはソースコード末尾を示すマーカーである。
+        再帰関数ではあるが正しく$\mathrm{int} \rightarrow \mathrm{int} \rightarrow \mathrm{int} \rightarrow \mathrm{int}$と型が付いている
+        \lstinputlisting[caption = tarai.mlに対する\texttt{compiler typing}の出力, label=tarai-type-dump]{./figures/tarai_typing_dump.txt}
+        \lstinputlisting[caption = tarai.mlの型, label=tarai-type-pretty]{./figures/tarai_typing_pretty.txt}
+
+      \subsubsection{多相型推論}
+        単相型システムでは
+        図\ref{id-typing}のような式はエラーとなるが、
+        多相型システムの元では正しく型が付く。また図\ref{map-typing}のような高階型を取る多相関数にも正しく型をつける事が可能である。
+        \lstinputlisting[caption = id, label=id-typing]{./figures/id_typing.txt}
+        \lstinputlisting[caption = List.mapへの型つけ, label=map-typing]{./figures/map_typing.txt}
+        図\ref{eq-poly}では引数\texttt{x}と引数\texttt{y}が同じ多相型になっているが、
+        図\ref{eq-mono}では\texttt{id}を多相型に推論してもunsoundは起こらないが推論アルゴリズムの関係上このような型が付く。
+        図\ref{eq-poly2}のようにfの外でfを利用した場合は多相な型が付く。
+        \lstinputlisting[caption = 多相型へのunify, label=eq-poly]{./figures/eq_poly.txt}
+        \lstinputlisting[caption = 多相型へのunify, label=eq-mono]{./figures/eq_mono.txt}
+        \lstinputlisting[caption = 多相型へのunify, label=eq-poly2]{./figures/eq_poly2.txt}
+        図\ref{cannot_unify1}のように$'0 -> '0 -> \mathrm{bool}$な関数に$\mathrm{int}, \mathrm{bool}$を適用しようとすると単一化に失敗してエラーが発生する。
+        \lstinputlisting[caption = 単一化の失敗, label=cannot_unify1]{./figures/cannot_unify.txt}
+        ただしこの型システムにはunsoundが存在し、多相な型を持ち、かつその中の値にアクセスできるようなデータがあった場合に$\mathrm{int}$に$\mathrm{bool}$を入れるような事が出来てしまう。
+        図\ref{unsound}が実際のコードである。OCamlの処理系では値制限と呼ばれる方法によって型エラーとして検出可能だが、
+        コンパイラ2には値制限は実装されていないので型が付いてしまう。
+        \lstinputlisting[caption = Unsound, label=unsound]{./figures/unsound.txt}
+        また多相性は\texttt{let}によって導入されるため、図\ref{mono-id}のように\texttt{fun}だけで同様の事を行っても多相な型は付かずエラーとなる。
+        \lstinputlisting[caption = Mono id, label=mono-id]{./figures/mono_id.txt}
+      \subsubsection{Zコンビネータ}
+        型をつける事が難しいものの型エラーが発生せず実行できるような式も存在する。不動点コンビネータがその一例である。
+        コンパイラ2は型が循環している事を検知してコンパイルエラーとするが、型検査を行わないコンパイラ1だと正常に実行可能である。
+        なおOCamlでも\texttt{-rectypes}オプションにより実行は可能である。
+        \lstinputlisting[caption = Typing Z combinator]{./figures/z.txt}
+
   \chapter{実装したコンパイラの解説及び言語処理系の考察}
   \chapter{本実験全体の考察及び感想}
   \chapter{ソースコード}

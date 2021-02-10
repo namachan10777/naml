@@ -1,0 +1,13 @@
+let rec (tarai: int -> int -> int -> int) =
+	fun (x: int) (y: int) (z: int) ->
+		if if ((<) x y: bool) then (true: bool) else ((=) x y : bool)
+		then y
+		else
+			(tarai
+				(tarai ((-) x 1) y z : int)
+				(tarai ((-) y 1) z x : int)
+				(tarai ((-) z 1) x y : int) : int)
+	in
+let (x: int) = (print_int (tarai 12 6 0 : int) : int) in
+	Never
+

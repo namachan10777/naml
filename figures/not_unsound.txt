@@ -1,0 +1,4 @@
+let l = [[]]
+
+let () = r := ([0] : int list)
+let () = r := ([true] : bool list)

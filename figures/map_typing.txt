@@ -1,0 +1,4 @@
+let rec (map: ('0 -> '1) -> '0 list -> '1 list)
+	(f: '0 -> '1) (l: '0 list) = match l with
+    | (x: '0) :: (xs: '0 list) -> (f x : '1) :: (map f xs : '1 list)
+    | ([]: '0 list) -> ([] : '1 list)

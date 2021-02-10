@@ -39,3 +39,12 @@ _opam/
 *.dvi
 *.log
 *.s
+
+compiler1
+compiler2
+*.out
+sourcelist.tex
+bench_list.tex
+compiler/compiler
+*.bbl
+*.blg

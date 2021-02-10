@@ -72,7 +72,7 @@ closure.cmx: closure.ml typing.cmx
 closure_test.cmx: closure_test.ml closure.cmx  ast.cmx alpha.cmx typing.cmx lex.cmx parser.cmx types.cmx util.cmx
 	$(OCAMLOPT) $< -c
 
-ir.cmx: ir.ml closure.cmx emit.cmx
+codegen.cmx: codegen.ml closure.cmx emit.cmx
 	$(OCAMLOPT) $< -c
 
 closure_test: util.cmx lex.cmx parser.cmx ast.cmx types.cmx alpha.cmx typing.cmx closure.cmx closure_test.cmx
@@ -81,8 +81,8 @@ closure_test: util.cmx lex.cmx parser.cmx ast.cmx types.cmx alpha.cmx typing.cmx
 emit.cmx: emit.ml
 	$(OCAMLOPT) $< -c
 
-main.cmx: main.ml parser.cmx lex.cmx types.cmx closure.cmx ir.cmx emit.cmx
+main.cmx: main.ml parser.cmx lex.cmx types.cmx closure.cmx codegen.cmx emit.cmx
 	$(OCAMLOPT) $< -c
 
-compiler: util.cmx lex.cmx parser.cmx ast.cmx id.cmx types.cmx alpha.cmx typing.cmx closure.cmx emit.cmx ir.cmx main.cmx
+compiler: util.cmx lex.cmx parser.cmx ast.cmx id.cmx types.cmx alpha.cmx typing.cmx closure.cmx emit.cmx codegen.cmx main.cmx
 	ocamlopt $^ -o $@

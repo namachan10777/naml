@@ -10,7 +10,7 @@ let () =
       | "typing" -> print_endline @@ Typing.show typed
       | "asmgen" ->
           let closure = Closure.f typed in
-          let asm_src = Ir.f closure in
+          let asm_src = Codegen.f closure in
           let oc = open_out "out.s" in
           output_string oc asm_src ;
           close_out oc ;

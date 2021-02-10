@@ -42,4 +42,37 @@ document(|
       フィボナッチ数列と階乗が正しく動く事を確認した。
     }
   >
+  +section {ZAMへのコンパイル} <
+    +p{
+      一例のみの実行結果だが実装したので記載する。
+      フィボナッチ数列で`CAM`と`ZAM`のベンチマークを取った。
+      テストコードと`time`での簡易的なベンチマークの結果を以下に掲載する。
+      CPUは`AMD Ryzen 7 3700X 8-Core Processor`でメインメモリの速度は
+      `Configured Memory Speed: 2133 MT/s`である。
+    }
+    +code (```
+    let rec fib n = if n = 0 || n = 1 then 1 else fib (n-1) + fib(n-2) in fib 35
+    ```);
+    +code(```
+    # time ./_build/default/bin/main.exe cam example/fib.ml
+    result: (Cam.Int 14930352)
+    ________________________________________________________
+    Executed in    1.89 secs   fish           external
+       usr time  1886.43 millis    0.00 micros  1886.43 millis
+       sys time    3.76 millis  433.00 micros    3.33 millis
+
+
+    s8/code on  main [$!+?] via 🐫 v4.11.1
+    # time ./_build/default/bin/main.exe zam example/fib.ml
+    result: (Zam.Int 14930352)
+    ________________________________________________________
+    Executed in    2.71 secs   fish           external
+       usr time    2.71 secs  368.00 micros    2.71 secs
+       sys time    0.00 secs   46.00 micros    0.00 secs
+    ```);
+    +p{
+      結果としては私の実装では`CAM`の方が高速だった。
+      `fib`では引数が1つのみであるためCAMのシンプルな命令セットが有利に働いたのではないかと考えられる。
+    }
+  >
 >

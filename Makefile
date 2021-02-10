@@ -48,8 +48,11 @@ REPORT7_OUTPUTS = \
 
 REPORT8_OUTPUTS = \
 	code/lib/cam.ml \
+	code/lib/zam.ml \
 	code/lib/compile_to_cam.ml \
 	code/test/compile_to_cam.ml \
+	code/test/compile_to_zam.ml \
+	code/lib/compile_to_zam.ml \
 	report/report8.pdf
 
 DIST=dist

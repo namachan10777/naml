@@ -111,12 +111,28 @@
         また多相性は\texttt{let}によって導入されるため、図\ref{mono-id}のように\texttt{fun}だけで同様の事を行っても多相な型は付かずエラーとなる。
         \lstinputlisting[caption = Mono id, label=mono-id]{./figures/mono_id.txt}
       \subsubsection{Zコンビネータ}
-        型をつける事が難しいものの型エラーが発生せず実行できるような式も存在する。不動点コンビネータがその一例である。
+        型をつける事が難しいものの型エラーが発生せず実行できるような式も存在する。図\ref{zcombinator}のような不動点コンビネータがその一例である。
         コンパイラ2は型が循環している事を検知してコンパイルエラーとするが、型検査を行わないコンパイラ1だと正常に実行可能である。
         なおOCamlでも\texttt{-rectypes}オプションにより実行は可能である。
-        \lstinputlisting[caption = Typing Z combinator]{./figures/z.txt}
+        \lstinputlisting[caption = Typing Z combinator, label=zcombinator]{./figures/z.txt}
 
   \chapter{実装したコンパイラの解説及び言語処理系の考察}
+    コンパイラ2は以下のような構成となっている。
+    \begin{itemize}
+      \item \texttt{lex.ml}
+      \item \texttt{parser.ml}
+      \item \texttt{ast.ml}
+      \item \texttt{alpha.ml}
+      \item \texttt{typing.ml}
+      \item \texttt{closure.ml}
+      \item \texttt{codegen.ml}
+      \item \texttt{emit.ml}
+    \end{itemize}
+    \subsection{構文解析}
+      \texttt{lex.ml}と\texttt{parser.ml}が担当している。
+      PEGのようなパーサコンビネータを用いて一つの構文解析器のみで抽象構文木を構築することも可能であるが、
+      パターンマッチを用いて構文解析器を記述したいモチベーションがあったことと、
+      なるべく階層化してテストを容易にするために分割した。
   \chapter{本実験全体の考察及び感想}
   \chapter{ソースコード}
     \lstinputlisting[caption = Typing Z combinator]{./codemap.txt}

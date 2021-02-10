@@ -135,8 +135,8 @@ let rec g stackmap =
         let ret = lookup_mem ret in
         let r1 = lookup_mem r1 in
         let r2 = lookup_mem r2 in
-        let inner1 =  inner1  @ [Load (Reg 0, r1)] in
-        let inner2 =  inner2  @ [Load (Reg 0, r2)] in
+        let inner1 = inner1 @ [Load (Reg 0, r1)] in
+        let inner2 = inner2 @ [Load (Reg 0, r2)] in
         ( blocks1 @ blocks2 @ blocks
         , Load (Reg 0, lookup_mem cond)
           :: Test (Reg 0, ret, inner1, inner2)
@@ -339,8 +339,10 @@ let rec codegen = function
         let else_l = fresh_label () in
         let goal_l = fresh_label () in
         E.I (E.Testq (E.Reg (code2reg r), E.Reg (code2reg r)))
-        :: E.I (E.Jz else_l) :: codegen br1  @ [E.I (E.Jmp goal_l)]
-        @ [E.L else_l] @ codegen br2 @ [E.L goal_l] @ [E.I (E.Movq (E.Reg E.Rax, E.Ind (E.Rbp, Some (-8*ret))))] @ codegen remain
+        :: E.I (E.Jz else_l) :: codegen br1
+        @ [E.I (E.Jmp goal_l)] @ [E.L else_l] @ codegen br2 @ [E.L goal_l]
+        @ [E.I (E.Movq (E.Reg E.Rax, E.Ind (E.Rbp, Some (-8 * ret))))]
+        @ codegen remain
     | Ldb (Reg r, true) :: remain ->
         E.C (Printf.sprintf "Ldi i")
         :: E.I (E.Movq (E.Imm 1, E.Reg (code2reg r)))

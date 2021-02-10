@@ -124,7 +124,7 @@ let rec g stackmap =
                   , ret_id )
                 :: insts
         in
-        ( ((label, n_args, List.length stackmap, inner, ret_id) :: blocks)
+        ( ((label, n_args, List.length stackmap_inner, inner, ret_id) :: blocks)
           @ blocks'
         , insts )
     | Closure.Test (cond, block1, block2) :: Closure.Phi (ret, r1, r2) :: remain
@@ -135,8 +135,8 @@ let rec g stackmap =
         let ret = lookup_mem ret in
         let r1 = lookup_mem r1 in
         let r2 = lookup_mem r2 in
-        let inner1 = Save (ret, Reg 0) :: Load (Reg 0, r1) :: inner1 in
-        let inner2 = Save (ret, Reg 0) :: Load (Reg 0, r2) :: inner2 in
+        let inner1 =  inner1  @ [Load (Reg 0, r1)] in
+        let inner2 =  inner2  @ [Load (Reg 0, r2)] in
         ( blocks1 @ blocks2 @ blocks
         , Load (Reg 0, lookup_mem cond)
           :: Test (Reg 0, ret, inner1, inner2)
@@ -263,7 +263,7 @@ let rec codegen = function
             ; E.I (E.Leaq (E.IndL (E.Rip, Some label), E.Reg E.Rbx))
             ; E.I (E.Movq (E.Reg E.Rbx, E.Ind (E.Rax, None)))
             ; E.I (E.Movq (E.Imm (8 * (3 + size)), E.Ind (E.Rax, Some 8)))
-            ; E.I (E.Movq (E.Imm 0, E.Ind (E.Rax, Some 16)))
+            ; E.I (E.Movq (E.Imm (List.length args), E.Ind (E.Rax, Some 16)))
             ; E.I (E.Movq (E.Reg E.Rax, E.Ind (E.Rbp, Some (-8 * m)))) ]
         in
         let copy_args =
@@ -320,13 +320,13 @@ let rec codegen = function
         :: codegen remain
     | CallTop (Reg r, 1, [Mem lhr; Mem rhr]) :: remain ->
         E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
-        :: E.I (E.Subq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
+        :: E.I (E.Subq (E.Ind (E.Rbp, Some (-8 * rhr)), E.Reg (code2reg r)))
         :: codegen remain
     (* 実装サボってます。CtorやTupleを比較するために再帰的に比較する必要があるんですが、実装サボってます。 *)
     | CallTop (Reg r, 7, [Mem lhr; Mem rhr]) :: remain ->
         E.I (E.Movq (E.Ind (E.Rbp, Some (-8 * lhr)), E.Reg (code2reg r)))
         :: E.C "calltop"
-        :: E.I (E.Cmpq (E.Reg (code2reg r), E.Ind (E.Rbp, Some (-8 * lhr))))
+        :: E.I (E.Cmpq (E.Reg (code2reg r), E.Ind (E.Rbp, Some (-8 * rhr))))
         :: E.I (E.Sete (E.Reg E.Al))
         :: E.I (E.Movzbq (E.Reg E.Al, E.Reg (code2reg r)))
         :: codegen remain
@@ -339,8 +339,8 @@ let rec codegen = function
         let else_l = fresh_label () in
         let goal_l = fresh_label () in
         E.I (E.Testq (E.Reg (code2reg r), E.Reg (code2reg r)))
-        :: E.I (E.Jne else_l) :: codegen br1
-        @ [E.L else_l] @ codegen br2 @ [E.L goal_l] @ codegen remain
+        :: E.I (E.Jz else_l) :: codegen br1  @ [E.I (E.Jmp goal_l)]
+        @ [E.L else_l] @ codegen br2 @ [E.L goal_l] @ [E.I (E.Movq (E.Reg E.Rax, E.Ind (E.Rbp, Some (-8*ret))))] @ codegen remain
     | Ldb (Reg r, true) :: remain ->
         E.C (Printf.sprintf "Ldi i")
         :: E.I (E.Movq (E.Imm 1, E.Reg (code2reg r)))

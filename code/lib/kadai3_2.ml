@@ -31,7 +31,7 @@ let rec lookup x env =
     | (y, v) :: tl -> if x = y then v else lookup x tl
 
 let rec eval3 env e =
-    Printf.printf "%s: %s\n" (show_exp_t e) (show_env_t env);
+    Printf.printf "%s: %s\n" (show_exp_t e) (show_env_t env) ;
     (* Plus, Times, Sub向け *)
     let binop_ii f lhr rhr =
         match (eval3 env lhr, eval3 env rhr) with

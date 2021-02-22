@@ -67,14 +67,25 @@ document(|
     +subsection{} <
       +code(```
       # eval3 [] (Let("x", IntLit 1, Var "x"));;
-      - : value_t = IntVal 1
+       []
+       []
+       [("x", (Kadai3_2.IntVal 1))]
+       value_t = IntVal 1
       # eval3 ["y", IntVal 43; "y", IntVal 34] (Plus (Var "y", Var "y"));;
+       [("y", (Kadai3_2.IntVal 43)); ("y", (Kadai3_2.IntVal 34))]
+       [("y", (Kadai3_2.IntVal 43)); ("y", (Kadai3_2.IntVal 34))]
+       [("y", (Kadai3_2.IntVal 43)); ("y", (Kadai3_2.IntVal 34))]
       - : value_t = IntVal 86
       ```);
     >
     +subsection{} <
       +code(```
       # eval3 [] (Let("x", IntLit 1, Let ("x", IntLit 2, Var "x")));;
+       []
+       []
+       [("x", (Kadai3_2.IntVal 1))]
+       [("x", (Kadai3_2.IntVal 1))]
+       [("x", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
       - : value_t = IntVal 2
       # let x = 1 in let x = 2 in x;;
       - : int = 2
@@ -83,15 +94,15 @@ document(|
     +subsection{} <
       +code(```
       # eval3 [] @@ Let ("x", IntLit 1, Let ("y", Plus(Var "x", IntLit 1), Plus(Var "x", Var "y")));;
-      []
-      []
-      [("x", (Kadai3_2.IntVal 1))]
-      [("x", (Kadai3_2.IntVal 1))]
-      [("x", (Kadai3_2.IntVal 1))]
-      [("x", (Kadai3_2.IntVal 1))]
-      [("y", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
-      [("y", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
-      [("y", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
+       []
+       []
+       [("x", (Kadai3_2.IntVal 1))]
+       [("x", (Kadai3_2.IntVal 1))]
+       [("x", (Kadai3_2.IntVal 1))]
+       [("x", (Kadai3_2.IntVal 1))]
+       [("y", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
+       [("y", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
+       [("y", (Kadai3_2.IntVal 2)); ("x", (Kadai3_2.IntVal 1))]
       - : value_t = IntVal 3
       ```);
     >

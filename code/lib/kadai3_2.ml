@@ -15,6 +15,7 @@ type exp_t =
     | Div of exp_t * exp_t
     | Not of exp_t
     | Less of exp_t * exp_t
+[@@deriving show]
 
 type value_t = IntVal of int | BoolVal of bool [@@deriving show]
 
@@ -29,8 +30,8 @@ let rec lookup x env =
     | [] -> failwith ("unbound variable: " ^ x)
     | (y, v) :: tl -> if x = y then v else lookup x tl
 
-let rec eval3 env =
-    let () = print_endline (show_env_t env) in
+let rec eval3 env e =
+    Printf.printf "%s: %s\n" (show_exp_t e) (show_env_t env);
     (* Plus, Times, Sub向け *)
     let binop_ii f lhr rhr =
         match (eval3 env lhr, eval3 env rhr) with
@@ -49,7 +50,7 @@ let rec eval3 env =
         | BoolVal lhr, BoolVal rhr -> BoolVal (f lhr rhr)
         | _ -> failwith "boolean type expected"
     in
-    function
+    match e with
     | IntLit n -> IntVal n
     | BoolLit b -> BoolVal b
     | Plus (lhr, rhr) -> binop_ii ( + ) lhr rhr

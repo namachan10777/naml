@@ -94,7 +94,7 @@ let rec eval env =
       match (eval env lhr, eval env rhr) with
       | IntVal lhr, IntVal rhr -> BoolVal (lhr != rhr)
       | BoolVal lhr, BoolVal rhr -> BoolVal (lhr != rhr)
-      | _ -> BoolVal false )
+      | _ -> failwith "integer type expected" )
     | If (cond, e1, e2) -> (
       match eval env cond with
       | BoolVal true -> eval env e1

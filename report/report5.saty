@@ -32,7 +32,8 @@ document(|
         # eval_string "1 <> 2";;
         - : S8.Kadai4_ast.value_t = S8.Kadai4_ast.BoolVal true
         # eval_string "1 <> true";;
-        - : S8.Kadai4_ast.value_t = S8.Kadai4_ast.BoolVal false
+        Exception: (Failure "integer type expected")
+        Called from unknown location
       ```);
     >
   >

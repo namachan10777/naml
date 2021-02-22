@@ -87,6 +87,7 @@ clean:
 	rm -f compiler/*_test
 	rm -f compiler2 compiler1
 	rm -f compiler/*.pp.ml
+	rm -f *.out *.s
 
 
 $(DIST)/kadai1.tar.gz: $(REPORT1_OUTPUTS)

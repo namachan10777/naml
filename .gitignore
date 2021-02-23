@@ -38,6 +38,7 @@ _opam/
 *.pdf
 *.dvi
 *.log
+*.synctex.gz
 *.s
 
 compiler1

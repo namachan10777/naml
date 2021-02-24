@@ -140,8 +140,8 @@ typetest/%.txt: typetest/%.ml compiler2 Makefile
 	cat $<  > $@
 	compiler2 typing $< &>> $@ || true
 
-compiler1: $(find code -type f -name "*.ml")
-	cd code && dune build && cp _build/default/bin/main.exe ../compiler1
+compiler1: $(shell find code -type f -name "*.ml")
+	cd code && dune build && cp _build/default/bin/main.exe ../compiler1 && chmod +w ../compiler1
 
 sourcelist.tex: $(shell find . -type f -name "*.ml") gen_source_list.sh
 	./gen_source_list.sh > $@

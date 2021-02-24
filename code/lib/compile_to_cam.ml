@@ -1,5 +1,7 @@
 open K7ast
 
+type venv_t = string list [@@deriving show]
+
 let rec position x venv =
     match venv with
     | [] -> failwith "no matching variable in environment"
@@ -27,9 +29,14 @@ let compile ast =
         | Let (id, def, expr) ->
             f venv def @ [Cam.Let] @ f (id :: venv) expr @ [Cam.EndLet]
         | Var id -> [Cam.Access (position id venv)]
-        | Fun (arg, body) -> [Cam.Closure (f (arg :: venv) body @ [Cam.Return])]
+        | Fun (arg, body) ->
+            [Cam.Closure (f (arg :: "" :: venv) body @ [Cam.Return])]
+        | LetRec (id, Fun (arg, body), expr) ->
+            [Cam.Closure (f (arg :: id :: venv) body @ [Cam.Return]); Cam.Let]
+            @ f (id :: venv) expr
+            @ [Cam.EndLet]
         | LetRec (id, def, expr) ->
-            f (id :: venv) def @ [Cam.Let] @ f (id :: venv) expr @ [Cam.EndLet]
+            f venv def @ [Cam.Let] @ f (id :: venv) expr @ [Cam.EndLet]
         | Seq (lhr, rhr) -> f venv lhr @ f venv rhr
         | App (g, arg) -> f venv arg @ f venv g @ [Cam.Apply]
         | Match _ -> failwith "match is unsupported"

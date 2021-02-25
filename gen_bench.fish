@@ -1,6 +1,7 @@
 #!/usr/bin/fish
 #
 echo "compiler2 asmgen ./compiler/example/$argv[1].ml -o a.out"
+rm -f $argv[1].s
 ./compiler2 asmgen ./compiler/example/$argv[1].ml -o $argv[1].out
 echo "time a.out"
 time ./$argv[1].out

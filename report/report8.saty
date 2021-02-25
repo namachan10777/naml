@@ -15,64 +15,268 @@ document(|
       ここでは演算子は四則演算に加えて`mod`、`&&`、`||`、`<>`、`>`、`<`、`not`を実装した。
     }
     +code(```
-    let test_sum_to_10 _ =
-        let insts = [
-            Closure [
-                Ldi 1;
-                Access 0;
-                Eq;
-                Test (
-                    [Ldi 1],
-                    [Ldi (-1); Access 0; Add; Access 1; Apply; Access 0; Add]
-                );
-                Return
-            ];
-            Let;
-            Ldi 10;
+    exec [
+        Closure [
+            Ldi 1;
             Access 0;
-            Apply;
-            EndLet
-        ] in assert_equal (exec insts) (Int (1+2+3+4+5+6+7+8+9+10))
+            Eq;
+            Test (
+                [Ldi 1],
+                [Ldi (-1); Access 0; Add; Access 1; Apply; Access 0; Add]
+            );
+            Return
+        ];
+        Let;
+        Ldi 10;
+        Access 0;
+        Apply;
+        EndLet
+    ])
+    ```);
+    +code(```
+    (Cam.Int 55)
     ```);
   >
   +section {ミニOCamlからCAMへのコンパイル} <
     +p{
-      テストコードを同梱した。
-      `code/test/compile_to_cam.ml`がそれである。
-      フィボナッチ数列と階乗が正しく動く事を確認した。
+      以下はそれぞれフィボナッチ数列と階乗の実行結果である。
     }
-  >
-  +section {ZAMへのコンパイル} <
-    +p{
-      一例のみの実行結果だが実装したので記載する。
-      フィボナッチ数列で`CAM`と`ZAM`のベンチマークを取った。
-      テストコードと`time`での簡易的なベンチマークの結果を以下に掲載する。
-      CPUは`AMD Ryzen 7 3700X 8-Core Processor`でメインメモリの速度は
-      `Configured Memory Speed: 2133 MT/s`である。
-    }
-    +code (```
-    let rec fib n = if n = 0 || n = 1 then 1 else fib (n-1) + fib(n-2) in fib 35
+    +code(```
+    # "let rec fib n = if n = 0 || n = 1 then 1 else fib (n-1) + fib(n-2) in fib 11"
+    |> K7top.parse_repl_string 
+    |> Compile_to_cam.compile [] |> Cam.exec;;
+    - : Cam.value_t = Cam.Int 144
     ```);
     +code(```
-    # time ./_build/default/bin/main.exe cam example/fib.ml
-    result: (Cam.Int 14930352)
-    ________________________________________________________
-    Executed in    1.89 secs   fish           external
-       usr time  1886.43 millis    0.00 micros  1886.43 millis
-       sys time    3.76 millis  433.00 micros    3.33 millis
-
-
-    s8/code on  main [$!+?] via 🐫 v4.11.1
-    # time ./_build/default/bin/main.exe zam example/fib.ml
-    result: (Zam.Int 14930352)
-    ________________________________________________________
-    Executed in    2.71 secs   fish           external
-       usr time    2.71 secs  368.00 micros    2.71 secs
-       sys time    0.00 secs   46.00 micros    0.00 secs
+    # "let rec fact n = if n = 0 then 1 else n * fact (n-1) in fact 5"
+    |> K7top.parse_repl_string 
+    |> Compile_to_cam.compile []
+    |> Cam.exec;;
+    - : Cam.value_t = Cam.Int 120
     ```);
-    +p{
-      結果としては私の実装では`CAM`の方が高速だった。
-      `fib`では引数が1つのみであるためCAMのシンプルな命令セットが有利に働いたのではないかと考えられる。
-    }
+  >
+  +section {ZAMへのコンパイル} <
+    +subsection{実装}<
+      +p{
+        フィボナッチ数列の実行結果を以下に示す。
+      }
+      +code(```
+      { Zam.code =
+        [(Zam.Closure
+            [(Zam.Ldi 0); (Zam.Access 0); Zam.Eq;
+              (Zam.Test ([(Zam.Ldb true)], [(Zam.Ldi 1); (Zam.Access 0); Zam.Eq]));
+              (Zam.Test ([(Zam.Ldi 1)],
+                 [Zam.PushMark; (Zam.Ldi 2); (Zam.Access 0); Zam.Sub;
+                   (Zam.Access 1); Zam.App; Zam.PushMark; (Zam.Ldi 1);
+                   (Zam.Access 0); Zam.Sub; (Zam.Access 1); Zam.App; Zam.Add]
+                 ));
+              Zam.Return]);
+          Zam.Let; Zam.PushMark; (Zam.Ldi 35); (Zam.Access 0); Zam.App; Zam.EndLet];
+        env = []; astack = []; rstack = [] }
+      ```);
+      +code(```
+      (Zam.Int 14930352)
+      ```);
+    >
+    +subsection{命令列} <
+      +p{
+        アッカーマン関数とたらい回し関数を実行する。
+      }
+      +code(```
+      { Zam.code =
+        [(Zam.Closure
+            [(Zam.Closure
+                [(Zam.Ldi 0); (Zam.Access 2); Zam.Eq;
+                  (Zam.Test ([(Zam.Ldi 1); (Zam.Access 0); Zam.Add],
+                     [(Zam.Ldi 0); (Zam.Access 0); Zam.Eq;
+                       (Zam.Test (
+                          [Zam.PushMark; (Zam.Ldi 1); Zam.PushMark; (Zam.Ldi 1);
+                            (Zam.Access 2); Zam.Sub; (Zam.Access 3); Zam.App;
+                            Zam.App],
+                          [Zam.PushMark; Zam.PushMark; (Zam.Ldi 1); (Zam.Access 0);
+                            Zam.Sub; Zam.PushMark; (Zam.Access 2); (Zam.Access 3);
+                            Zam.App; Zam.App; Zam.PushMark; (Zam.Ldi 1);
+                            (Zam.Access 2); Zam.Sub; (Zam.Access 3); Zam.App;
+                            Zam.App]
+                          ))
+                       ]
+                     ));
+                  Zam.Return]);
+              Zam.Return]);
+          Zam.Let; Zam.PushMark; (Zam.Ldi 10); Zam.PushMark; (Zam.Ldi 3);
+          (Zam.Access 0); Zam.App; Zam.App; Zam.EndLet];
+        env = []; astack = []; rstack = [] }
+      ```);
+      +code(```
+      (Zam.Int 8189)
+      ```);
+      +code(```
+      { Zam.code =
+      [(Zam.Closure
+          [(Zam.Closure
+              [Zam.Grab; (Zam.Access 2); (Zam.Access 4); Zam.Less;
+                (Zam.Test ([(Zam.Ldb true)],
+                   [(Zam.Access 2); (Zam.Access 4); Zam.Eq]));
+                (Zam.Test ([(Zam.Access 2)],
+                   [Zam.PushMark; Zam.PushMark; (Zam.Access 2); (Zam.Access 4);
+                     (Zam.Ldi 1); (Zam.Access 0); Zam.Sub; (Zam.Access 5);
+                     Zam.App; Zam.PushMark; (Zam.Access 4); (Zam.Access 0);
+                     (Zam.Ldi 1); (Zam.Access 2); Zam.Sub; (Zam.Access 5);
+                     Zam.App; Zam.PushMark; (Zam.Access 0); (Zam.Access 2);
+                     (Zam.Ldi 1); (Zam.Access 4); Zam.Sub; (Zam.Access 5);
+                     Zam.App; (Zam.Access 5); Zam.App]
+                   ));
+                Zam.Return]);
+            Zam.Return]);
+        Zam.Let; Zam.PushMark; (Zam.Ldi 0); (Zam.Ldi 6); (Zam.Ldi 12);
+        (Zam.Access 0); Zam.App; Zam.EndLet];
+      env = []; astack = []; rstack = [] }
+      ```);
+      +code(```
+      (Zam.Int 12)
+      ```);
+    >
+    +subsection{演算の追加} <
+      +p{
+        アッカーマン関数、たらい回し関数などを実行するにあたって減算命令、比較命令を追加している。
+        また乗算、除算、剰余命令も追加した。
+      }
+    >
+    +subsection{コンパイラの実装} <
+      +p{
+        `1 + 1`は以下のようにコンパイルされる。
+      }
+      +code(```
+      let rec fact n = if n = 0 then 1 else n * fact (n-1) in fact 2
+      ```);
+    >
+    +subsection ?:(`test-compile`) {コンパイル結果の確認} <
+      +p{
+        以下のようにクロージャを含むコードも正しくコンパイルされている。
+        `Grab`命令と`PushMark`命令により無駄な計算が省かれていることがわかる。
+      }
+      +code(```
+      let f = fun x y z -> x + y + z in
+      let g = f 1 2 in
+      g 3
+      ```);
+      +code(```
+      { Zam.code =
+        [(Zam.Closure
+            [Zam.Grab; Zam.Grab; (Zam.Access 0); (Zam.Access 2); (Zam.Access 4);
+              Zam.Add; Zam.Add; Zam.Return]);
+          Zam.Let; Zam.PushMark; (Zam.Ldi 2); (Zam.Ldi 1); (Zam.Access 0); Zam.App;
+          Zam.Let; Zam.PushMark; (Zam.Ldi 3); (Zam.Access 0); Zam.App; Zam.EndLet;
+          Zam.EndLet];
+        env = []; astack = []; rstack = [] }
+      ```);
+    >
+    +subsection{実行}<
+      +p{
+        \ref-sec(`test-compile`);の命令の結果は以下のようになった。
+      }
+      +code(```
+      (Zam.Int 6)
+      ```);
+    >
+    +subsection{比較}<
+      +p{
+        フィボナッチ数列、たらい回し関数とアッカーマン関数で`CAM`と`ZAM`、及び木構造をなぞるインタプリタのベンチマークを取った。
+        テストコードと`time`での簡易的なベンチマークの結果を以下に掲載する。
+        CPUは`AMD Ryzen 7 3700X 8-Core Processor`でメインメモリの速度は
+        ${2133\ \mathrm{MT/s}}である。
+      }
+      +code (```
+      let rec fib n = if n = 0 || n = 1 then 1 else fib (n-1) + fib(n-2) in fib 35
+      ```);
+      +code(```
+      time compiler1 tree ./code/example/fib.ml
+      result: (K6ast.IntVal 14930352)
+      ________________________________________________________
+      Executed in    2.82 secs   fish           external 
+         usr time    2.82 secs    0.00 micros    2.82 secs 
+         sys time    0.00 secs  143.00 micros    0.00 secs 
+
+      time compiler1 cam ./code/example/fib.ml
+      result: (Cam.Int 14930352)
+      ________________________________________________________
+      Executed in    1.94 secs   fish           external 
+         usr time  1937.55 millis    0.00 micros  1937.55 millis 
+         sys time    0.12 millis  123.00 micros    0.00 millis 
+
+      time compiler1 zam ./code/example/fib.ml
+      result: (Zam.Int 14930352)
+      ________________________________________________________
+      Executed in    2.68 secs   fish           external 
+         usr time    2.68 secs    0.00 micros    2.68 secs 
+         sys time    0.00 secs  148.00 micros    0.00 secs 
+      ```);
+      +code(```
+      let rec tarai x y z =
+          if x < y || x = y then y
+          else tarai (tarai (x - 1) y z) (tarai (y - 1) z x) (tarai (z - 1) x y)
+      in
+      tarai 12 6 0
+      ```);
+      +code(```
+      time compiler1 tree ./code/example/tarai.ml
+      result: (K6ast.IntVal 12)
+      ________________________________________________________
+      Executed in    2.09 secs   fish           external 
+         usr time    2.08 secs    0.00 micros    2.08 secs 
+         sys time    0.00 secs  142.00 micros    0.00 secs 
+
+      time compiler1 cam ./code/example/tarai.ml
+      result: (Cam.Int 12)
+      ________________________________________________________
+      Executed in    1.43 secs   fish           external 
+         usr time  1429.03 millis    0.00 micros  1429.03 millis 
+         sys time    0.14 millis  135.00 micros    0.00 millis 
+
+      time compiler1 zam ./code/example/tarai.ml
+      result: (Zam.Int 12)
+      ________________________________________________________
+      Executed in    1.61 secs   fish           external 
+         usr time  1611.00 millis    0.00 micros  1611.00 millis 
+         sys time    0.14 millis  144.00 micros    0.00 millis 
+      ```);
+      +code(```
+      let rec ack m n =
+          if m = 0 then n + 1
+          else if n = 0 then ack (m - 1) 1
+          else ack (m - 1) (ack m (n - 1))
+      in
+      ack 3 10
+      ```);
+      +code(```
+      time compiler1 tree ./code/example/ack.ml
+      result: (K6ast.IntVal 8189)
+      ________________________________________________________
+      Executed in   12.34 secs   fish           external 
+         usr time   12.32 secs    0.00 micros   12.32 secs 
+         sys time    0.00 secs  106.00 micros    0.00 secs 
+
+      time compiler1 cam ./code/example/ack.ml
+      result: (Cam.Int 8189)
+      ________________________________________________________
+      Executed in   11.61 secs   fish           external 
+         usr time   11.53 secs    0.00 micros   11.53 secs 
+         sys time    0.07 secs  127.00 micros    0.07 secs 
+
+      time compiler1 zam ./code/example/ack.ml
+      result: (Zam.Int 8189)
+      ________________________________________________________
+      Executed in   13.46 secs   fish           external 
+         usr time   13.40 secs    0.00 micros   13.40 secs 
+         sys time    0.04 secs  145.00 micros    0.04 secs 
+      ```);
+      +p{
+        結果としては私の実装では`CAM`の方が高速だった。
+        フィボナッチ数列とアッカーマン関数で`ZAM`が単純なインタプリタとほぼ同等かそれより遅い速度しか出ていないのが見て取れるが、
+        これはランタイムの実装がそれほど機械語に近い実装になっていないために、
+        せっかく低レイヤに落とし込んだ命令が高レイヤな実装によってかえってオーバーヘッドとなってしまったためと考えられる。
+        たらい回し関数では`CAM`に迫る速度が出たのは複数引数に対する最適化がうまく機能したためと考えられる。
+      }
+    >
   >
 >

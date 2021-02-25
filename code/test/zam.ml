@@ -86,7 +86,9 @@ let test_2args_curried _ =
             ; App
             ; App ] }
     in
-    assert_equal (exec zam) (Int 3)
+    print_endline "curried-------------------------------------------";
+    assert_equal (exec zam) (Int 3);
+    print_endline "curried-------------------------------------------"
 
 let test_2args_uncurried _ =
     let zam =
@@ -112,7 +114,6 @@ let test_partial_app_uncurried _ =
             ; App
             ; App ] }
     in
-    Printf.printf "%s\n" @@ show_val_t (exec zam) ;
     assert_equal (exec zam) (Int 3)
 
 let suite =

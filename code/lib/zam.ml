@@ -88,7 +88,7 @@ let rec exec zam =
             ; astack
             ; env= v :: c :: env'
             ; rstack= ClosVal (code, zam.env) :: zam.rstack }
-      | _ -> failwith "cannot execute app" )
+      | _ ->  failwith "cannot execute app" )
     | TailApp :: _ -> (
       match zam.astack with
       | (ClosVal (code', env') as c) :: v :: astack ->
@@ -102,12 +102,14 @@ let rec exec zam =
             ; astack= ClosVal (code, zam.env) :: astack
             ; env= env'
             ; rstack }
-      | v :: astack, _ -> exec {zam with code; astack; env= v :: Eps :: zam.env}
+      | v :: astack, _ -> exec {zam with code; astack; env= v :: ClosVal(code, zam.env) :: zam.env}
       | _ -> failwith "cannot execute grab" )
     | Return :: _ -> (
       match (zam.astack, zam.rstack) with
       | v :: Eps :: astack, ClosVal (code', env') :: rstack ->
           exec {code= code'; env= env'; astack= v :: astack; rstack}
+      | ClosVal(code', env') :: v :: astack, rstack ->
+          exec {code= code'; env= v :: ClosVal(code', env') :: env'; astack; rstack}
       | _, _ -> failwith "cannot execute return" )
     | PushMark :: code -> exec {zam with code; astack= Eps :: zam.astack}
     | Test (c1, c2) :: code -> (

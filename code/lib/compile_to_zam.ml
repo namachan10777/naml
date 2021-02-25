@@ -31,9 +31,25 @@ let compile ast =
             @ f (id :: venv) expr
             @ [Zam.EndLet]
         | LetRec _ -> failwith "let rec must be take function"
-        | Fun (arg, body) ->
-            [Zam.Closure (f (arg :: "" :: venv) body @ [Zam.Return])]
-        | App (g, arg) -> (Zam.PushMark :: f venv arg) @ f venv g @ [Zam.App]
+        | Fun _ as self ->
+            let rec take_args = function
+                | Fun (arg, body) -> let args, body = take_args body in arg :: args, body
+                | body -> [], body
+            in
+            let args, body = take_args self in
+            let args = List.rev args in
+            let rec gen_args = function
+                | arg :: args -> arg :: "" :: gen_args args
+                | [] -> []
+            in
+            [Zam.Closure (List.init (List.length args - 1) (fun _ -> Zam.Grab) @ f (gen_args args @ venv) body @ [Zam.Return])]
+        | App _ as self ->
+            let rec take_args = function
+                | App (g, arg) -> let g, args = take_args g in g, arg :: args
+                | g -> g, []
+            in
+            let g, args = take_args self in
+            Zam.PushMark :: (List.concat @@ List.map (f venv) args) @ f venv g @ [Zam.App]
         | Not e -> f venv e @ [Zam.Not]
         | Match _ -> failwith "match is unsupported"
         | Tuple _ -> failwith "tuple is unsupported"

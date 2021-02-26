@@ -15,14 +15,20 @@ clean:
 	rm -f *.pp.ml
 
 .PHONY: test
-test: lex_test
+test: lex_test id_test
 	./lex_test
+	./id_test
 
 lex.cmx: lex.ml
 	$(OCAMLOPT) $< -c
-
 lex_test.cmx: lex_test.ml lex.cmx
 	$(OCAMLOPT) $< -c
-
 lex_test: lex.cmx lex_test.cmx
+	$(OCAMLOPT) $^ -o $@
+
+id.cmx: id.ml
+	$(OCAMLOPT) $< -c
+id_test.cmx: id_test.ml id.cmx
+	$(OCAMLOPT) $< -c
+id_test:  id.cmx id_test.cmx
 	$(OCAMLOPT) $^ -o $@

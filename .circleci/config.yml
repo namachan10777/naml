@@ -5,33 +5,11 @@ jobs:
       # specify the version you desire here
       - image: namachan10777/s8:latest
 
-    working_directory: ~/coins-reports
+    working_directory: ~/naml
 
     steps:
       - checkout
 
       - run:
-          name: submodule update
-          command: git submodule update --init --recursive
-      - run:
-          name: test code
-          command: cd code && eval $(opam env) && dune runtest
-
-      - run:
-          name: test compiler
-          command: eval $(opam env) && make test -C compiler
-
-      - run:
-          name: format test for codes
-          command: eval $(opam env) && ./code/format-check.sh
-
-      - run:
-          name: format test for compiler
-          command: eval $(opam env) && ./compiler/format-check.sh
-
-      - run:
-          name: build document
-          command: eval $(opam env) && make all
-
-      - store_artifacts:
-          path: dist
+          name: test 1st
+          command: eval $(opam env) && make test

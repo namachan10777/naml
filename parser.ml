@@ -1,3 +1,5 @@
+let max_width = 80
+
 type ty_t =
     | TInt of Lex.pos_t
     | TBool of Lex.pos_t
@@ -5,37 +7,93 @@ type ty_t =
     | TParen of ty_t
     | TVar of string * Lex.pos_t
     | TTuple of ty_t list * Lex.pos_t
-    | TApp of ty_t list * string list * Lex.pos_t
-[@@deriving show]
+    | TApp of ty_t list * Id.t * Lex.pos_t
 
-type tydef_t =
-    | Variant of (string * Lex.pos_t * ty_t list) list
-    | Alias of ty_t
-[@@deriving show]
+let rec show_ty_t = function
+    | TInt _ -> "int"
+    | TBool _ -> "bool"
+    | TString _ -> "string"
+    | TParen t -> show_ty_t t
+    | TVar (s, _) -> Printf.sprintf "'%s" s
+    | TTuple (ts, _) -> join "," (List.map show_ty_t ts)
+    | TApp (_, _, _) as self ->
+        let rec flatten = function
+            | TApp ([arg], t, _) ->
+                Printf.sprintf "%s %s" (flatten arg) (Id.show t)
+            | TApp (args, t, _) ->
+                Printf.sprintf "%s %s"
+                  (join "," (List.map flatten args))
+                  (Id.show t)
+            | t -> show_ty_t t
+        in
+        flatten self
 
-type name_t = string list [@@deriving show]
+and join sep elems =
+    let len_total = List.map String.length elems |> List.fold_left ( + ) 0 in
+    if len_total > 80 then
+      List.fold_left (fun s elem -> s ^ "\n\t" ^ elem) "(" elems ^ "\n)"
+    else List.fold_left (fun s elem -> s ^ elem) "(" elems ^ ")"
+
+type tydef_t = Variant of (Id.t * Lex.pos_t * ty_t list) list | Alias of ty_t
+
+let rec show_tydef_t = function
+    | Variant defs ->
+        let defs =
+            List.map
+              (fun (id, _, def) ->
+                Printf.sprintf "%s of %s" (Id.show id)
+                  (join "," (List.map show_ty_t def)))
+              defs
+        in
+        List.fold_left
+          (fun acc def -> acc ^ "\n" ^ def)
+          (List.hd defs) (List.tl defs)
+    | Alias def -> show_ty_t def
 
 type pat_t =
     | PInt of int * Lex.pos_t
     | PBool of bool * Lex.pos_t
-    | PVar of string * Lex.pos_t
+    | PVar of Id.t * Lex.pos_t
     | PEmp of Lex.pos_t
     | PCons of pat_t * pat_t * Lex.pos_t
     | PTuple of pat_t list * Lex.pos_t
     | PParen of pat_t
-    | PCtor of string list * Lex.pos_t
-    | PCtorApp of string list * pat_t * Lex.pos_t
+    | PCtor of Id.t * Lex.pos_t
+    | PCtorApp of Id.t * pat_t * Lex.pos_t
     | PAs of pat_t list * Lex.pos_t
     | POr of pat_t * pat_t list * Lex.pos_t
-[@@deriving show]
+
+let rec show_pat_t =
+    let join sep elems =
+        let elems = List.map show_pat_t elems in
+        let len_total =
+            List.map String.length elems |> List.fold_left ( + ) 0
+        in
+        if len_total > 80 then
+          List.fold_left (fun s elem -> s ^ "\n\t" ^ elem) "(" elems ^ "\n)"
+        else List.fold_left (fun s elem -> s ^ elem) "(" elems ^ ")"
+    in
+    function
+    | PInt (i, p) -> Printf.sprintf "%d" i
+    | PBool (true, p) -> "true"
+    | PBool (false, p) -> "false"
+    | PVar (id, p) -> Id.show id
+    | PEmp _ -> "[]"
+    | PCons (e, l, _) -> Printf.sprintf "%s :: %s" (show_pat_t e) (show_pat_t l)
+    | PTuple (tp, _) -> join "," tp
+    | PParen p -> show_pat_t p
+    | PCtor (id, p) -> Id.show id
+    | PCtorApp (id, p, _) -> Printf.sprintf "%s %s" (Id.show id) (show_pat_t p)
+    | PAs (ps, _) -> join "as" ps
+    | POr (p, ps, _) -> join "|" (p :: ps)
 
 type t =
     | Never
     | Emp of Lex.pos_t
     | Int of int * Lex.pos_t
     | Bool of bool * Lex.pos_t
-    | Var of string list * Lex.pos_t
-    | Ctor of string list * Lex.pos_t
+    | Var of Id.t * Lex.pos_t
+    | Ctor of Id.t * Lex.pos_t
     | Index of t * t * Lex.pos_t
     | Assign of t * t * Lex.pos_t
     | ArrayAssign of t * t * t * Lex.pos_t
@@ -55,20 +113,118 @@ type t =
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
     | Let of (pat_t * Lex.pos_t * t) list * t * bool
-    | LetRec of (string list * Lex.pos_t * t) list * t * bool
-    | Type of
-        (string * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
-    | Fun of (string * Lex.pos_t) list * t * Lex.pos_t
+    | LetRec of (Id.t * Lex.pos_t * t) list * t * bool
+    | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
+    | Fun of (Id.t * Lex.pos_t) list * t * Lex.pos_t
     | Match of t * (pat_t * Lex.pos_t * t * t) list
     | App of t * t list * Lex.pos_t
     | Seq of t * t * Lex.pos_t
     | Pipeline of t * t * Lex.pos_t
     | Paren of t
-[@@deriving show]
 
-type input_t = (Lex.t * Lex.pos_t) list [@@deriving show]
+let rec show =
+    let join sep elems =
+        let elems = List.map show elems in
+        let len_total =
+            List.map String.length elems |> List.fold_left ( + ) 0
+        in
+        if len_total > 80 then
+          List.fold_left (fun s elem -> s ^ "\n\t" ^ elem) "(" elems ^ "\n)"
+        else List.fold_left (fun s elem -> s ^ elem) "(" elems ^ ")"
+    in
+    function
+    | Never -> "<Never>"
+    | Neg (e, _) -> Printf.sprintf "-%s" @@ show e
+    | Int (i, _) -> Printf.sprintf "%d" i
+    | Bool (true, _) -> "true"
+    | Bool (false, _) -> "false"
+    | Var (id, _) -> Id.show id
+    | Ctor (id, _) -> Id.show id
+    | Index (arr, idx, _) -> Printf.sprintf "%s.(%s)" (show arr) (show idx)
+    | Assign (target, value, _) ->
+        Printf.sprintf "%s := %s" (show target) (show value)
+    | ArrayAssign (arr, idx, value, _) ->
+        Printf.sprintf "%s.(%s) <- %s" (show arr) (show idx) (show value)
+    | Add (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Sub (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Mul (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Div (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Mod (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Eq (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Neq (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | And (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Or (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Gret (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Less (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Seq (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Cons (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
+    | Emp p -> "[]"
+    | Tuple (es, _) -> join "," es
+    | If (cond, then_e, else_e, _) ->
+        Printf.sprintf "if %s\nthen %selse %s" (show cond) (show then_e)
+          (show else_e)
+    | Let (defs, e, _) ->
+        let lets =
+            List.map
+              (fun (id, _, def) ->
+                Printf.sprintf "letand %s = %s\n" (show_pat_t id) (show def))
+              defs
+        in
+        List.fold_left
+          (fun acc l -> acc ^ "\n" ^ l)
+          (List.hd lets) (List.tl lets)
+        ^ "\n  " ^ show e
+    | LetRec (defs, e, _) ->
+        let lets =
+            List.map
+              (fun (id, _, def) ->
+                Printf.sprintf "letrecand %s = %s\n" (Id.show id) (show def))
+              defs
+        in
+        List.fold_left
+          (fun acc l -> acc ^ "\n" ^ l)
+          (List.hd lets) (List.tl lets)
+        ^ "\n  " ^ show e
+    | Type (defs, e) ->
+        let show_args_t = List.fold_left (fun acc (a, _) -> acc ^ " " ^ a) "" in
+        (* TODO *)
+        let lets =
+            List.map
+              (fun (id, _, args, def) ->
+                Printf.sprintf "typeand %s %s = %s\n" (Id.show id)
+                  (show_args_t args) (show_tydef_t def))
+              defs
+        in
+        List.fold_left
+          (fun acc l -> acc ^ "\n" ^ l)
+          (List.hd lets) (List.tl lets)
+        ^ "\n  " ^ show e
+    | Fun (args, e, _) ->
+        let show_args_t =
+            List.fold_left (fun acc (a, _) -> acc ^ " " ^ Id.show a) ""
+        in
+        (* TODO *)
+        Printf.sprintf "fun %s -> %s" (show_args_t args) (show e)
+    | Match (e, arms) ->
+        let arms =
+            List.map
+              (fun (pat, _, when_e, e) ->
+                Printf.sprintf "%s when %s -> %s" (show_pat_t pat) (show when_e)
+                  (show e))
+              arms
+        in
+        Printf.sprintf "match %s with%s" (show e)
+          (List.fold_left (fun acc a -> acc ^ "\n" ^ a) "" arms)
+    | App (f, args, _) ->
+        let args = List.map show args in
+        Printf.sprintf "%s %s" (show f)
+          (List.fold_left (fun acc a -> acc ^ " " ^ a) "" args)
+    | Paren e -> show e
+    | Pipeline (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
 
-type parsed_t = t * Lex.pos_t * input_t [@@deriving show]
+type input_t = (Lex.t * Lex.pos_t) list
+
+type parsed_t = t * Lex.pos_t * input_t
 
 exception SyntaxError of string
 
@@ -83,10 +239,6 @@ let rec split_with f = function
               Some (hd :: first_half, second_half)
           | None -> None )
     | [] -> None
-
-let dbg ast = print_endline @@ show_parsed_t ast
-
-let dbg_i ast = print_endline @@ show_input_t ast
 
 let count = ref 0
 
@@ -107,7 +259,7 @@ let rec take_params = function
         (id :: params, remain)
     | remain -> ([], remain)
 
-type param_taken_t = string list * input_t [@@deriving show]
+type param_taken_t = Id.t * input_t
 
 let rec parse_ty input = parse_ty_tuple input
 
@@ -180,19 +332,19 @@ and parse_tapp input =
         match (t, p, input) with
         | t, _, ((Lex.LIdent _, _) :: _ as remain) ->
             let id, _, remain = parse_tid remain in
-            f (TApp ([t], id, p)) p remain
+            f (TApp ([t], Id.from_strlist id, p)) p remain
         | t, _, ((Lex.UIdent _, _) :: _ as remain) ->
             let id, _, remain = parse_tid remain in
-            f (TApp ([t], id, p)) p remain
+            f (TApp ([t], Id.from_strlist id, p)) p remain
         | r -> r
     in
     match parse_tapp_arg input with
     | ts, p, ((Lex.LIdent _, _) :: _ as remain) ->
         let id, _, remain = parse_tid remain in
-        f (TApp (ts, id, p)) p remain
+        f (TApp (ts, Id.from_strlist id, p)) p remain
     | ts, p, ((Lex.UIdent _, _) :: _ as remain) ->
         let id, _, remain = parse_tid remain in
-        f (TApp (ts, id, p)) p remain
+        f (TApp (ts, Id.from_strlist id, p)) p remain
     | [t], p, remain -> (t, p, remain)
     | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "syntax error")
 
@@ -203,10 +355,10 @@ and parse_ty_term = function
     | (Lex.TString, p) :: remain -> (TString p, p, remain)
     | (Lex.LIdent _, p) :: _ as input ->
         let id, p, remain = parse_tid input in
-        (TApp ([], id, p), p, remain)
+        (TApp ([], Id.from_strlist id, p), p, remain)
     | (Lex.UIdent _, p) :: _ as input ->
         let id, p, remain = parse_tid input in
-        (TApp ([], id, p), p, remain)
+        (TApp ([], Id.from_strlist id, p), p, remain)
     | (Lex.LP, _) :: inner -> (
       match parse_ty inner with
       | inner, p, (Lex.RP, _) :: remain -> (TParen inner, p, remain)
@@ -223,28 +375,33 @@ let rec parse_ty_variant = function
       | t, _, (Lex.VBar, _) :: arms -> (
         match parse_ty_variant arms with
         | Variant arms, _, remain ->
-            (Variant ((name, pn, t) :: arms), pn, remain)
+            (Variant ((Id.from_strlist [name], pn, t) :: arms), pn, remain)
         | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ " variant") )
-      | t, _, remain -> (Variant [(name, pn, t)], pn, remain) )
+      | t, _, remain -> (Variant [(Id.from_strlist [name], pn, t)], pn, remain)
+      )
     | (Lex.UIdent name, pn) :: (Lex.Of, _) :: remain -> (
       match parse_variant_right remain with
       | t, _, (Lex.VBar, _) :: arms -> (
         match parse_ty_variant arms with
         | Variant arms, _, remain ->
-            (Variant ((name, pn, t) :: arms), pn, remain)
+            (Variant ((Id.from_strlist [name], pn, t) :: arms), pn, remain)
         | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "variant") )
-      | t, _, remain -> (Variant [(name, pn, t)], pn, remain) )
+      | t, _, remain -> (Variant [(Id.from_strlist [name], pn, t)], pn, remain)
+      )
     | (Lex.VBar, _) :: (Lex.UIdent name, pn) :: (Lex.VBar, _) :: arms -> (
       match parse_ty_variant arms with
-      | Variant arms, _, remain -> (Variant ((name, pn, []) :: arms), pn, remain)
+      | Variant arms, _, remain ->
+          (Variant ((Id.from_strlist [name], pn, []) :: arms), pn, remain)
       | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "variant") )
     | (Lex.VBar, _) :: (Lex.UIdent name, pn) :: remain ->
-        (Variant [(name, pn, [])], pn, remain)
+        (Variant [(Id.from_strlist [name], pn, [])], pn, remain)
     | (Lex.UIdent name, pn) :: (Lex.VBar, _) :: arms -> (
       match parse_ty_variant arms with
-      | Variant arms, _, remain -> (Variant ((name, pn, []) :: arms), pn, remain)
+      | Variant arms, _, remain ->
+          (Variant ((Id.from_strlist [name], pn, []) :: arms), pn, remain)
       | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "variant") )
-    | (Lex.UIdent name, pn) :: remain -> (Variant [(name, pn, [])], pn, remain)
+    | (Lex.UIdent name, pn) :: remain ->
+        (Variant [(Id.from_strlist [name], pn, [])], pn, remain)
     | input ->
         let ty, p, remain = parse_ty input in
         (Alias ty, p, remain)
@@ -274,19 +431,20 @@ and parse_pat_cons input =
     | p -> p
 
 and parse_pat_term = function
-    | (Lex.LIdent id, p) :: remain -> (PVar (id, p), p, remain)
+    | (Lex.LIdent id, p) :: remain -> (PVar (Id.from_strlist [id], p), p, remain)
     | (Lex.UIdent _, p) :: _ as remain -> (
       match parse_pat_ctor remain with
       | id, _, ((Lex.Cons, _) as hd) :: remain ->
-          (PCtor (id, p), p, hd :: remain)
+          (PCtor (Id.from_strlist id, p), p, hd :: remain)
       | id, _, ((Lex.Comma, _) as hd) :: remain ->
-          (PCtor (id, p), p, hd :: remain)
+          (PCtor (Id.from_strlist id, p), p, hd :: remain)
       | id, _, ((Lex.Arrow, _) as hd) :: remain ->
-          (PCtor (id, p), p, hd :: remain)
-      | id, _, ((Lex.Eq, _) as hd) :: remain -> (PCtor (id, p), p, hd :: remain)
+          (PCtor (Id.from_strlist id, p), p, hd :: remain)
+      | id, _, ((Lex.Eq, _) as hd) :: remain ->
+          (PCtor (Id.from_strlist id, p), p, hd :: remain)
       | id, _, remain ->
           let arg, _, remain = parse_pat_term remain in
-          (PCtorApp (id, arg, p), p, remain) )
+          (PCtorApp (Id.from_strlist id, arg, p), p, remain) )
     | (Lex.Int i, p) :: remain -> (PInt (i, p), p, remain)
     | (Lex.True, p) :: remain -> (PBool (true, p), p, remain)
     | (Lex.False, p) :: remain -> (PBool (false, p), p, remain)
@@ -393,8 +551,10 @@ and unfold_fun p args expr =
             | PVar (id, _), p -> (inner, (id, p) :: params)
             | pat, p ->
                 let tmpname = gen_fresh () in
-                ( Match (Var ([tmpname], p), [(pat, p, Bool (true, p), inner)])
-                , (tmpname, p) :: params ))
+                ( Match
+                    ( Var (Id.from_strlist [tmpname], p)
+                    , [(pat, p, Bool (true, p), inner)] )
+                , (Id.from_strlist [tmpname], p) :: params ))
           (expr, []) (List.rev args)
     in
     Fun (params, body, p)
@@ -646,7 +806,7 @@ and parse_term = function
     | (Lex.UIdent _, p) :: _ as remain ->
         let id, _, remain = parse_ident remain in
         (id, p, remain)
-    | (Lex.LIdent id, p) :: remain -> (Var ([id], p), p, remain)
+    | (Lex.LIdent id, p) :: remain -> (Var (Id.from_strlist [id], p), p, remain)
     | (Lex.Int i, p) :: remain -> (Int (i, p), p, remain)
     | (Lex.True, p) :: remain -> (Bool (true, p), p, remain)
     | (Lex.False, p) :: remain -> (Bool (false, p), p, remain)
@@ -668,18 +828,18 @@ and parse_term = function
           @@ SyntaxError
                ( Printf.sprintf "%s paren is not balanced"
                @@ Lex.string_of_pos_t p ) )
-    | x ->
-        dbg_i x ;
-        raise @@ SyntaxError "term"
+    | x -> raise @@ SyntaxError "term"
 
 and parse_ident = function
     | (Lex.UIdent pre, p) :: (Lex.Dot, _) :: remain -> (
       match parse_ident remain with
-      | Var (id, _), _, remain -> (Var (pre :: id, p), p, remain)
-      | Ctor (id, _), _, remain -> (Ctor (pre :: id, p), p, remain)
+      | Var ((pre', name, uid), _), _, remain ->
+          (Var ((pre :: pre', name, uid), p), p, remain)
+      | Ctor ((pre', name, uid), _), _, remain ->
+          (Ctor ((pre :: pre', name, uid), p), p, remain)
       | _ -> raise @@ Failure "internal error in parsing identifier" )
-    | (Lex.LIdent id, p) :: remain -> (Var ([id], p), p, remain)
-    | (Lex.UIdent id, p) :: remain -> (Ctor ([id], p), p, remain)
+    | (Lex.LIdent id, p) :: remain -> (Var (Id.from_strlist [id], p), p, remain)
+    | (Lex.UIdent id, p) :: remain -> (Ctor (Id.from_strlist [id], p), p, remain)
     | (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "ident")
     | [] -> raise Unreachable
 
@@ -749,14 +909,14 @@ and parse_letrec_ands input =
       match parse_expr remain with
       | def, _, (Lex.AndDef, _) :: remain ->
           let ands, remain = parse_letrec_ands remain in
-          (([id], p, def) :: ands, remain)
-      | def, _, remain -> ([([id], p, def)], remain) )
+          ((id, p, def) :: ands, remain)
+      | def, _, remain -> ([(id, p, def)], remain) )
     | (PVar (id, p), _) :: args, (Lex.Eq, _) :: remain -> (
       match parse_expr remain with
       | def, _, (Lex.AndDef, _) :: remain ->
           let ands, remain = parse_letrec_ands remain in
-          (([id], p, unfold_fun p args def) :: ands, remain)
-      | def, _, remain -> ([([id], p, unfold_fun p args def)], remain) )
+          ((id, p, unfold_fun p args def) :: ands, remain)
+      | def, _, remain -> ([(id, p, unfold_fun p args def)], remain) )
     | _, (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "let stmt")
     | _, [] -> raise Unreachable
 
@@ -779,8 +939,8 @@ and parse_type_body p name targs input =
     match parse_ty_variant input with
     | ty, _, (Lex.AndDef, _) :: remain ->
         let ands, remain = parse_type_ands remain in
-        ((name, p, targs, ty) :: ands, remain)
-    | ty, _, remain -> ([(name, p, targs, ty)], remain)
+        ((Id.from_strlist [name], p, targs, ty) :: ands, remain)
+    | ty, _, remain -> ([(Id.from_strlist [name], p, targs, ty)], remain)
 
 let parse input =
     match parse_expr input with

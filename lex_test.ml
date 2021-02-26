@@ -3,24 +3,17 @@ open Lex
 type t = (Lex.t * Lex.pos_t) list
 
 let assert_eq name a b =
-    if a = b
-    then ()
-    else failwith @@ Printf.sprintf "test failed %s" name
+    if a = b then () else failwith @@ Printf.sprintf "test failed %s" name
 
 let () =
     assert_eq "count_newline 0 11" (count_newline "foo\nbar\nhoge" 0 11) 2 ;
     assert_eq "count_newline 0 3" (count_newline "foo\nbar\nhoge" 0 3) 0 ;
     assert_eq "count_newline 0 4" (count_newline "foo\nbar\nhoge" 0 4) 1 ;
     assert_eq "count_newline 3 8" (count_newline "foo\nbar\nhoge" 3 8) 2 ;
-    assert_eq "match_space_char \" abc\" 0"
-      (match_space_char " abc" 0)
-      (Some 1) ;
-    assert_eq "match_space_char \" abc\" 1"
-      (match_space_char " abc" 1)
-      None ;
+    assert_eq "match_space_char \" abc\" 0" (match_space_char " abc" 0) (Some 1) ;
+    assert_eq "match_space_char \" abc\" 1" (match_space_char " abc" 1) None ;
     assert_eq "match_space_char \"abc\" 0" (match_space_char "abc" 0) None ;
-    assert_eq "match_space \" \\n\\r\\t\"" (match_space " \n\r\t" 0)
-      (Some 4) ;
+    assert_eq "match_space \" \\n\\r\\t\"" (match_space " \n\r\t" 0) (Some 4) ;
     assert_eq "match_space \" \\n\\r\\t\" from 2" (match_space " \n\r\t" 2)
       (Some 4) ;
     assert_eq "match_space \" \\n\\r\\thoge\" from 2 ends normal char"
@@ -30,42 +23,26 @@ let () =
       (match_space " \n\r\thoge" 0)
       (Some 4) ;
     assert_eq "match_space \"hoo\"" (match_space "hoo" 0) None ;
-    assert_eq "match_lower_char \"a \""
-      (match_alph_lower_char "a " 0)
-      (Some 1) ;
-    assert_eq "match_upper_char \"A \""
-      (match_alph_upper_char "A " 0)
-      (Some 1) ;
+    assert_eq "match_lower_char \"a \"" (match_alph_lower_char "a " 0) (Some 1) ;
+    assert_eq "match_upper_char \"A \"" (match_alph_upper_char "A " 0) (Some 1) ;
     assert_eq "match_lower_char \"A \"" (match_alph_lower_char "A " 0) None ;
     assert_eq "match_upper_char \"a \"" (match_alph_upper_char "a " 0) None ;
-    assert_eq "match_lower_ident \" abc\""
-      (match_lower_ident " abc" 0)
-      None ;
-    assert_eq "match_lower_ident \"abc \""
-      (match_lower_ident "abc " 0)
-      (Some 3) ;
-    assert_eq "match_lower_ident \" abc\""
-      (match_lower_ident " abc" 0)
-      None ;
+    assert_eq "match_lower_ident \" abc\"" (match_lower_ident " abc" 0) None ;
+    assert_eq "match_lower_ident \"abc \"" (match_lower_ident "abc " 0) (Some 3) ;
+    assert_eq "match_lower_ident \" abc\"" (match_lower_ident " abc" 0) None ;
     assert_eq "match_int \"123a\"" (match_int "123a" 0) (Some 3) ;
     assert_eq "match_int \"a123\"" (match_int "a123" 0) None ;
     assert_eq "match_hexint \"0x123g\"" (match_hexint "0x123g" 0) (Some 5) ;
     assert_eq "match_hexint \"a0x123\"" (match_hexint "a0x123" 0) None ;
     assert_eq "match_char '.' \".a\"" (match_char '.' ".a" 0) (Some 1) ;
     assert_eq "match_char '.' \"a.\"" (match_char '.' "a." 0) None ;
-    assert_eq "match_str \"hoge\" \"hoge\""
-      (match_str "hoge" "hoge" 0)
-      (Some 4) ;
+    assert_eq "match_str \"hoge\" \"hoge\"" (match_str "hoge" "hoge" 0) (Some 4) ;
     assert_eq "match_str \"hoge\" \"hog\"" (match_str "hoge" "hog" 0) None ;
-    assert_eq "match_str \"hoge\" \"hogu\""
-      (match_str "hoge" "hogu" 0)
-      None ;
+    assert_eq "match_str \"hoge\" \"hogu\"" (match_str "hoge" "hogu" 0) None ;
     assert_eq "match_str \"hoge\" \" hoge\""
       (match_str "hoge" " hoge" 1)
       (Some 5) ;
-    assert_eq "match_strlit \"\"hoge\""
-      (match_strlit "\"hoge\"" 0)
-      (Some 6) ;
+    assert_eq "match_strlit \"\"hoge\"" (match_strlit "\"hoge\"" 0) (Some 6) ;
     assert_eq "match_strlit \"\"ho\\\\ge\""
       (match_strlit "\"ho\\\\ge\"" 0)
       (Some 8) ;

@@ -1,4 +1,6 @@
-type pos_t = string * int * int * int [@@deriving show]
+type pos_t = string * int * int * int
+
+let show_pos_t (fname, _, l, c) = Printf.sprintf "%s:%d:%d" fname l c
 
 let string_of_pos_t (file, col, line, _) =
     Printf.sprintf "%s:%d:%d" file col line

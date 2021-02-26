@@ -2,3 +2,5 @@ S lex
 S lex_test
 S id
 S id_test
+S parser
+S parser_test

@@ -15,10 +15,11 @@ clean:
 	rm -f *.pp.ml
 
 .PHONY: test
-test: lex_test id_test parser_test
+test: lex_test id_test parser_test typing_test
 	./lex_test
 	./id_test
 	./parser_test
+	./typing_test
 
 lex.cmx: lex.ml
 	$(OCAMLOPT) $< -c
@@ -52,3 +53,10 @@ pervasives.cmx: pervasives.ml id.cmx types.cmx
 
 ast.cmx: ast.ml id.cmx parser.cmx types.cmx pervasives.cmx
 	$(OCAMLOPT) $< -c
+
+typing.cmx: typing.ml ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx
+	$(OCAMLOPT) $< -c
+typing_test.cmx: typing_test.ml typing.cmx 
+	$(OCAMLOPT) $< -c
+typing_test: typing_test.cmx
+	$(OCAMLOPT) $^ -o $@

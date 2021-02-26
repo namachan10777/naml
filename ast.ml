@@ -1,17 +1,12 @@
-type id_t = string list [@@deriving show]
-
 type pat_t =
-    | PEmp of Lex.pos_t
-    | PCons of pat_t * pat_t * Lex.pos_t
     | PInt of int * Lex.pos_t
     | PBool of bool * Lex.pos_t
-    | PVar of string * Lex.pos_t
+    | PVar of Id.t * Lex.pos_t
     | PTuple of pat_t list * Lex.pos_t
     | As of pat_t list * Lex.pos_t
     | Or of pat_t * pat_t list * Lex.pos_t
-    | PCtorApp of string list * pat_t list * Lex.pos_t
-    | PCtor of string list * Lex.pos_t
-[@@deriving show]
+    | PCtorApp of Id.t * pat_t list * Lex.pos_t
+    | PCtor of Id.t * Lex.pos_t
 
 type ty_t =
     | TInt of Lex.pos_t
@@ -19,31 +14,25 @@ type ty_t =
     | TString of Lex.pos_t
     | TVar of string * Lex.pos_t
     | TTuple of ty_t list * Lex.pos_t
-    | TApp of ty_t list * string list * Lex.pos_t
-[@@deriving show]
+    | TApp of ty_t list * Id.t * Lex.pos_t
 
-type tydef_t =
-    | Variant of (string * Lex.pos_t * ty_t list) list
-    | Alias of ty_t
-[@@deriving show]
+type tydef_t = Variant of (Id.t * Lex.pos_t * ty_t list) list | Alias of ty_t
 
 type t =
     | Never
     | Int of int * Lex.pos_t
     | Bool of bool * Lex.pos_t
-    | Var of string list * Lex.pos_t
-    | Ctor of string list * Lex.pos_t
-    | CtorApp of string list * Lex.pos_t * t list
+    | Var of Id.t * Lex.pos_t
+    | Ctor of Id.t * Lex.pos_t
+    | CtorApp of Id.t * Lex.pos_t * t list
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
     | Let of (pat_t * Lex.pos_t * t) list * t * bool
-    | LetRec of (string list * Lex.pos_t * t) list * t * bool
-    | Fun of (string * Lex.pos_t) list * t * Lex.pos_t
+    | LetRec of (Id.t * Lex.pos_t * t) list * t * bool
+    | Fun of Id.t * t * Lex.pos_t
     | Match of t * (pat_t * Lex.pos_t * t * t) list
-    | App of t * t list * Lex.pos_t
-    | Type of
-        (string * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
-[@@deriving show]
+    | App of t * t * Lex.pos_t
+    | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
 
 let rec of_parser_ty_t = function
     | Parser.TInt p -> TInt p
@@ -55,9 +44,12 @@ let rec of_parser_ty_t = function
     | Parser.TApp (ts, higher, p) -> TApp (List.map of_parser_ty_t ts, higher, p)
 
 let rec of_parser_pat_t = function
-    | Parser.PEmp p -> PEmp p
+    | Parser.PEmp p -> PCtor (Id.lookup ["[]"] Pervasives.names, p)
     | Parser.PCons (lhr, rhr, p) ->
-        PCons (of_parser_pat_t lhr, of_parser_pat_t rhr, p)
+        PCtorApp
+          ( Id.lookup ["[]"] Pervasives.names
+          , [of_parser_pat_t lhr; of_parser_pat_t rhr]
+          , p )
     | Parser.PInt (i, p) -> PInt (i, p)
     | Parser.PBool (b, p) -> PBool (b, p)
     | Parser.PVar (id, p) -> PVar (id, p)
@@ -77,10 +69,10 @@ let rec of_parser_t = function
     | Parser.Bool (i, p) -> Bool (i, p)
     | Parser.Var (i, p) -> Var (i, p)
     | Parser.Ctor (i, p) -> Ctor (i, p)
-    | Parser.App (Parser.Ctor (n, _), [Parser.Tuple (args, _)], p) ->
+    | Parser.App (Parser.Ctor (n, _), Parser.Tuple (args, _), p) ->
         CtorApp (n, p, List.map of_parser_t args)
-    | Parser.App (Parser.Ctor (n, _), [t], p) -> CtorApp (n, p, [of_parser_t t])
-    | Parser.Emp p -> Ctor (["[]"], p)
+    | Parser.App (Parser.Ctor (n, _), t, p) -> CtorApp (n, p, [of_parser_t t])
+    | Parser.Emp p -> Ctor (Id.lookup ["[]"] Pervasives.names, p)
     | Parser.Add (lhr, rhr, p) -> op "+" lhr rhr p
     | Parser.Sub (lhr, rhr, p) -> op "-" lhr rhr p
     | Parser.Mul (lhr, rhr, p) -> op "*" lhr rhr p
@@ -94,18 +86,28 @@ let rec of_parser_t = function
     | Parser.Neq (lhr, rhr, p) -> op "<>" lhr rhr p
     | Parser.Seq (lhr, rhr, p) -> op ";" lhr rhr p
     | Parser.Cons (lhr, rhr, p) ->
-        CtorApp (["::"], p, [of_parser_t lhr; of_parser_t rhr])
+        CtorApp
+          ( Id.lookup ["::"] Pervasives.names
+          , p
+          , [of_parser_t lhr; of_parser_t rhr] )
     | Parser.Gret (lhr, rhr, p) -> op ">" lhr rhr p
     | Parser.Less (lhr, rhr, p) -> op "<" lhr rhr p
     | Parser.Index (lhr, rhr, p) -> op "." lhr rhr p
-    | Parser.Neg (e, p) -> App (Var (["<neg>"], p), [of_parser_t e], p)
+    | Parser.Neg (e, p) ->
+        App (Var (Id.lookup ["<neg>"] Pervasives.names, p), of_parser_t e, p)
     | Parser.Assign (lhr, rhr, p) -> op ":=" lhr rhr p
     | Parser.ArrayAssign (arr, idx, rhr, p) ->
         App
-          ( Var (["<arrayassign>"], p)
-          , [of_parser_t arr; of_parser_t idx; of_parser_t rhr]
+          ( App
+              ( App
+                  ( Var (Id.lookup ["<arrayassign>"] Pervasives.names, p)
+                  , of_parser_t arr
+                  , p )
+              , of_parser_t idx
+              , p )
+          , of_parser_t rhr
           , p )
-    | Parser.Pipeline (arg, f, p) -> App (of_parser_t f, [of_parser_t arg], p)
+    | Parser.Pipeline (arg, f, p) -> App (of_parser_t f, of_parser_t arg, p)
     | Parser.Tuple (elem, p) -> Tuple (List.map of_parser_t elem, p)
     | Parser.If (cond, e1, e2, p) ->
         If (of_parser_t cond, of_parser_t e1, of_parser_t e2, p)
@@ -122,7 +124,7 @@ let rec of_parser_t = function
           , of_parser_t expr
           , is_top )
     | Parser.Fun (params, expr, p) -> Fun (params, of_parser_t expr, p)
-    | Parser.App (f, arg, p) -> App (of_parser_t f, List.map of_parser_t arg, p)
+    | Parser.App (f, arg, p) -> App (of_parser_t f, of_parser_t arg, p)
     | Parser.Paren e -> of_parser_t e
     | Parser.Match (target, arms) ->
         Match
@@ -149,6 +151,10 @@ let rec of_parser_t = function
               defs
           , of_parser_t expr )
 
-and op id lhr rhr p = App (Var ([id], p), [of_parser_t lhr; of_parser_t rhr], p)
+and op id lhr rhr p =
+    App
+      ( App (Var (Id.lookup [id] Pervasives.names, p), of_parser_t lhr, p)
+      , of_parser_t rhr
+      , p )
 
 let f fname src = of_parser_t @@ Parser.f fname src

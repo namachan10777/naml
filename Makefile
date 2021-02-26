@@ -49,3 +49,6 @@ types.cmx: types.ml id.cmx
 
 pervasives.cmx: pervasives.ml id.cmx types.cmx
 	$(OCAMLOPT) $< -c
+
+ast.cmx: ast.ml id.cmx parser.cmx types.cmx pervasives.cmx
+	$(OCAMLOPT) $< -c

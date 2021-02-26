@@ -1,52 +1,8 @@
-*.annot
-*.cmo
-*.cma
-*.cmi
-*.a
+*.cmt
 *.o
+*.cmi
 *.cmx
-*.cmxs
-*.cmxa
-
-# ocamlbuild working directory
-_build/
-
-# ocamlbuild targets
-*.byte
-*.native
-
-# oasis generated files
-setup.data
-setup.log
-
-# Merlin configuring file for Vim and Emacs
-.merlin
-
-# Dune generated files
-*.install
-
-# Local OPAM switch
-_opam/
-
-*.tar.gz
-
-.nvimlog
-
-*.aux
-*.fdb_latexmk
-*.fls
-*.pdf
-*.dvi
-*.log
-*.synctex.gz
-*.s
-
-compiler1
-compiler2
-*.out
-sourcelist.tex
-bench_list.tex
-compiler/compiler
-*.bbl
-*.blg
-dist/
+!.merlin
+compiler1st
+*.pp.ml
+*_test

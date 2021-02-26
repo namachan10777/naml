@@ -3,6 +3,6 @@
 *.cmi
 *.cmx
 !.merlin
-compiler1st
+1st
 *.pp.ml
 *_test

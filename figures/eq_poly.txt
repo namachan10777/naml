@@ -1,1 +1,0 @@
-let f (x: '0 -> '0 -> bool) = g (y: '0) = x = y in (g: '0 -> bool)

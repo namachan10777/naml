@@ -1,2 +1,0 @@
-let (id: '0 -> '0) = fun (x: '0 -> '0) -> x in
-let (x: bool) = (id 1: int); (id true: bool)

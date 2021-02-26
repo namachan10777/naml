@@ -1,7 +1,0 @@
-(library
- (name s8)
- (preprocess (pps sedlex.ppx ppx_deriving.show))
- (libraries sedlex menhirLib core))
-(menhir
-  (modules k7parser k6parser k5parser k4parser))
-(include_subdirs unqualified)

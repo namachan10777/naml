@@ -1,2 +1,0 @@
-let (f: '0 -> '0 -> bool) (x: '0) = let (g: '0 -> bool) (y: '0) = (x = y: bool) in (g: 0' -> bool) in
-let (x: int -> bool) = (f 1: int -> bool) in Never

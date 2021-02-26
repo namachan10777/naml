@@ -1,4 +1,0 @@
-let (r: '0 list ref) = (ref [] : '0 list ref)
-
-let () = r := ([0] : int list)
-let () = r := ([true] : bool list)

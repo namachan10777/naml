@@ -1,3 +1,0 @@
-(lang dune 2.7)
-(name s8)
-(using menhir 2.0)

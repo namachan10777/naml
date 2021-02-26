@@ -1,3 +1,4 @@
 S lex
-S test
-S parser
+S lex_test
+S id
+S id_test

@@ -20,3 +20,16 @@ let from_strlist name =
     | [] -> failwith "invalid input to Id.t"
 
 let approx (pre1, n1, _) (pre2, n2, _) = pre1 = pre2 && n1 = n2
+
+let rec lookup l = function
+    | (pre, name, id) :: _ when l = pre @ [name] -> (pre, name, id)
+    | _ :: tbl -> lookup l tbl
+    | [] -> (
+      match List.rev l with
+      | name :: pre ->
+          failwith
+          @@ Printf.sprintf "undefined variable: %s"
+               (List.fold_right
+                  (fun acc p -> p ^ "." ^ acc)
+                  (List.rev pre) name)
+      | [] -> failwith "empty name" )

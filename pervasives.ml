@@ -4,6 +4,19 @@ let ref_id = Id.from_strlist ["ref"]
 
 let array_id = Id.from_strlist ["array"]
 
+let ctors =
+    [ ( Id.from_strlist ["[]"]
+      , (1, [])
+      , (1, Types.Variant ([Types.Poly 0], list_id)) )
+    ; ( Id.from_strlist ["::"]
+      , (1, [Types.Poly 0; Types.Variant ([Types.Poly 0], list_id)])
+      , (1, Types.Variant ([Types.Poly 0], list_id)) ) ]
+
+let types =
+    [ (list_id, (1, Types.Variant ([Types.Poly 0], list_id)))
+    ; (array_id, (1, Types.Variant ([Types.Poly 0], array_id)))
+    ; (ref_id, (1, Types.Variant ([Types.Poly 0], ref_id))) ]
+
 let vars =
     [ ( Id.from_strlist ["="]
       , (1, Types.Fun (Types.Poly 0, Types.Fun (Types.Poly 0, Types.Bool))) )
@@ -65,4 +78,5 @@ let vars =
     ; (Id.from_strlist ["failwith"], (1, Types.Fun (Types.Str, Types.Poly 0)))
     ]
 
-let names = List.map fst vars
+let names =
+    List.map (fun (n, _, _) -> n) ctors @ List.map fst vars @ List.map fst types

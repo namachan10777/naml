@@ -1,7 +1,7 @@
 OCAMLOPT=ocamlfind ocamlopt -package ppx_deriving.show
 
 .PHONY: all
-all: test 1st
+all: test
 
 .PHONY: clean
 clean:

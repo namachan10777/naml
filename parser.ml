@@ -29,10 +29,7 @@ let rec show_ty_t = function
         flatten self
 
 and join sep elems =
-    let len_total = List.map String.length elems |> List.fold_left ( + ) 0 in
-    if len_total > 80 then
-      List.fold_left (fun s elem -> s ^ "\n\t" ^ elem) "(" elems ^ "\n)"
-    else List.fold_left (fun s elem -> s ^ elem) "(" elems ^ ")"
+    "(" ^ (List.fold_left (fun s elem -> s ^ sep ^ elem) (List.hd elems) (List.tl elems)) ^ ")"
 
 type tydef_t = Variant of (Id.t * Lex.pos_t * ty_t list) list | Alias of ty_t
 

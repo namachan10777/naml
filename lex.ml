@@ -57,12 +57,65 @@ type t =
     | Match
     | When
     | With
-    | Builtin
     | Not
     | Ref
     | As
     | Eof
-[@@deriving show]
+
+let rec show = function
+    | Str s -> Printf.sprintf "Str(%s)" s
+    | Int n -> Printf.sprintf "Int(%d)" n
+    | Char c -> Printf.sprintf "Char(%c)" c
+    | True -> "true"
+    | False -> "false"
+    | TInt -> "int"
+    | TBool -> "bool"
+    | TString -> "string"
+    | Type -> "type"
+    | Of -> "of"
+    | Dot -> "."
+    | Add -> "+"
+    | Sub -> "-"
+    | Mul -> "*"
+    | Div -> "/"
+    | Mod -> "mod"
+    | Cons -> "::"
+    | Gret -> ">"
+    | Less -> "<"
+    | Eq -> "="
+    | Neq -> "<>"
+    | And -> "&&"
+    | Or -> "||"
+    | Pipeline -> "|>"
+    | AtAt -> "@@"
+    | Assign -> ":="
+    | ArrayAssign -> ":=(array)"
+    | LP -> "("
+    | RP -> ")"
+    | LB -> "["
+    | RB -> "]"
+    | Semicol -> ";"
+    | Comma -> ","
+    | VBar -> "|"
+    | Arrow -> "->"
+    | Fun -> "fun"
+    | If -> "if"
+    | Then -> "then"
+    | Else -> "else"
+    | Let -> "let"
+    | In -> "in"
+    | Rec -> "rec"
+    | AndDef -> "and"
+    | Match -> "match"
+    | When -> "when"
+    | With -> "with"
+    | Not -> "not"
+    | Ref -> "ref"
+    | As -> "as"
+    | Eof -> "<EOF>"
+    | UIdent id -> id
+    | LIdent id -> id
+    | TVar id -> Printf.sprintf "'%s" id
 
 let count_newline s =
     let rec cnt acc i_begin i_end =
@@ -297,7 +350,6 @@ let rec lex s pos =
             | "match" -> (Match, pos (i+1)) :: lex s (pos i')
             | "when" -> (When, pos (i+1)) :: lex s (pos i')
             | "with" -> (With, pos (i+1)) :: lex s (pos i')
-            | "builtin" -> (Builtin, pos (i+1)) :: lex s (pos i')
             | "mod" -> (Mod, pos (i+1)) :: lex s (pos i')
             | ident -> (LIdent ident, pos (i+1)) :: lex s (pos i')
         end

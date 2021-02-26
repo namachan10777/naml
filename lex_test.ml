@@ -1,6 +1,6 @@
 open Lex
 
-type t = (Lex.t * Lex.pos_t) list [@@deriving show]
+type t = (Lex.t * Lex.pos_t) list
 
 let assert_eq name a b =
     if a = b

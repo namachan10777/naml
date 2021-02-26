@@ -7,4 +7,6 @@ type t =
     | Poly of int
     | Variant of t list * Id.t
 
+let unit = Tuple []
+
 type scheme_t = int * t

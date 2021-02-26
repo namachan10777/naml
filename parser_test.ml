@@ -73,8 +73,7 @@ let rec eq l r =
     | P.Seq (l1, r1, _), P.Seq (l2, r2, _) -> eq l1 l2 && eq r1 r2
     | P.Index (l1, r1, _), P.Index (l2, r2, _) -> eq l1 l2 && eq r1 r2
     | P.Cons (l1, r1, _), P.Cons (l2, r2, _) -> eq l1 l2 && eq r1 r2
-    | P.App (f1, a1, _), P.App (f2, a2, _) ->
-        eq f1 f2 && (List.for_all (fun (a, b) -> eq a b) @@ Util.zip a1 a2)
+    | P.App (f1, a1, _), P.App (f2, a2, _) -> eq f1 f2 && eq a1 a2
     | P.Pipeline (a1, f1, _), P.Pipeline (a2, f2, _) -> eq f1 f2 && eq a1 a2
     | P.Tuple (es1, _), P.Tuple (es2, _) ->
         List.for_all (fun (a, b) -> eq a b) @@ Util.zip es1 es2
@@ -88,10 +87,8 @@ let rec eq l r =
         && List.for_all (fun ((id1, _, def1), (id2, _, def2)) ->
                Id.approx id1 id2 && eq def1 def2)
            @@ Util.zip defs1 defs2
-    | P.Fun (args1, e1, _), P.Fun (args2, e2, _) ->
-        eq e1 e2
-        && List.for_all (fun ((id1, _), (id2, _)) -> Id.approx id1 id2)
-           @@ Util.zip args1 args2
+    | P.Fun (arg1, e1, _), P.Fun (arg2, e2, _) ->
+        eq e1 e2 && Id.approx arg1 arg2
     | P.Match (e1, arms1), P.Match (e2, arms2) ->
         eq e1 e2
         && List.for_all (fun ((pat1, _, guard1, e1), (pat2, _, guard2, e2)) ->
@@ -104,16 +101,14 @@ let rec eq l r =
                @@ Util.zip targs1 targs2
             && eq_tydef ty1 ty2)
         @@ Util.zip defs1 defs2
-    | a, b ->
-        Printf.printf "%s\n%s" (P.show a) (P.show b) ;
-        false
+    | a, b -> false
 
 let test name src right =
     let left = P.parse @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
     if eq right left then ()
     else
       failwith
-      @@ Printf.sprintf "%s left  : %s\nright : %s\n" name (P.show left)
+      @@ Printf.sprintf "\"%s\" left  : %s\nright : %s\n" name (P.show left)
            (P.show right)
 
 let test_ty name src right =
@@ -125,15 +120,15 @@ let test_ty name src right =
     if eq_ty right left then ()
     else
       failwith
-      @@ Printf.sprintf "%s left  : %s\nright : %s\n" name (P.show_ty_t left)
-           (P.show_ty_t right)
+      @@ Printf.sprintf "\"%s\" left  : %s\nright : %s\n" name
+           (P.show_ty_t left) (P.show_ty_t right)
 
 let test_stmts name src right =
     let left = P.parse_stmts @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
     if eq right left then ()
     else
       failwith
-      @@ Printf.sprintf "%s left  : %s\nright : %s\n" name (P.show left)
+      @@ Printf.sprintf "\"%s\" left  : %s\nright : %s\n" name (P.show left)
            (P.show right)
 
 let p i = ("test.ml", 1, i, i)
@@ -169,11 +164,11 @@ let () =
          ( P.Gret (P.Int (3, nw), P.Int (2, nw), nw)
          , P.App
              ( P.Var (Id.from_strlist ["not"], nw)
-             , [P.Paren (P.Less (P.Int (1, nw), P.Int (0, nw), nw))]
+             , P.Paren (P.Less (P.Int (1, nw), P.Int (0, nw), nw))
              , nw )
          , nw )) ;
     test "ref" "ref 1"
-      (P.App (P.Var (Id.from_strlist ["ref"], nw), [P.Int (1, nw)], nw)) ;
+      (P.App (P.Var (Id.from_strlist ["ref"], nw), P.Int (1, nw), nw)) ;
     test "bool2" "true &&\n false || 1 = 2 && false"
       (P.Or
          ( P.And (P.Bool (true, nw), P.Bool (false, nw), nw)
@@ -239,10 +234,13 @@ let () =
          ( [ ( P.PVar (Id.from_strlist ["add"], nw)
              , nw
              , P.Fun
-                 ( [(Id.from_strlist ["x"], nw); (Id.from_strlist ["y"], nw)]
-                 , P.Add
-                     ( P.Var (Id.from_strlist ["x"], nw)
-                     , P.Var (Id.from_strlist ["y"], nw)
+                 ( Id.from_strlist ["x"]
+                 , P.Fun
+                     ( Id.from_strlist ["y"]
+                     , P.Add
+                         ( P.Var (Id.from_strlist ["x"], nw)
+                         , P.Var (Id.from_strlist ["y"], nw)
+                         , nw )
                      , nw )
                  , nw ) ) ]
          , P.Var (Id.from_strlist ["add"], nw)
@@ -253,31 +251,34 @@ let () =
          ( [ ( P.PVar (Id.from_strlist ["add"], nw)
              , nw
              , P.Fun
-                 ( [ (Id.from_strlist ["<anonymous2>"], nw)
-                   ; (Id.from_strlist ["<anonymous1>"], nw) ]
-                 , P.Match
-                     ( P.Var (Id.from_strlist ["<anonymous2>"], nw)
-                     , [ ( P.PParen
-                             (P.PTuple
-                                ( [ P.PVar (Id.from_strlist ["x"], nw)
-                                  ; P.PVar (Id.from_strlist ["y"], nw) ]
-                                , nw ))
-                         , nw
-                         , P.Bool (true, nw)
-                         , P.Match
-                             ( P.Var (Id.from_strlist ["<anonymous1>"], nw)
-                             , [ ( P.PParen
-                                     (P.PTuple
-                                        ( [ P.PVar (Id.from_strlist ["z"], nw)
-                                          ; P.PVar (Id.from_strlist ["w"], nw)
-                                          ]
-                                        , nw ))
-                                 , nw
-                                 , P.Bool (true, nw)
-                                 , P.Add
-                                     ( P.Var (Id.from_strlist ["x"], nw)
-                                     , P.Var (Id.from_strlist ["y"], nw)
-                                     , nw ) ) ] ) ) ] )
+                 ( Id.from_strlist ["<anonymous2>"]
+                 , P.Fun
+                     ( Id.from_strlist ["<anonymous1>"]
+                     , P.Match
+                         ( P.Var (Id.from_strlist ["<anonymous2>"], nw)
+                         , [ ( P.PParen
+                                 (P.PTuple
+                                    ( [ P.PVar (Id.from_strlist ["x"], nw)
+                                      ; P.PVar (Id.from_strlist ["y"], nw) ]
+                                    , nw ))
+                             , nw
+                             , P.Bool (true, nw)
+                             , P.Match
+                                 ( P.Var (Id.from_strlist ["<anonymous1>"], nw)
+                                 , [ ( P.PParen
+                                         (P.PTuple
+                                            ( [ P.PVar
+                                                  (Id.from_strlist ["z"], nw)
+                                              ; P.PVar
+                                                  (Id.from_strlist ["w"], nw) ]
+                                            , nw ))
+                                     , nw
+                                     , P.Bool (true, nw)
+                                     , P.Add
+                                         ( P.Var (Id.from_strlist ["x"], nw)
+                                         , P.Var (Id.from_strlist ["y"], nw)
+                                         , nw ) ) ] ) ) ] )
+                     , nw )
                  , nw ) ) ]
          , P.Var (Id.from_strlist ["add"], nw)
          , false )) ;
@@ -286,10 +287,13 @@ let () =
          ( [ ( Id.from_strlist ["add"]
              , nw
              , P.Fun
-                 ( [(Id.from_strlist ["x"], nw); (Id.from_strlist ["y"], nw)]
-                 , P.Add
-                     ( P.Var (Id.from_strlist ["x"], nw)
-                     , P.Var (Id.from_strlist ["y"], nw)
+                 ( Id.from_strlist ["x"]
+                 , P.Fun
+                     ( Id.from_strlist ["y"]
+                     , P.Add
+                         ( P.Var (Id.from_strlist ["x"], nw)
+                         , P.Var (Id.from_strlist ["y"], nw)
+                         , nw )
                      , nw )
                  , nw ) ) ]
          , P.Var (Id.from_strlist ["add"], nw)
@@ -300,68 +304,79 @@ let () =
          ( [ ( Id.from_strlist ["add"]
              , nw
              , P.Fun
-                 ( [ (Id.from_strlist ["<anonymous2>"], nw)
-                   ; (Id.from_strlist ["<anonymous1>"], nw) ]
-                 , P.Match
-                     ( P.Var (Id.from_strlist ["<anonymous2>"], nw)
-                     , [ ( P.PParen
-                             (P.PTuple
-                                ( [ P.PVar (Id.from_strlist ["x"], nw)
-                                  ; P.PVar (Id.from_strlist ["y"], nw) ]
-                                , nw ))
-                         , nw
-                         , P.Bool (true, nw)
-                         , P.Match
-                             ( P.Var (Id.from_strlist ["<anonymous1>"], nw)
-                             , [ ( P.PParen
-                                     (P.PTuple
-                                        ( [ P.PVar (Id.from_strlist ["z"], nw)
-                                          ; P.PVar (Id.from_strlist ["w"], nw)
-                                          ]
-                                        , nw ))
-                                 , nw
-                                 , P.Bool (true, nw)
-                                 , P.Add
-                                     ( P.Var (Id.from_strlist ["x"], nw)
-                                     , P.Var (Id.from_strlist ["y"], nw)
-                                     , nw ) ) ] ) ) ] )
+                 ( Id.from_strlist ["<anonymous2>"]
+                 , P.Fun
+                     ( Id.from_strlist ["<anonymous1>"]
+                     , P.Match
+                         ( P.Var (Id.from_strlist ["<anonymous2>"], nw)
+                         , [ ( P.PParen
+                                 (P.PTuple
+                                    ( [ P.PVar (Id.from_strlist ["x"], nw)
+                                      ; P.PVar (Id.from_strlist ["y"], nw) ]
+                                    , nw ))
+                             , nw
+                             , P.Bool (true, nw)
+                             , P.Match
+                                 ( P.Var (Id.from_strlist ["<anonymous1>"], nw)
+                                 , [ ( P.PParen
+                                         (P.PTuple
+                                            ( [ P.PVar
+                                                  (Id.from_strlist ["z"], nw)
+                                              ; P.PVar
+                                                  (Id.from_strlist ["w"], nw) ]
+                                            , nw ))
+                                     , nw
+                                     , P.Bool (true, nw)
+                                     , P.Add
+                                         ( P.Var (Id.from_strlist ["x"], nw)
+                                         , P.Var (Id.from_strlist ["y"], nw)
+                                         , nw ) ) ] ) ) ] )
+                     , nw )
                  , nw ) ) ]
          , P.Var (Id.from_strlist ["add"], nw)
          , false )) ;
     test "fun" "fun x\n   y z -> x + y + z"
       (P.Fun
-         ( [ (Id.from_strlist ["x"], nw)
-           ; (Id.from_strlist ["y"], nw)
-           ; (Id.from_strlist ["z"], nw) ]
-         , P.Add
-             ( P.Add
-                 ( P.Var (Id.from_strlist ["x"], nw)
-                 , P.Var (Id.from_strlist ["y"], nw)
+         ( Id.from_strlist ["x"]
+         , P.Fun
+             ( Id.from_strlist ["y"]
+             , P.Fun
+                 ( Id.from_strlist ["z"]
+                 , P.Add
+                     ( P.Add
+                         ( P.Var (Id.from_strlist ["x"], nw)
+                         , P.Var (Id.from_strlist ["y"], nw)
+                         , nw )
+                     , P.Var (Id.from_strlist ["z"], nw)
+                     , nw )
                  , nw )
-             , P.Var (Id.from_strlist ["z"], nw)
              , nw )
          , nw )) ;
     test "fun" "(fun x y z -> x + y + z) 1"
       (P.App
          ( P.Paren
              (P.Fun
-                ( [ (Id.from_strlist ["x"], nw)
-                  ; (Id.from_strlist ["y"], nw)
-                  ; (Id.from_strlist ["z"], nw) ]
-                , P.Add
-                    ( P.Add
-                        ( P.Var (Id.from_strlist ["x"], nw)
-                        , P.Var (Id.from_strlist ["y"], nw)
+                ( Id.from_strlist ["x"]
+                , P.Fun
+                    ( Id.from_strlist ["y"]
+                    , P.Fun
+                        ( Id.from_strlist ["z"]
+                        , P.Add
+                            ( P.Add
+                                ( P.Var (Id.from_strlist ["x"], nw)
+                                , P.Var (Id.from_strlist ["y"], nw)
+                                , nw )
+                            , P.Var (Id.from_strlist ["z"], nw)
+                            , nw )
                         , nw )
-                    , P.Var (Id.from_strlist ["z"], nw)
                     , nw )
                 , nw ))
-         , [P.Int (1, nw)]
+         , P.Int (1, nw)
          , nw )) ;
     Parser.count := 0 ;
     test "fun pat" "fun x, y\n   -> x + y"
       (P.Fun
-         ( [(Id.from_strlist ["<anonymous1>"], nw)]
+         ( Id.from_strlist ["<anonymous1>"]
          , P.Match
              ( P.Var (Id.from_strlist ["<anonymous1>"], nw)
              , [ ( P.PTuple
@@ -378,27 +393,29 @@ let () =
     Parser.count := 0 ;
     test "fun pat" "fun (x, y) (z, w) -> 0"
       (P.Fun
-         ( [ (Id.from_strlist ["<anonymous2>"], nw)
-           ; (Id.from_strlist ["<anonymous1>"], nw) ]
-         , P.Match
-             ( P.Var (Id.from_strlist ["<anonymous2>"], nw)
-             , [ ( P.PParen
-                     (P.PTuple
-                        ( [ P.PVar (Id.from_strlist ["x"], nw)
-                          ; P.PVar (Id.from_strlist ["y"], nw) ]
-                        , nw ))
-                 , nw
-                 , P.Bool (true, nw)
-                 , P.Match
-                     ( P.Var (Id.from_strlist ["<anonymous1>"], nw)
-                     , [ ( P.PParen
-                             (P.PTuple
-                                ( [ P.PVar (Id.from_strlist ["z"], nw)
-                                  ; P.PVar (Id.from_strlist ["w"], nw) ]
-                                , nw ))
-                         , nw
-                         , P.Bool (true, nw)
-                         , P.Int (0, nw) ) ] ) ) ] )
+         ( Id.from_strlist ["<anonymous2>"]
+         , P.Fun
+             ( Id.from_strlist ["<anonymous1>"]
+             , P.Match
+                 ( P.Var (Id.from_strlist ["<anonymous2>"], nw)
+                 , [ ( P.PParen
+                         (P.PTuple
+                            ( [ P.PVar (Id.from_strlist ["x"], nw)
+                              ; P.PVar (Id.from_strlist ["y"], nw) ]
+                            , nw ))
+                     , nw
+                     , P.Bool (true, nw)
+                     , P.Match
+                         ( P.Var (Id.from_strlist ["<anonymous1>"], nw)
+                         , [ ( P.PParen
+                                 (P.PTuple
+                                    ( [ P.PVar (Id.from_strlist ["z"], nw)
+                                      ; P.PVar (Id.from_strlist ["w"], nw) ]
+                                    , nw ))
+                             , nw
+                             , P.Bool (true, nw)
+                             , P.Int (0, nw) ) ] ) ) ] )
+             , nw )
          , nw )) ;
     test "cons" "1 + 2 :: 3 :: [] = []"
       (P.Eq
@@ -416,7 +433,7 @@ let () =
     test "@@" "f @@ g @@ 1"
       (P.App
          ( P.Var (Id.from_strlist ["f"], nw)
-         , [P.App (P.Var (Id.from_strlist ["g"], nw), [P.Int (1, nw)], nw)]
+         , P.App (P.Var (Id.from_strlist ["g"], nw), P.Int (1, nw), nw)
          , nw )) ;
     test "seq" "1; 2 |> f; 3"
       (P.Seq
@@ -449,7 +466,7 @@ let () =
              , nw
              , P.App
                  ( P.Var (Id.from_strlist ["is_prime"], nw)
-                 , [P.Var (Id.from_strlist ["y"], nw)]
+                 , P.Var (Id.from_strlist ["y"], nw)
                  , nw )
              , P.Int (0, nw) )
            ; ( P.PVar (Id.from_strlist ["z"], nw)
@@ -623,33 +640,38 @@ let () =
     test "app1" "1 + f 2"
       (P.Add
          ( P.Int (1, nw)
-         , P.App (P.Var (Id.from_strlist ["f"], nw), [P.Int (2, nw)], nw)
+         , P.App (P.Var (Id.from_strlist ["f"], nw), P.Int (2, nw), nw)
          , nw )) ;
     test "app2" "- f 2"
-      (P.Neg (P.App (P.Var (Id.from_strlist ["f"], nw), [P.Int (2, nw)], nw), nw)) ;
+      (P.Neg (P.App (P.Var (Id.from_strlist ["f"], nw), P.Int (2, nw), nw), nw)) ;
     test "app3" "f 1 + 2"
       (P.Add
-         ( P.App (P.Var (Id.from_strlist ["f"], nw), [P.Int (1, nw)], nw)
+         ( P.App (P.Var (Id.from_strlist ["f"], nw), P.Int (1, nw), nw)
          , P.Int (2, nw)
          , nw )) ;
     test "app4" "f 1 2"
       (P.App
-         (P.Var (Id.from_strlist ["f"], nw), [P.Int (1, nw); P.Int (2, nw)], nw)) ;
+         ( P.App (P.Var (Id.from_strlist ["f"], nw), P.Int (1, nw), nw)
+         , P.Int (2, nw)
+         , nw )) ;
     test "app5" "f 1 2 3"
       (P.App
-         ( P.Var (Id.from_strlist ["f"], nw)
-         , [P.Int (1, nw); P.Int (2, nw); P.Int (3, nw)]
+         ( P.App
+             ( P.App (P.Var (Id.from_strlist ["f"], nw), P.Int (1, nw), nw)
+             , P.Int (2, nw)
+             , nw )
+         , P.Int (3, nw)
          , nw )) ;
     test "ctor" "Leaf (1, 2)"
       (P.App
          ( P.Ctor (Id.from_strlist ["Leaf"], nw)
-         , [P.Paren (P.Tuple ([P.Int (1, nw); P.Int (2, nw)], nw))]
+         , P.Paren (P.Tuple ([P.Int (1, nw); P.Int (2, nw)], nw))
          , nw )) ;
     test "if" "if f x then 1 else let x = 1\n   in\n x"
       (P.If
          ( P.App
              ( P.Var (Id.from_strlist ["f"], nw)
-             , [P.Var (Id.from_strlist ["x"], nw)]
+             , P.Var (Id.from_strlist ["x"], nw)
              , nw )
          , P.Int (1, nw)
          , P.Let
@@ -695,7 +717,7 @@ let () =
     test "arr assign" "(getarr 0).(1+1) <- 2"
       (P.ArrayAssign
          ( P.Paren
-             (P.App (P.Var (Id.from_strlist ["getarr"], nw), [P.Int (0, nw)], nw))
+             (P.App (P.Var (Id.from_strlist ["getarr"], nw), P.Int (0, nw), nw))
          , P.Add (P.Int (1, nw), P.Int (1, nw), nw)
          , P.Int (2, nw)
          , nw )) ;
@@ -764,10 +786,13 @@ let () =
          ( [ ( P.PVar (Id.from_strlist ["add"], nw)
              , nw
              , P.Fun
-                 ( [(Id.from_strlist ["x"], nw); (Id.from_strlist ["y"], nw)]
-                 , P.Add
-                     ( P.Var (Id.from_strlist ["x"], nw)
-                     , P.Var (Id.from_strlist ["y"], nw)
+                 ( Id.from_strlist ["x"]
+                 , P.Fun
+                     ( Id.from_strlist ["y"]
+                     , P.Add
+                         ( P.Var (Id.from_strlist ["x"], nw)
+                         , P.Var (Id.from_strlist ["y"], nw)
+                         , nw )
                      , nw )
                  , nw ) ) ]
          , P.Never
@@ -790,31 +815,34 @@ let () =
          ( [ ( P.PVar (Id.from_strlist ["add"], nw)
              , nw
              , P.Fun
-                 ( [ (Id.from_strlist ["<anonymous2>"], nw)
-                   ; (Id.from_strlist ["<anonymous1>"], nw) ]
-                 , P.Match
-                     ( P.Var (Id.from_strlist ["<anonymous2>"], nw)
-                     , [ ( P.PParen
-                             (P.PTuple
-                                ( [ P.PVar (Id.from_strlist ["x"], nw)
-                                  ; P.PVar (Id.from_strlist ["y"], nw) ]
-                                , nw ))
-                         , nw
-                         , P.Bool (true, nw)
-                         , P.Match
-                             ( P.Var (Id.from_strlist ["<anonymous1>"], nw)
-                             , [ ( P.PParen
-                                     (P.PTuple
-                                        ( [ P.PVar (Id.from_strlist ["z"], nw)
-                                          ; P.PVar (Id.from_strlist ["w"], nw)
-                                          ]
-                                        , nw ))
-                                 , nw
-                                 , P.Bool (true, nw)
-                                 , P.Add
-                                     ( P.Var (Id.from_strlist ["x"], nw)
-                                     , P.Var (Id.from_strlist ["y"], nw)
-                                     , nw ) ) ] ) ) ] )
+                 ( Id.from_strlist ["<anonymous2>"]
+                 , P.Fun
+                     ( Id.from_strlist ["<anonymous1>"]
+                     , P.Match
+                         ( P.Var (Id.from_strlist ["<anonymous2>"], nw)
+                         , [ ( P.PParen
+                                 (P.PTuple
+                                    ( [ P.PVar (Id.from_strlist ["x"], nw)
+                                      ; P.PVar (Id.from_strlist ["y"], nw) ]
+                                    , nw ))
+                             , nw
+                             , P.Bool (true, nw)
+                             , P.Match
+                                 ( P.Var (Id.from_strlist ["<anonymous1>"], nw)
+                                 , [ ( P.PParen
+                                         (P.PTuple
+                                            ( [ P.PVar
+                                                  (Id.from_strlist ["z"], nw)
+                                              ; P.PVar
+                                                  (Id.from_strlist ["w"], nw) ]
+                                            , nw ))
+                                     , nw
+                                     , P.Bool (true, nw)
+                                     , P.Add
+                                         ( P.Var (Id.from_strlist ["x"], nw)
+                                         , P.Var (Id.from_strlist ["y"], nw)
+                                         , nw ) ) ] ) ) ] )
+                     , nw )
                  , nw ) )
            ; ( P.PVar (Id.from_strlist ["add2"], nw)
              , nw

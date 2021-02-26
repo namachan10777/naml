@@ -29,7 +29,11 @@ let rec show_ty_t = function
         flatten self
 
 and join sep elems =
-    "(" ^ (List.fold_left (fun s elem -> s ^ sep ^ elem) (List.hd elems) (List.tl elems)) ^ ")"
+    "("
+    ^ List.fold_left
+        (fun s elem -> s ^ sep ^ elem)
+        (List.hd elems) (List.tl elems)
+    ^ ")"
 
 type tydef_t = Variant of (Id.t * Lex.pos_t * ty_t list) list | Alias of ty_t
 
@@ -112,9 +116,9 @@ type t =
     | Let of (pat_t * Lex.pos_t * t) list * t * bool
     | LetRec of (Id.t * Lex.pos_t * t) list * t * bool
     | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
-    | Fun of (Id.t * Lex.pos_t) list * t * Lex.pos_t
+    | Fun of Id.t * t * Lex.pos_t
     | Match of t * (pat_t * Lex.pos_t * t * t) list
-    | App of t * t list * Lex.pos_t
+    | App of t * t * Lex.pos_t
     | Seq of t * t * Lex.pos_t
     | Pipeline of t * t * Lex.pos_t
     | Paren of t
@@ -196,12 +200,7 @@ let rec show =
           (fun acc l -> acc ^ "\n" ^ l)
           (List.hd lets) (List.tl lets)
         ^ "\n  " ^ show e
-    | Fun (args, e, _) ->
-        let show_args_t =
-            List.fold_left (fun acc (a, _) -> acc ^ " " ^ Id.show a) ""
-        in
-        (* TODO *)
-        Printf.sprintf "fun %s -> %s" (show_args_t args) (show e)
+    | Fun (arg, e, _) -> Printf.sprintf "fun %s -> %s" (Id.show arg) (show e)
     | Match (e, arms) ->
         let arms =
             List.map
@@ -212,10 +211,7 @@ let rec show =
         in
         Printf.sprintf "match %s with%s" (show e)
           (List.fold_left (fun acc a -> acc ^ "\n" ^ a) "" arms)
-    | App (f, args, _) ->
-        let args = List.map show args in
-        Printf.sprintf "%s %s" (show f)
-          (List.fold_left (fun acc a -> acc ^ " " ^ a) "" args)
+    | App (f, arg, _) -> Printf.sprintf "(%s %s)" (show f) (show arg)
     | Paren e -> show e
     | Pipeline (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
 
@@ -554,7 +550,9 @@ and unfold_fun p args expr =
                 , (Id.from_strlist [tmpname], p) :: params ))
           (expr, []) (List.rev args)
     in
-    Fun (params, body, p)
+    List.fold_left
+      (fun f (param, p) -> Fun (param, f, p))
+      body (List.rev params)
 
 and parse_seq input =
     match parse_assign input with
@@ -614,10 +612,10 @@ and parse_atat input =
     match parse_or input with
     | lhr, p, (Lex.AtAt, p_op) :: rhr when succ_lets rhr ->
         let rhr, _, remain = parse_expr rhr in
-        (App (lhr, [rhr], p_op), p, remain)
+        (App (lhr, rhr, p_op), p, remain)
     | lhr, p, (Lex.AtAt, p_op) :: rhr ->
         let rhr, _, remain = parse_atat rhr in
-        (App (lhr, [rhr], p_op), p, remain)
+        (App (lhr, rhr, p_op), p, remain)
     | x -> x
 
 and parse_or input =
@@ -784,7 +782,15 @@ and parse_app input =
     in
     match take_args input with
     | [(x, p)], remain -> (x, p, remain)
-    | (f, p) :: args, remain -> (App (f, List.map fst args, p), p, remain)
+    | (f, p) :: args, remain ->
+        let args = (f, p) :: args in
+        let app =
+            List.fold_left
+              (fun f (arg, p) -> App (f, arg, p))
+              (fst @@ List.hd args)
+              (List.tl args)
+        in
+        (app, p, remain)
     | [], (_, p) :: _ ->
         raise @@ SyntaxError (Lex.string_of_pos_t p ^ "function app")
     | [], [] -> raise Unreachable

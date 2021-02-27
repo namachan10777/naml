@@ -6,7 +6,6 @@ type pat_t =
     | As of pat_t list * Lex.pos_t
     | Or of pat_t * pat_t list * Lex.pos_t
     | PCtorApp of Id.t * pat_t list * Lex.pos_t
-    | PCtor of Id.t * Lex.pos_t
 
 type ty_t =
     | TInt of Lex.pos_t
@@ -23,7 +22,6 @@ type t =
     | Int of int * Lex.pos_t
     | Bool of bool * Lex.pos_t
     | Var of Id.t * Lex.pos_t
-    | Ctor of Id.t * Lex.pos_t
     | CtorApp of Id.t * Lex.pos_t * t list
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
@@ -44,52 +42,44 @@ let rec of_ty_t = function
     | Parser.TApp (ts, higher, p) -> TApp (List.map of_ty_t ts, higher, p)
 
 let rec of_pat_t = function
-    | Parser.PEmp p -> PCtor (Id.lookup ["[]"] Pervasives.names, p)
+    | Parser.PEmp p -> PCtorApp (Id.lookup ["[]"] Pervasives.names, [], p)
     | Parser.PCons (lhr, rhr, p) ->
         PCtorApp
-          ( Id.lookup ["[]"] Pervasives.names
-          , [of_pat_t lhr; of_pat_t rhr]
-          , p )
+          (Id.lookup ["[]"] Pervasives.names, [of_pat_t lhr; of_pat_t rhr], p)
     | Parser.PInt (i, p) -> PInt (i, p)
     | Parser.PBool (b, p) -> PBool (b, p)
     | Parser.PVar (id, p) -> PVar (id, p)
     | Parser.PTuple (tp, p) -> PTuple (List.map of_pat_t tp, p)
     | Parser.PParen p -> of_pat_t p
-    | Parser.PCtor (id, p) -> PCtor (id, p)
+    | Parser.PCtor (id, p) -> PCtorApp (id, [], p)
     | Parser.PCtorApp (id, Parser.PParen (Parser.PTuple (ps, _)), p) ->
         PCtorApp (id, List.map of_pat_t ps, p)
     | Parser.PCtorApp (id, pat, p) -> PCtorApp (id, [of_pat_t pat], p)
     | Parser.PAs (pats, p) -> As (List.map of_pat_t pats, p)
-    | Parser.POr (pat, pats, p) ->
-        Or (of_pat_t pat, List.map of_pat_t pats, p)
+    | Parser.POr (pat, pats, p) -> Or (of_pat_t pat, List.map of_pat_t pats, p)
 
 let rec of_t = function
     | Parser.Never -> Never
     | Parser.Int (i, p) -> Int (i, p)
     | Parser.Bool (i, p) -> Bool (i, p)
     | Parser.Var (i, p) -> Var (i, p)
-    | Parser.Ctor (i, p) -> Ctor (i, p)
+    | Parser.Ctor (i, p) -> CtorApp (i, p, [])
     | Parser.App (Parser.Ctor (n, _), Parser.Tuple (args, _), p) ->
         CtorApp (n, p, List.map of_t args)
     | Parser.App (Parser.Ctor (n, _), t, p) -> CtorApp (n, p, [of_t t])
-    | Parser.Emp p -> Ctor (Id.lookup ["[]"] Pervasives.names, p)
+    | Parser.Emp p -> CtorApp (Id.lookup ["[]"] Pervasives.names, p, [])
     | Parser.Add (lhr, rhr, p) -> op "+" lhr rhr p
     | Parser.Sub (lhr, rhr, p) -> op "-" lhr rhr p
     | Parser.Mul (lhr, rhr, p) -> op "*" lhr rhr p
     | Parser.Div (lhr, rhr, p) -> op "/" lhr rhr p
     | Parser.Mod (lhr, rhr, p) -> op "mod" lhr rhr p
-    | Parser.Or (lhr, rhr, p) ->
-        If (of_t lhr, Bool (true, p), of_t rhr, p)
-    | Parser.And (lhr, rhr, p) ->
-        If (of_t lhr, of_t rhr, Bool (false, p), p)
+    | Parser.Or (lhr, rhr, p) -> If (of_t lhr, Bool (true, p), of_t rhr, p)
+    | Parser.And (lhr, rhr, p) -> If (of_t lhr, of_t rhr, Bool (false, p), p)
     | Parser.Eq (lhr, rhr, p) -> op "=" lhr rhr p
     | Parser.Neq (lhr, rhr, p) -> op "<>" lhr rhr p
     | Parser.Seq (lhr, rhr, p) -> op ";" lhr rhr p
     | Parser.Cons (lhr, rhr, p) ->
-        CtorApp
-          ( Id.lookup ["::"] Pervasives.names
-          , p
-          , [of_t lhr; of_t rhr] )
+        CtorApp (Id.lookup ["::"] Pervasives.names, p, [of_t lhr; of_t rhr])
     | Parser.Gret (lhr, rhr, p) -> op ">" lhr rhr p
     | Parser.Less (lhr, rhr, p) -> op "<" lhr rhr p
     | Parser.Index (lhr, rhr, p) -> op "." lhr rhr p
@@ -109,13 +99,10 @@ let rec of_t = function
           , p )
     | Parser.Pipeline (arg, f, p) -> App (of_t f, of_t arg, p)
     | Parser.Tuple (elem, p) -> Tuple (List.map of_t elem, p)
-    | Parser.If (cond, e1, e2, p) ->
-        If (of_t cond, of_t e1, of_t e2, p)
+    | Parser.If (cond, e1, e2, p) -> If (of_t cond, of_t e1, of_t e2, p)
     | Parser.Let (defs, expr, is_top) ->
         Let
-          ( List.map
-              (fun (pat, p, def) -> (of_pat_t pat, p, of_t def))
-              defs
+          ( List.map (fun (pat, p, def) -> (of_pat_t pat, p, of_t def)) defs
           , of_t expr
           , is_top )
     | Parser.LetRec (defs, expr, is_top) ->
@@ -153,8 +140,6 @@ let rec of_t = function
 
 and op id lhr rhr p =
     App
-      ( App (Var (Id.lookup [id] Pervasives.names, p), of_t lhr, p)
-      , of_t rhr
-      , p )
+      (App (Var (Id.lookup [id] Pervasives.names, p), of_t lhr, p), of_t rhr, p)
 
 let f fname src = of_t @@ Parser.f fname src

@@ -7,9 +7,8 @@ type ty =
     | Poly of int
     | Var of ty_var_t
     | Variant of ty list * Id.t
-and ty_var_t =
-    | Just of ty * int list
-    | Unknown of int list
+
+and ty_var_t = Just of ty * int list | Unknown of int list
 
 type pat_t =
     | PInt of int * Lex.pos_t
@@ -21,7 +20,9 @@ type pat_t =
     | PCtorApp of Id.t * (pat_t * ty) list * ty * Lex.pos_t
     | PCtor of Id.t * ty * Lex.pos_t
 
-type tydef_t = Variant of (Id.t * Lex.pos_t * Types.t list) list | Alias of Types.t
+type tydef_t =
+    | Variant of (Id.t * Lex.pos_t * Types.t list) list
+    | Alias of Types.t
 
 type t =
     | Never
@@ -30,7 +31,7 @@ type t =
     | Var of Id.t * ty * Lex.pos_t
     | CtorApp of Id.t * Lex.pos_t * (t * ty) list * ty
     | Tuple of (t * ty) list * Lex.pos_t
-    | If of t * t * t * ty *  Lex.pos_t
+    | If of t * t * t * ty * Lex.pos_t
     | Let of (pat_t * Lex.pos_t * (t * ty)) list * (t * ty) * bool
     | LetRec of (Id.t * Lex.pos_t * (t * ty)) list * (t * ty) * bool
     | Fun of (Id.t * ty) * (t * ty) * Lex.pos_t

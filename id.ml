@@ -11,6 +11,8 @@ let show = function
 
 let global_impure_count = ref 0
 
+let name (pre, name, _) = pre @ [name]
+
 let from_strlist name =
     match List.rev name with
     | name :: prefix ->

@@ -46,3 +46,9 @@ let rec drop n l =
 let rec uniq = function
     | x :: remain -> x :: (uniq @@ List.filter (( <> ) x) remain)
     | [] -> []
+
+let fst (x, _, _) = x
+
+let snd (_, x, _) = x
+
+let trd (_, _, x) = x

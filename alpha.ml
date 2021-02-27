@@ -18,6 +18,14 @@ let register_names tbl =
     List.fold_left (fun tbl id -> Tbl.push (Id.name id) id tbl) tbl
 
 let rec f env = function
+    | Ast.Var (id, p) ->
+        let id =
+            Tbl.lookup (Id.name id) env
+            |> Tbl.expect
+                 (Printf.sprintf "%s unbound identifier %s" (Lex.show_pos_t p)
+                    (Id.show id))
+        in
+        Ast.Var (id, p)
     | Ast.Let (defs, e, p) ->
         let vars, pats =
             defs |> List.map Util.fst

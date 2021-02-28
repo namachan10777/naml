@@ -3,7 +3,7 @@ jobs:
   build:
     docker:
       # specify the version you desire here
-      - image: namachan10777/s8:latest
+      - image: namachan10777/naml:latest
 
     working_directory: ~/naml
 

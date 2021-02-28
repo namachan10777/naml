@@ -52,4 +52,10 @@ let () =
             Ast.PCtorApp (emp_id4, [], _);
         ], _), _, Ast.Bool(true, _), Ast.Var (x_id2, _));
     ]) when emp_id1 = emp_id2 && emp_id2 = emp_id3 && emp_id3 = emp_id4 && x_id1 = x_id2 -> ()
-    | _ -> failwith "alpha ctor failed")
+    | _ -> failwith "alpha ctor failed");
+    (let emp_id1 = Id.lookup  ["[]"] (List.map Util.fst Pervasives.ctors) in
+    match f "let x = [] in 0" with
+    | Ast.Let ([
+        (Ast.PVar (x, _), _, Ast.CtorApp (emp_id2, _, []));
+    ], Ast.Int (0, _), _) when emp_id1 = emp_id2 -> ()
+    | x -> print_endline @@ Ast.show x)

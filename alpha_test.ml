@@ -41,3 +41,6 @@ let () =
         (id_y, _, Ast.Fun (id_z, Ast.App (Ast.App (_, Ast.Var (id_x', _), _), Ast.Var (id_z', _), _), p));
     ], Ast.Int (1, _), _) when id_x = id_x' && id_z = id_z' -> ()
     | _ -> failwith "ast test 1 failed" ) ;
+    (match f "let x | x = 1 in x" with
+    | Ast.Let ([Ast.Or (Ast.PVar (id1, _), [Ast.PVar (id2, _)], _), _, Ast.Int (1, _)], Ast.Var (id3, _), _) when id1 = id2 && id2 = id3 -> ()
+    | _ -> failwith "ast or pat test failed")

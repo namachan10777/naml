@@ -40,7 +40,18 @@ let unify_unk_just () =
     assert_eq "unify unknown and just" (!Typing.store).(0) (Typing.Just (Typing.TInt, [1; 0]));
     assert_eq "unify unknown and just" (!Typing.store).(0) (Typing.Just (Typing.TInt, [1; 0]))
 
+let unify_fun () =
+    Typing.init ();
+    let u1 = Typing.fresh 0 in
+    let u2 = Typing.fresh 0 in
+    let f1 = Typing.TFun (u1, Typing.TInt) in
+    let f2 = Typing.TFun (Typing.TInt, u2) in
+    Typing.unify f1 f2;
+    assert_eq "unify fun" (!Typing.store).(0) (Typing.Just (Typing.TInt, [0]));
+    assert_eq "unify fun" (!Typing.store).(1) (Typing.Just (Typing.TInt, [1]))
+
 let () =
     unify_unk_unk ();
     unify_unk_ty ();
-    unify_unk_just ()
+    unify_unk_just ();
+    unify_fun ()

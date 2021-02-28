@@ -5,11 +5,13 @@ type ty =
     | Fun of ty * ty
     | Tuple of ty list
     | Poly of int
-    | Var of ty_var_t
+    | TyVar of int
     | Variant of ty list * Id.t
 [@@deriving show]
 
-and ty_var_t = Just of ty * int list | Unknown of int list [@@deriving show]
+and ty_var_t = Just of ty * int list | Unknown of int * int list [@@deriving show]
+
+exception UnifyError
 
 type pat_t =
     | PInt of int * Lex.pos_t
@@ -40,20 +42,40 @@ type t =
     | App of (t * ty) * (t * ty) * Lex.pos_t
     | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
 
-let store = ref @@ Array.init 2 (fun i -> Unknown [i])
+let store = ref @@ Array.init 2 (fun i -> Unknown (0, [i]))
 
 let count = ref 0
 
-let fresh () =
+let init () =
+    store := Array.init 2 (fun i -> Unknown (0, [i]));
+    count := 0
+
+let fresh level =
     let arr_len = Array.length !store in
     if !count >= arr_len then (
       store :=
         Array.concat
-          [!store; Array.init arr_len (fun i -> Unknown [i + arr_len])] ;
-      let ret = !store.(!count) in
+          [!store; Array.init arr_len (fun i -> Unknown (level, [i + arr_len]))] ;
       count := 1 + !count ;
-      ret )
-    else
-      let ret = !store.(!count) in
+      TyVar (!count - 1) )
+    else (
       count := 1 + !count ;
-      ret
+      TyVar (!count - 1))
+
+let rec unify t1 t2 = match t1, t2 with
+    | TyVar v1, TyVar v2 -> begin match !store.(v1), !store.(v2) with
+        | Unknown (level1, l1), Unknown (level2, l2) ->
+            let l = l1 @ l2 in
+            List.map (fun i -> !store.(i) <- Unknown (min level1 level2, l)) l |> ignore
+        | Unknown (level1, l1), Just (ty, l2) ->
+            let l = l1 @ l2 in
+            List.map (fun i -> !store.(i) <- Just (ty, l)) l |> ignore
+        | Just (ty, l2), Unknown (level1, l1) ->
+            let l = l1 @ l2 in
+            List.map (fun i -> !store.(i) <- Just (ty, l)) l |> ignore
+        | Just (ty1, l1), Just (ty2, l2) ->
+            unify ty1 ty2;
+            let l = l1 @ l2 in
+            List.map (fun i -> !store.(i) <- Just (ty1, l)) l |> ignore
+    end
+    | _, _ -> raise UnifyError

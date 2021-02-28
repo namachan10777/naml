@@ -6,6 +6,7 @@ type pat_t =
     | As of pat_t list * Lex.pos_t
     | Or of pat_t * pat_t list * Lex.pos_t
     | PCtorApp of Id.t * pat_t list * Lex.pos_t
+[@@deriving show]
 
 type ty_t =
     | TInt of Lex.pos_t
@@ -14,8 +15,10 @@ type ty_t =
     | TVar of string * Lex.pos_t
     | TTuple of ty_t list * Lex.pos_t
     | TApp of ty_t list * Id.t * Lex.pos_t
+[@@deriving show]
 
 type tydef_t = Variant of (Id.t * Lex.pos_t * ty_t list) list | Alias of ty_t
+[@@deriving show]
 
 type t =
     | Never
@@ -31,6 +34,7 @@ type t =
     | Match of t * (pat_t * Lex.pos_t * t * t) list
     | App of t * t * Lex.pos_t
     | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
+[@@deriving show]
 
 let rec of_ty_t = function
     | Parser.TInt p -> TInt p

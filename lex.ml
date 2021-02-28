@@ -1,4 +1,5 @@
 type pos_t = string * int * int * int
+[@@deriving show]
 
 let show_pos_t (fname, _, l, c) = Printf.sprintf "%s:%d:%d" fname l c
 

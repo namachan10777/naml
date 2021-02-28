@@ -1,4 +1,4 @@
-type t = string list * string * int
+type t = string list * string * int [@@deriving show]
 
 let show = function
     | [], name, id -> Printf.sprintf "%s(%d)" name id

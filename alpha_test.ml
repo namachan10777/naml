@@ -1,5 +1,6 @@
-let f s = s |> Lex.f "test.ml" |> Parser.parse |> Ast.of_t |> Alpha.f [] 
+let f s = s |> Lex.f "test.ml" |> Parser.parse |> Ast.of_t |> Alpha.f Alpha.pervasive_var_env
 let nw = Lex.nowhere
+
 
 let () =
     ( match f "let x = 1 and y = 2 in 1" with
@@ -34,3 +35,9 @@ let () =
     (try f "let rec x = 1 and y = x in 1" |> ignore; failwith "matual-recursion is allowed for only function" with
     | Alpha.Error _ -> ()
     | _ -> failwith "matual-recursion is allowed for only function");
+    ( match f "let rec x = 1 and y z = x + z in 1" with
+    | Ast.LetRec ([
+        (id_x, _, Ast.Int (1, _));
+        (id_y, _, Ast.Fun (id_z, Ast.App (Ast.App (_, Ast.Var (id_x', _), _), Ast.Var (id_z', _), _), p));
+    ], Ast.Int (1, _), _) when id_x = id_x' && id_z = id_z' -> ()
+    | _ -> failwith "ast test 1 failed" ) ;

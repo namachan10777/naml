@@ -1,5 +1,7 @@
 type pat_tbl = (string list, Id.t) Tbl.t * (string list, unit) Tbl.t ref
 
+let pervasive_var_env = List.map (fun (id, _) -> (Id.name id, (id, true))) Pervasives.vars
+
 exception Error of string
 
 let f_pat (or_tbl, def_tbl) = function
@@ -18,6 +20,9 @@ let f_pat (or_tbl, def_tbl) = function
 
 let register_names tbl =
     List.fold_left (fun tbl id -> Tbl.push (Id.name id) (id, false) tbl) tbl
+
+let register_enabled_names tbl =
+    List.fold_left (fun tbl id -> Tbl.push (Id.name id) (id, true) tbl) tbl
 
 let enable_all tbl =
     Tbl.map (fun (id, _) -> (id, true)) tbl
@@ -39,6 +44,10 @@ let rec f (env: (string list, Id.t * bool) Tbl.t) = function
         if snd id 
         then Ast.Var (fst id, p)
         else raise @@ Error "This kind of expression is not allowed as right-hand side of `let rec`"
+    | Ast.Fun (arg, body, p) ->
+        Ast.Fun (arg, f (Tbl.push (Id.name arg) (arg, true) @@ enable_all env) body, p)
+    | Ast.App (g, arg, p) ->
+        Ast.App (f env g, f env arg, p)
     | Ast.Let (defs, e, p) ->
         let vars, pats =
             defs |> List.map Util.fst
@@ -51,8 +60,7 @@ let rec f (env: (string list, Id.t * bool) Tbl.t) = function
         if duplicate_check (List.map Id.name names)
         then raise @@ Error "Variable bound several times in this matching"
         else
-            let env = register_names env names in
-            let env =  enable_all env in
+            let env = register_enabled_names env names in
             Ast.Let (defs, f env e, p)
     | Ast.LetRec (defs, e, p) ->
         let ids = List.map Util.fst defs in

@@ -14,8 +14,10 @@ let rec eq_pat l r =
     | P.PCtorApp (id1, p1, _), P.PCtorApp (id2, p2, _) ->
         Id.approx id1 id2 && eq_pat p1 p2
     | P.PCtor (id1, _), P.PCtor (id2, _) -> Id.approx id1 id2
+    | P.POr (p1, ps1, _), POr (p2, ps2, _) ->
+        eq_pat p1 p2 && List.for_all (fun (a,b) -> eq_pat a b) @@ Util.zip ps1 ps2
     | a, b ->
-        Printf.printf "%s\n%s" (P.show_pat_t a) (P.show_pat_t b) ;
+        Printf.printf "diff %s\n%s" (P.show_pat_t a) (P.show_pat_t b) ;
         false
 
 let rec eq_ty l r =
@@ -29,7 +31,7 @@ let rec eq_ty l r =
     | P.TParen t1, P.TParen t2 -> eq_ty t1 t2
     | P.TVar (id1, _), P.TVar (id2, _) -> id1 = id2
     | a, b ->
-        Printf.printf "%s\n%s" (P.show_ty_t a) (P.show_ty_t b) ;
+        Printf.printf "diff %s\n%s" (P.show_ty_t a) (P.show_ty_t b) ;
         false
 
 let rec eq_tydef l r =
@@ -41,7 +43,7 @@ let rec eq_tydef l r =
             && (List.for_all (fun (t1, t2) -> eq_ty t1 t2) @@ Util.zip tys1 tys2))
         @@ Util.zip defs1 defs2
     | a, b ->
-        Printf.printf "%s\n%s" (P.show_tydef_t a) (P.show_tydef_t b) ;
+        Printf.printf "diff %s\n%s" (P.show_tydef_t a) (P.show_tydef_t b) ;
         false
 
 let rec eq l r =
@@ -104,7 +106,7 @@ let rec eq l r =
     | a, b -> false
 
 let test name src right =
-    let left = P.parse @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
+    let left = P.parse @@ Lex.lex src @@ Lex.initial_pos (name ^ ".ml") in
     if eq right left then ()
     else
       failwith
@@ -113,7 +115,7 @@ let test name src right =
 
 let test_ty name src right =
     let left =
-        match P.parse_ty @@ Lex.lex src @@ Lex.initial_pos "test.ml" with
+        match P.parse_ty @@ Lex.lex src @@ Lex.initial_pos (name ^ ".ml") with
         | t, _, [(Lex.Eof, _)] -> t
         | _ -> failwith "parse failed"
     in
@@ -124,7 +126,7 @@ let test_ty name src right =
            (P.show_ty_t left) (P.show_ty_t right)
 
 let test_stmts name src right =
-    let left = P.parse_stmts @@ Lex.lex src @@ Lex.initial_pos "test.ml" in
+    let left = P.parse_stmts @@ Lex.lex src @@ Lex.initial_pos (name ^ ".ml") in
     if eq right left then ()
     else
       failwith
@@ -504,6 +506,28 @@ let () =
          ( [ P.Int (1, nw)
            ; P.Paren (P.Tuple ([P.Int (3, nw); P.Int (4, nw)], nw)) ]
          , nw )) ;
+    test "pattern_or" "match x with x | y -> x"
+      (P.Match
+         ( P.Var (Id.from_strlist ["x"], nw)
+         , [ ( 
+                 (P.POr
+                    ( P.PVar (Id.from_strlist ["x"], nw),
+                      [P.PVar (Id.from_strlist ["y"], nw) ]
+                    , nw ))
+             , nw
+             , P.Bool (true, nw)
+             , P.Var (Id.from_strlist ["x"], nw) ) ] )) ;
+    test "pattern_as" "match x with x as y -> x"
+      (P.Match
+         ( P.Var (Id.from_strlist ["x"], nw)
+         , [ ( 
+                 (P.PAs
+                    ( [ P.PVar (Id.from_strlist ["x"], nw)
+                      ; P.PVar (Id.from_strlist ["y"], nw) ]
+                    , nw ))
+             , nw
+             , P.Bool (true, nw)
+             , P.Var (Id.from_strlist ["x"], nw) ) ] )) ;
     test "pattern_tuple" "match x with (x, y) -> x"
       (P.Match
          ( P.Var (Id.from_strlist ["x"], nw)

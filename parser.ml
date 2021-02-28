@@ -9,6 +9,13 @@ type ty_t =
     | TTuple of ty_t list * Lex.pos_t
     | TApp of ty_t list * Id.t * Lex.pos_t
 
+let join sep elems =
+    "("
+    ^ List.fold_left
+        (fun s elem -> s ^ sep ^ elem)
+        (List.hd elems) (List.tl elems)
+    ^ ")"
+
 let rec show_ty_t = function
     | TInt _ -> "int"
     | TBool _ -> "bool"
@@ -28,12 +35,6 @@ let rec show_ty_t = function
         in
         flatten self
 
-and join sep elems =
-    "("
-    ^ List.fold_left
-        (fun s elem -> s ^ sep ^ elem)
-        (List.hd elems) (List.tl elems)
-    ^ ")"
 
 type tydef_t = Variant of (Id.t * Lex.pos_t * ty_t list) list | Alias of ty_t
 
@@ -65,15 +66,6 @@ type pat_t =
     | POr of pat_t * pat_t list * Lex.pos_t
 
 let rec show_pat_t =
-    let join sep elems =
-        let elems = List.map show_pat_t elems in
-        let len_total =
-            List.map String.length elems |> List.fold_left ( + ) 0
-        in
-        if len_total > 80 then
-          List.fold_left (fun s elem -> s ^ "\n\t" ^ elem) "(" elems ^ "\n)"
-        else List.fold_left (fun s elem -> s ^ elem) "(" elems ^ ")"
-    in
     function
     | PInt (i, p) -> Printf.sprintf "%d" i
     | PBool (true, p) -> "true"
@@ -81,12 +73,12 @@ let rec show_pat_t =
     | PVar (id, p) -> Id.show id
     | PEmp _ -> "[]"
     | PCons (e, l, _) -> Printf.sprintf "%s :: %s" (show_pat_t e) (show_pat_t l)
-    | PTuple (tp, _) -> join "," tp
+    | PTuple (tp, _) -> join ", " (List.map show_pat_t tp)
     | PParen p -> show_pat_t p
     | PCtor (id, p) -> Id.show id
     | PCtorApp (id, p, _) -> Printf.sprintf "%s %s" (Id.show id) (show_pat_t p)
-    | PAs (ps, _) -> join "as" ps
-    | POr (p, ps, _) -> join "|" (p :: ps)
+    | PAs (ps, _) -> join " as " (List.map show_pat_t ps)
+    | POr (p, ps, _) -> join " | " (List.map show_pat_t (p :: ps))
 
 type t =
     | Never
@@ -124,15 +116,6 @@ type t =
     | Paren of t
 
 let rec show =
-    let join sep elems =
-        let elems = List.map show elems in
-        let len_total =
-            List.map String.length elems |> List.fold_left ( + ) 0
-        in
-        if len_total > 80 then
-          List.fold_left (fun s elem -> s ^ "\n\t" ^ elem) "(" elems ^ "\n)"
-        else List.fold_left (fun s elem -> s ^ elem) "(" elems ^ ")"
-    in
     function
     | Never -> "<Never>"
     | Neg (e, _) -> Printf.sprintf "-%s" @@ show e
@@ -160,7 +143,7 @@ let rec show =
     | Seq (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
     | Cons (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
     | Emp p -> "[]"
-    | Tuple (es, _) -> join "," es
+    | Tuple (es, _) -> join "," (List.map show es)
     | If (cond, then_e, else_e, _) ->
         Printf.sprintf "if %s\nthen %selse %s" (show cond) (show then_e)
           (show else_e)
@@ -401,13 +384,19 @@ let rec parse_ty_variant = function
 
 let rec parse_pat input =
     (* TODO or *)
-    match parse_pat_tuple input with
+    match parse_pat_or input with
     | pat, p, (Lex.As, _) :: rhr -> (
       match parse_pat rhr with
       | PAs (tp, _), _, remain -> (PAs (pat :: tp, p), p, remain)
       | rhr, _, remain -> (PAs ([pat; rhr], p), p, remain) )
     | p -> p
-
+and parse_pat_or input =
+    match parse_pat_tuple input with
+    | pat, _, (Lex.VBar, p) :: rhr -> (
+        match parse_pat_or rhr with
+        | POr (pat', pats', _), _, remain -> POr (pat, pat' :: pats', p), p, remain
+        | rhr, _, remain -> POr (pat, [rhr], p), p, remain)
+    | p -> p
 and parse_pat_tuple input =
     match parse_pat_cons input with
     | pat, p, (Lex.Comma, _) :: rhr -> (

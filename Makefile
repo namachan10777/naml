@@ -68,5 +68,5 @@ typing.cmx: typing.ml ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx
 	$(OCAMLOPT) $< -c
 typing_test.cmx: typing_test.ml typing.cmx 
 	$(OCAMLOPT) $< -c
-typing_test: typing_test.cmx
+typing_test: id.cmx typing.cmx typing_test.cmx
 	$(OCAMLOPT) $^ -o $@

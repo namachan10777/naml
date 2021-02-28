@@ -66,4 +66,10 @@ let () =
         (tid1, _, [("a", _)], Ast.Alias (Ast.TApp ([Ast.TVar ("a", _)], list_id2, _)));
         (t2id, _, [], Ast.Alias (Ast.TApp ([Ast.TInt _], tid2, _)));
     ], Ast.Never) when tid1 = tid2 && list_id1 = list_id2 -> ()
+    | _ -> failwith "alpha type alias");
+    (match f_s "type t = A of int let x = A 1" with
+    | Ast.Type ([
+        (tid1, _, [], Ast.Variant ([aid1, _, [Ast.TInt _]]));
+    ],
+    Ast.Let ([xid, _, Ast.CtorApp (aid2, _, [Ast.Int (1, _)])], Ast.Never, _)) when aid1 = aid2 -> ()
     | x -> print_endline @@ Ast.show x)

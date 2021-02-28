@@ -19,6 +19,18 @@ let () =
         , _ ) when id = id' && id2 = id2' ->
         ()
     | _ -> failwith "ast test 2 failed");
-    try f "let x = 1 and x = 2 in 1" |> ignore; failwith "let boundary check" with
+    (match f "let rec x = let rec x = 2 in x in x" with
+    | Ast.LetRec
+        ( [ ( id
+            , _
+            , Ast.LetRec ([(id2, _, _)], Ast.Var (id2', _), _) ) ]
+        , Ast.Var (id', _)
+        , _ ) when id = id' && id2 = id2' ->
+        ()
+    | _ -> failwith "ast test 3 failed");
+    (try f "let x = 1 and x = 2 in 1" |> ignore; failwith "let boundary check" with
     | Alpha.Error _ -> ()
-    | _ -> failwith "let boundary check"
+    | _ -> failwith "let boundary check");
+    (try f "let rec x = 1 and y = x in 1" |> ignore; failwith "matual-recursion is allowed for only function" with
+    | Alpha.Error _ -> ()
+    | _ -> failwith "matual-recursion is allowed for only function");

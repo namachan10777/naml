@@ -14,17 +14,21 @@ let f_pat (or_tbl, def_tbl) = function
             failwith
             @@ Printf.sprintf "%s duplicated id %s" (Lex.show_pos_t p)
                  (Id.show id) )
-    | p -> ([], p)
+    | p -> failwith "unimplemented"
 
 let register_names tbl =
-    List.fold_left (fun tbl id -> Tbl.push (Id.name id) id tbl) tbl
+    List.fold_left (fun tbl id -> Tbl.push (Id.name id) (id, false) tbl) tbl
+
+let enable_all tbl =
+    Tbl.map (fun (id, _) -> (id, true)) tbl
 
 let rec duplicate_check = function
     | [] -> false
     | [x] -> false
     | x :: xs -> (not @@ List.for_all (fun x' -> x <> x') xs) || duplicate_check xs
 
-let rec f env = function
+let rec f (env: (string list, Id.t * bool) Tbl.t) = function
+    | Ast.Int (i, p) -> Ast.Int (i, p)
     | Ast.Var (id, p) ->
         let id =
             Tbl.lookup (Id.name id) env
@@ -32,7 +36,9 @@ let rec f env = function
                  (Printf.sprintf "%s unbound identifier %s" (Lex.show_pos_t p)
                     (Id.show id))
         in
-        Ast.Var (id, p)
+        if snd id 
+        then Ast.Var (fst id, p)
+        else raise @@ Error "This kind of expression is not allowed as right-hand side of `let rec`"
     | Ast.Let (defs, e, p) ->
         let vars, pats =
             defs |> List.map Util.fst
@@ -46,5 +52,15 @@ let rec f env = function
         then raise @@ Error "Variable bound several times in this matching"
         else
             let env = register_names env names in
+            let env =  enable_all env in
             Ast.Let (defs, f env e, p)
-    | x -> x
+    | Ast.LetRec (defs, e, p) ->
+        let ids = List.map Util.fst defs in
+        if duplicate_check (List.map Id.name ids)
+        then raise @@ Error "Variable bound several times in this matching"
+        else
+            let env = register_names env ids in
+            let def_exps = defs |> List.map Util.trd |> List.map (f env) in
+            let defs = Util.zip3 ids (List.map Util.snd defs) def_exps in
+            Ast.LetRec (defs, f (enable_all env) e, p)
+    | x -> failwith "unimplemented"

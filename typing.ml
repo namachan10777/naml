@@ -6,7 +6,7 @@ type ty =
     | TTuple of ty list
     | Poly of int
     | TyVar of int
-    | Variant of ty list * Id.t
+    | TVariant of ty list * Id.t
 [@@deriving show]
 
 and ty_var_t = Just of ty * int list | Unknown of int * int list [@@deriving show]
@@ -90,4 +90,22 @@ let rec unify t1 t2 = match t1, t2 with
         | Just (ty', l) -> unify ty ty'
     end
     | TInt, TInt -> ()
+    | TBool, TBool -> ()
+    | TStr, TStr -> ()
+    | Poly _, _ -> failwith "uninstantiate poly type"
+    |  _, Poly _ -> failwith "uninstantiate poly type"
+    | TTuple ts, TTuple ts' ->
+        Util.zip ts ts'
+        |> List.map (fun (t1, t2) -> unify t1 t2)
+        |> ignore
+    | TFun (arg1, ret1), TFun (arg2, ret2) ->
+        unify arg1 arg2;
+        unify ret1 ret2
+    | TVariant (tys1, id1), TVariant (tys2, id2) ->
+        if id1 <> id2
+        then raise UnifyError
+        else
+            Util.zip tys1 tys2
+            |> List.map (fun (t1, t2) -> unify t1 t2)
+            |> ignore
     | _, _ -> raise UnifyError

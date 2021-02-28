@@ -1,8 +1,10 @@
-FROM ocaml/ocaml:alpine
+FROM ocaml/opam:alpine
 
-RUN apk add --no-cache make
-RUN adduser -h /home/naml -s /bin/sh -D naml
+USER root
+RUN apk add --no-cache make m4
 
-USER naml
+USER opam
+RUN opam switch create 4.12.0 && \
+	opam install ocamlfind
 
 ENTRYPOINT [ "/bin/sh" ]

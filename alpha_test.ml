@@ -43,4 +43,13 @@ let () =
     | _ -> failwith "ast test 1 failed" ) ;
     (match f "let x | x = 1 in x" with
     | Ast.Let ([Ast.Or (Ast.PVar (id1, _), [Ast.PVar (id2, _)], _), _, Ast.Int (1, _)], Ast.Var (id3, _), _) when id1 = id2 && id2 = id3 -> ()
-    | _ -> failwith "ast or pat test failed")
+    | _ -> failwith "ast or pat test failed");
+    (match f "match [] with [] -> 0 | [x] -> x" with
+    | Ast.Match (Ast.CtorApp (emp_id1, _, []), [
+        (Ast.PCtorApp (emp_id2, [], _), _, Ast.Bool (true, _), Ast.Int (0, _));
+        (Ast.PCtorApp (emp_id3, [
+            Ast.PVar (x_id1, _);
+            Ast.PCtorApp (emp_id4, [], _);
+        ], _), _, Ast.Bool(true, _), Ast.Var (x_id2, _));
+    ]) when emp_id1 = emp_id2 && emp_id2 = emp_id3 && emp_id3 = emp_id4 && x_id1 = x_id2 -> ()
+    | _ -> failwith "alpha ctor failed")

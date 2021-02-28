@@ -85,6 +85,27 @@ let rec f env =
         Ast.Fun (arg, f (Tbl.push (Id.name arg) (arg, true) @@ enable_all venv, cenv, tenv) body, p)
     | Ast.App (g, arg, p) ->
         Ast.App (f env g, f env arg, p)
+    | Ast.CtorApp (cid, p, args) ->
+        let cid =
+            Tbl.lookup (Id.name cid) cenv
+            |> Tbl.expect
+                 (Printf.sprintf "%s unbound identifier %s" (Lex.show_pos_t p)
+                    (Id.show cid))
+        in
+        Ast.CtorApp (cid, p, List.map (f env) args)
+    | Ast.Match (target, arms) ->
+        let target = f env target in
+        let arms =
+            List.map
+            (fun (pat, p, guard, body) ->
+                let vars, pat = f_pat cenv pat in
+                let env = (register_enabled_names venv vars, cenv, tenv) in
+                let guard = f env guard in
+                let body = f env body in
+                (pat, p, guard, body))
+            arms
+        in
+        Ast.Match (target, arms)
     | Ast.Let (defs, e, p) ->
         let vars, pats =
             defs |> List.map Util.fst

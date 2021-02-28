@@ -1,6 +1,9 @@
 type pat_tbl = (string list, Id.t) Tbl.t * (string list, unit) Tbl.t ref
 
 let pervasive_var_env = List.map (fun (id, _) -> (Id.name id, (id, true))) Pervasives.vars
+let pervasive_ctor_env = List.map (fun (id, _, _) -> (Id.name id, id)) Pervasives.ctors
+let pervasive_type_env = List.map (fun (id, _) -> (Id.name id, id)) Pervasives.types
+let pervasive_env = (pervasive_var_env, pervasive_ctor_env, pervasive_type_env)
 
 exception Error of string
 
@@ -32,7 +35,9 @@ let rec duplicate_check = function
     | [x] -> false
     | x :: xs -> (not @@ List.for_all (fun x' -> x <> x') xs) || duplicate_check xs
 
-let rec f (env: (string list, Id.t * bool) Tbl.t) = function
+let rec f env =
+    let (venv, cenv, tenv) = env in
+    function
     | Ast.Int (i, p) -> Ast.Int (i, p)
     | Ast.Never -> Ast.Never
     | Ast.Bool (b, p) -> Ast.Bool (b, p)
@@ -42,7 +47,7 @@ let rec f (env: (string list, Id.t * bool) Tbl.t) = function
         Ast.Tuple (List.map (f env) es, p)
     | Ast.Var (id, p) ->
         let id =
-            Tbl.lookup (Id.name id) env
+            Tbl.lookup (Id.name id) venv
             |> Tbl.expect
                  (Printf.sprintf "%s unbound identifier %s" (Lex.show_pos_t p)
                     (Id.show id))
@@ -51,7 +56,7 @@ let rec f (env: (string list, Id.t * bool) Tbl.t) = function
         then Ast.Var (fst id, p)
         else raise @@ Error "This kind of expression is not allowed as right-hand side of `let rec`"
     | Ast.Fun (arg, body, p) ->
-        Ast.Fun (arg, f (Tbl.push (Id.name arg) (arg, true) @@ enable_all env) body, p)
+        Ast.Fun (arg, f (Tbl.push (Id.name arg) (arg, true) @@ enable_all venv, cenv, tenv) body, p)
     | Ast.App (g, arg, p) ->
         Ast.App (f env g, f env arg, p)
     | Ast.Let (defs, e, p) ->
@@ -66,15 +71,15 @@ let rec f (env: (string list, Id.t * bool) Tbl.t) = function
         if duplicate_check (List.map Id.name names)
         then raise @@ Error "Variable bound several times in this matching"
         else
-            let env = register_enabled_names env names in
-            Ast.Let (defs, f env e, p)
+            let venv = register_enabled_names venv names in
+            Ast.Let (defs, f (venv, cenv, tenv) e, p)
     | Ast.LetRec (defs, e, p) ->
         let ids = List.map Util.fst defs in
         if duplicate_check (List.map Id.name ids)
         then raise @@ Error "Variable bound several times in this matching"
         else
-            let env = register_names env ids in
-            let def_exps = defs |> List.map Util.trd |> List.map (f env) in
+            let venv = register_names venv ids in
+            let def_exps = defs |> List.map Util.trd |> List.map (f (venv, cenv, tenv)) in
             let defs = Util.zip3 ids (List.map Util.snd defs) def_exps in
-            Ast.LetRec (defs, f (enable_all env) e, p)
+            Ast.LetRec (defs, f (enable_all venv, cenv, tenv) e, p)
     | x -> failwith "unimplemented"

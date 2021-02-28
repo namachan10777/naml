@@ -17,5 +17,30 @@ let unify_unk_unk () =
     assert_eq "unify to low level" (!Typing.store).(0) (Typing.Unknown (0, [0;1]));
     assert_eq "unify to low level" (!Typing.store).(1) (Typing.Unknown (0, [0;1]))
 
+let unify_unk_ty () =
+    Typing.init ();
+    let u = Typing.fresh 0 in
+    Typing.unify u Typing.TInt;
+    Typing.unify Typing.TInt u;
+    assert_eq "unify unknown and int" (!Typing.store).(0) (Typing.Just (Typing.TInt, [0]))
+
+let unify_unk_just () =
+    Typing.init ();
+    let u1 = Typing.fresh 0 in
+    let u2 = Typing.fresh 0 in
+    Typing.unify u1 Typing.TInt;
+    Typing.unify u1 u2;
+    assert_eq "unify unknown and just" (!Typing.store).(0) (Typing.Just (Typing.TInt, [0; 1]));
+    assert_eq "unify unknown and just" (!Typing.store).(0) (Typing.Just (Typing.TInt, [0; 1]));
+    Typing.init ();
+    let u1 = Typing.fresh 0 in
+    let u2 = Typing.fresh 0 in
+    Typing.unify u1 Typing.TInt;
+    Typing.unify u2 u1;
+    assert_eq "unify unknown and just" (!Typing.store).(0) (Typing.Just (Typing.TInt, [1; 0]));
+    assert_eq "unify unknown and just" (!Typing.store).(0) (Typing.Just (Typing.TInt, [1; 0]))
+
 let () =
-    unify_unk_unk ()
+    unify_unk_unk ();
+    unify_unk_ty ();
+    unify_unk_just ()

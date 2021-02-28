@@ -1,4 +1,5 @@
 let f s = s |> Lex.f "test.ml" |> Parser.parse |> Ast.of_t |> Alpha.f Alpha.pervasive_env
+let f_s s = Ast.f "test.ml" s |> Alpha.f Alpha.pervasive_env
 let nw = Lex.nowhere
 
 
@@ -58,4 +59,11 @@ let () =
     | Ast.Let ([
         (Ast.PVar (x, _), _, Ast.CtorApp (emp_id2, _, []));
     ], Ast.Int (0, _), _) when emp_id1 = emp_id2 -> ()
+    | _ -> failwith "alpha CtorApp failed");
+    (let list_id1 = Id.lookup  ["list"] (List.map fst Pervasives.types) in
+    match f_s "type 'a t = 'a list and t2 = int t" with
+    | Ast.Type ([
+        (tid1, _, [("a", _)], Ast.Alias (Ast.TApp ([Ast.TVar ("a", _)], list_id2, _)));
+        (t2id, _, [], Ast.Alias (Ast.TApp ([Ast.TInt _], tid2, _)));
+    ], Ast.Never) when tid1 = tid2 && list_id1 = list_id2 -> ()
     | x -> print_endline @@ Ast.show x)

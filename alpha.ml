@@ -12,6 +12,22 @@ let rec duplicate_check = function
     | [x] -> false
     | x :: xs -> (not @@ List.for_all (fun x' -> x <> x') xs) || duplicate_check xs
 
+let rec f_ty tenv = function
+    | Ast.TInt p -> Ast.TInt p
+    | Ast.TBool p -> Ast.TBool p
+    | Ast.TString p -> Ast.TString p
+    | Ast.TApp (tys, tid, p) ->
+        let tid = Tbl.lookup (Id.name tid) tenv |> Tbl.expect (Printf.sprintf "unbound type name %s" (Id.show tid)) in
+        Ast.TApp (List.map (f_ty tenv) tys, tid, p)
+    | Ast.TVar (id, p) -> Ast.TVar (id, p)
+    | Ast.TTuple (tys, p) -> Ast.TTuple (List.map (f_ty tenv) tys, p)
+let rec f_tydef tenv = function
+    | Ast.Alias ty -> [], Ast.Alias (f_ty tenv ty)
+    | Ast.Variant defs ->
+        let cids = List.map Util.fst defs in
+        let cenv = List.fold_left (fun tbl cid -> Tbl.push (Id.name cid) cid tbl) Tbl.empty cids in
+        cenv, Ast.Variant (List.map (fun (cid, p, targs) -> (cid, p, List.map (f_ty tenv) targs)) defs)
+
 let rec f_pat cenv pat =
     let rec collect_free_vars = function
         | Ast.PVar (id, p) -> [id]
@@ -129,4 +145,11 @@ let rec f env =
             let def_exps = defs |> List.map Util.trd |> List.map (f (venv, cenv, tenv)) in
             let defs = Util.zip3 ids (List.map Util.snd defs) def_exps in
             Ast.LetRec (defs, f (enable_all venv, cenv, tenv) e, p)
-    | x -> failwith "unimplemented"
+    | Ast.Type (defs, expr) ->
+        let tids = List.map (fun (tid, _, _, _) -> tid) defs in
+        let tenv = List.fold_left (fun tbl tid -> Tbl.push (Id.name tid) tid tbl) tenv tids in
+        let cids, tys = Util.unzip @@ List.map (fun (_, _, _, tydef) -> f_tydef tenv tydef) defs in
+        let targs, ps = Util.unzip @@ List.map (fun (_, targ, p, _) -> targ, p) defs in
+        let cenv = (List.concat cids) @ cenv in
+        let defs = Util.zip4 tids targs ps tys in
+        Ast.Type (defs, f (venv, cenv, tenv) expr)

@@ -34,6 +34,12 @@ let rec duplicate_check = function
 
 let rec f (env: (string list, Id.t * bool) Tbl.t) = function
     | Ast.Int (i, p) -> Ast.Int (i, p)
+    | Ast.Never -> Ast.Never
+    | Ast.Bool (b, p) -> Ast.Bool (b, p)
+    | Ast.If (cond_e, then_e, else_e, p) ->
+        Ast.If (f env cond_e, f env then_e, f env else_e, p)
+    | Ast.Tuple (es, p) ->
+        Ast.Tuple (List.map (f env) es, p)
     | Ast.Var (id, p) ->
         let id =
             Tbl.lookup (Id.name id) env

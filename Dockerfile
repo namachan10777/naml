@@ -1,4 +1,4 @@
-FROM ocaml:alpine-ocaml-4.12
+FROM ocaml/ocaml:alpine
 
 RUN apk add --no-cache make
 

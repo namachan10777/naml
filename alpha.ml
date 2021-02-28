@@ -1,5 +1,7 @@
 type pat_tbl = (string list, Id.t) Tbl.t * (string list, unit) Tbl.t ref
 
+exception Error of string
+
 let f_pat (or_tbl, def_tbl) = function
     | Ast.PVar (id, p) -> (
         let name = Id.name id in
@@ -16,6 +18,11 @@ let f_pat (or_tbl, def_tbl) = function
 
 let register_names tbl =
     List.fold_left (fun tbl id -> Tbl.push (Id.name id) id tbl) tbl
+
+let rec duplicate_check = function
+    | [] -> false
+    | [x] -> false
+    | x :: xs -> (not @@ List.for_all (fun x' -> x <> x') xs) || duplicate_check xs
 
 let rec f env = function
     | Ast.Var (id, p) ->
@@ -34,6 +41,10 @@ let rec f env = function
         in
         let def_exps = defs |> List.map Util.trd |> List.map (f env) in
         let defs = Util.zip3 pats (List.map Util.snd defs) def_exps in
-        let env = register_names env (List.concat vars) in
-        Ast.Let (defs, f env e, p)
+        let names = List.concat vars in
+        if duplicate_check (List.map Id.name names)
+        then raise @@ Error "Variable bound several times in this matching"
+        else
+            let env = register_names env names in
+            Ast.Let (defs, f env e, p)
     | x -> x

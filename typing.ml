@@ -33,7 +33,6 @@ type pat_t =
     | As of pat_t list * ty * Lex.pos_t
     | Or of pat_t * pat_t list * ty * Lex.pos_t
     | PCtorApp of Id.t * (pat_t * ty) list * ty * Lex.pos_t
-    | PCtor of Id.t * ty * Lex.pos_t
 
 type tydef_t =
     | Variant of (Id.t * Lex.pos_t * Types.t list) list
@@ -52,7 +51,7 @@ type t =
     | Fun of (Id.t * ty) * (t * ty) * Lex.pos_t
     | Match of (t * ty) * ((pat_t * ty) * Lex.pos_t * t * (t * ty)) list
     | App of (t * ty) * (t * ty) * Lex.pos_t
-    | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
+    | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * (t * ty)
 
 let store = ref @@ Array.init 2 (fun i -> Unknown (0, i, [i]))
 type tenv_t = ty_var_t array [@@deriving show]
@@ -129,8 +128,6 @@ let rec unify t1 t2 = match t1, t2 with
             |> ignore
     | _, _ -> raise UnifyError
 
-let rec instantiate level x = x
-let rec generalize level x = x
 
 (* レベルベースの型推論[1]の簡単な概略を述べる。
  * ナイーブに新しい変数に不明な型を割り付けてunifyしていくと本来多相性を持つ型であっても単相に推論されうる。
@@ -143,6 +140,63 @@ let rec generalize level x = x
  * 不明な型と不明な型のunifyの際はレベルが低い方に合わせ単相に寄せる。
  * [1] Rémy, Didier. Extension of ML Type System with a Sorted Equation Theory on Types. 1992.
  *)
+let rec inst_ty env =
+    let (level, tbl) = env in
+    function
+    | TInt -> TInt
+    | TBool -> TBool
+    | TNever -> TNever
+    | TStr -> TStr
+    | TFun (f, arg) -> TFun (inst_ty env f, inst_ty env arg)
+    | TTuple tys -> TTuple (List.map (inst_ty env) tys)
+    | Poly tag -> begin match Tbl.lookup_mut tag tbl with
+        | Some u -> u
+        | None ->
+            let u = fresh level in 
+            Tbl.push_mut tag u tbl;
+            u
+    end
+    | TyVar i -> TyVar i
+    | TVariant (args, id) -> TVariant (List.map (inst_ty env) args, id)
+
+let rec inst_pat env = function
+    | PInt (i, p) -> PInt (i, p)
+    | PBool (b, p) -> PBool (b, p)
+    | PVar (id, ty, p) -> PVar (id, ty, p)
+    | PTuple (pats, p) -> PTuple (List.map (fun (pat, ty) -> inst_pat env pat, inst_ty env ty) pats, p)
+    | As (pats, ty, p) -> As (List.map (inst_pat env) pats, inst_ty env ty, p)
+    | Or (pat, pats, ty, p) -> Or (inst_pat env pat, List.map (inst_pat env) pats, inst_ty env ty, p)
+    | PCtorApp (id, args, ty, p) -> PCtorApp (id, List.map (fun (pat, ty) -> inst_pat env pat, inst_ty env ty) args, inst_ty env ty, p)
+
+let rec inst env = function
+    | Never -> Never
+    | Int (i, p) -> Int (i, p)
+    | Bool (b, p) -> Bool (b, p)
+    | Var (id, ty, p) -> Var (id, inst_ty env ty, p)
+    | If (c, t, e, ty, p) -> If (inst env c, inst env t, inst env e, inst_ty env ty, p)
+    | Fun ((arg, arg_ty), (body, body_ty), p) ->
+        Fun ((arg, inst_ty env arg_ty), (inst env body, inst_ty env body_ty), p)
+    | Tuple (es, p) -> Tuple (List.map (fun (e, ty) -> inst env e, inst_ty env ty) es, p)
+    | App ((f, f_ty), (arg, arg_ty), p) -> App ((inst env f, inst_ty env f_ty), (inst env arg, inst_ty env arg_ty), p)
+    | CtorApp (id, p, args, ty) ->
+        CtorApp (id, p, List.map (fun (arg, arg_ty) -> inst env arg, inst_ty env arg_ty) args, inst_ty env ty)
+    | Let (defs, (e, ty), is_top) ->
+        Let (
+            List.map (fun (pat, p, (def, def_ty)) -> inst_pat env pat, p, (inst env def, inst_ty env def_ty)) defs,
+            (inst env e, inst_ty env ty), is_top
+        )
+    | LetRec (defs, (e, ty), is_top) ->
+        LetRec(
+            List.map (fun (id, p, (def, def_ty)) -> id, p, (inst env def, inst_ty env def_ty)) defs,
+            (inst env e, inst_ty env ty), is_top
+        )
+    | Match ((target, target_ty), arms) ->
+        Match (
+            (inst env target, inst_ty env target_ty),
+            List.map (fun ((pat, pat_ty), p, guard, (e, ty)) -> ((inst_pat env pat, inst_ty env pat_ty), p, inst env guard, (inst env e, inst_ty env ty))) arms
+        )
+    | Type (defs, (e, ty)) -> Type (defs, (e, ty))
+let rec generalize level x = x
 let rec f level env =
     let venv, cenv, tenv = env in
     function

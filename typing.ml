@@ -280,7 +280,7 @@ let rec f level env =
     | Ast.Int (i, p) -> TInt, Int (i, p)
     | Ast.Bool (b, p) -> TBool, Bool (b, p)
     | Ast.Var (id, p) ->
-        let ty = Tbl.lookup id venv |> Tbl.expect "internal error" in
+        let ty = Tbl.lookup id venv |> Tbl.expect "internal error" |> inst_ty (level, ref []) in
         ty, Var (id, ty, p)
     | Ast.Fun (arg, body, p) ->
         let u = fresh level in

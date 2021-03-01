@@ -96,7 +96,14 @@ let test_typing () =
     Typing.init ();
     (match f "1" with
     | (ty, t) when ty = Typing.TInt -> ()
-    | _ -> failwith "typing int failed")
+    | _ -> failwith "typing int failed");
+    (match f "let id x = x in id 1" with
+    | (_, Typing.Let ([(Typing.PVar (_, (Typing.TFun (Typing.Poly tag, Typing.Poly tag') as id_ty), _), id_ty'), _, _], _)) when 
+        id_ty = id_ty' && tag = tag' -> ()
+    |_ -> failwith "typing int failed");
+    (match f "let x = 1 and y = 2 in x + y" with
+    | (Typing.TInt, Typing.Let ([(Typing.PVar (_, Typing.TInt, _), _), _, _; (Typing.PVar (_, Typing.TInt, _), _), _, _], _)) -> ()
+    | _ -> failwith "typing let and");
 
 let () =
     unify_unk_unk ();

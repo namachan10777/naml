@@ -271,6 +271,9 @@ let pervasive_env =
 
 let rec f_pat level env = function
     | Ast.PInt (i, p) -> TInt, PInt (i, p), []
+    | Ast.PVar (id, p) ->
+        let u = fresh level in
+        u, PVar (id, u, p), [id, u]
     | _ -> failwith "f_pat unimplemented"
 
 let rec f level env =

@@ -73,11 +73,11 @@ let test_generalize () =
     let u1 = Typing.fresh 1 in
     let u2 = Typing.fresh 2 in
     let t = Typing.TTuple [u1; u2; u1] in
-    let g1 = Typing.generalize (0, ref []) t in
-    let g2 = Typing.generalize (1, ref []) t in
-    let g3 = Typing.generalize (2, ref []) t in
+    let g1 = Typing.gen_ty (0, ref []) t in
+    let g2 = Typing.gen_ty (1, ref []) t in
+    let g3 = Typing.gen_ty (2, ref []) t in
     assert_eq "full generalize 1" g1 (Typing.TTuple [Typing.Poly 0; Typing.Poly 1; Typing.Poly 0]);
-    assert_eq "partial generalize 1" g2 (Typing.TTuple [Typing.Poly 0; u1; Typing.Poly 0]);
+    assert_eq "partial generalize 1" g2 (Typing.TTuple [u1; Typing.Poly 1; u1]);
     assert_eq "not generalize 1" g3 t
 
 let test_instantiate () =
@@ -95,5 +95,5 @@ let () =
     unify_unk_just ();
     unify_fun ();
     cannot_unify ();
-    test_instantiate ()
-    (*test_generalize ()*)
+    test_instantiate ();
+    test_generalize ()

@@ -196,7 +196,64 @@ let rec inst env = function
             List.map (fun ((pat, pat_ty), p, guard, (e, ty)) -> ((inst_pat env pat, inst_ty env pat_ty), p, inst env guard, (inst env e, inst_ty env ty))) arms
         )
     | Type (defs, (e, ty)) -> Type (defs, (e, ty))
-let rec generalize level x = x
+
+let rec gen_ty env =
+    let (level, tbl) = env in
+    function
+    | TInt -> TInt
+    | TBool -> TBool
+    | TNever -> TNever
+    | TStr -> TStr
+    | TFun (f, arg) -> TFun (gen_ty env f, gen_ty env arg)
+    | TTuple tys -> TTuple (List.map (gen_ty env) tys)
+    | Poly tag -> Poly tag
+    | TyVar i -> begin match !store.(i) with
+        | Unknown (level', tag, _) when level' > level ->
+            Tbl.lookup_mut_or tag tbl (Poly tag)
+        | Unknown _ -> TyVar i
+        | Just (ty, _) -> gen_ty env ty
+    end
+    | TVariant (args, id) -> TVariant (List.map (gen_ty env) args, id)
+
+let rec gen_pat env = function
+    | PInt (i, p) -> PInt (i, p)
+    | PBool (b, p) -> PBool (b, p)
+    | PVar (id, ty, p) -> PVar (id, ty, p)
+    | PTuple (pats, p) -> PTuple (List.map (fun (pat, ty) -> gen_pat env pat, gen_ty env ty) pats, p)
+    | As (pats, ty, p) -> As (List.map (gen_pat env) pats, gen_ty env ty, p)
+    | Or (pat, pats, ty, p) -> Or (gen_pat env pat, List.map (gen_pat env) pats, gen_ty env ty, p)
+    | PCtorApp (id, args, ty, p) -> PCtorApp (id, List.map (fun (pat, ty) -> gen_pat env pat, gen_ty env ty) args, gen_ty env ty, p)
+
+let rec gen env = function
+    | Never -> Never
+    | Int (i, p) -> Int (i, p)
+    | Bool (b, p) -> Bool (b, p)
+    | Var (id, ty, p) -> Var (id, gen_ty env ty, p)
+    | If (c, t, e, ty, p) -> If (gen env c, gen env t, gen env e, gen_ty env ty, p)
+    | Fun ((arg, arg_ty), (body, body_ty), p) ->
+        Fun ((arg, gen_ty env arg_ty), (gen env body, gen_ty env body_ty), p)
+    | Tuple (es, p) -> Tuple (List.map (fun (e, ty) -> gen env e, gen_ty env ty) es, p)
+    | App ((f, f_ty), (arg, arg_ty), p) -> App ((gen env f, gen_ty env f_ty), (gen env arg, gen_ty env arg_ty), p)
+    | CtorApp (id, p, args, ty) ->
+        CtorApp (id, p, List.map (fun (arg, arg_ty) -> gen env arg, gen_ty env arg_ty) args, gen_ty env ty)
+    | Let (defs, (e, ty), is_top) ->
+        Let (
+            List.map (fun (pat, p, (def, def_ty)) -> gen_pat env pat, p, (gen env def, gen_ty env def_ty)) defs,
+            (gen env e, gen_ty env ty), is_top
+        )
+    | LetRec (defs, (e, ty), is_top) ->
+        LetRec(
+            List.map (fun (id, p, (def, def_ty)) -> id, p, (gen env def, gen_ty env def_ty)) defs,
+            (gen env e, gen_ty env ty), is_top
+        )
+    | Match ((target, target_ty), arms) ->
+        Match (
+            (gen env target, gen_ty env target_ty),
+            List.map (fun ((pat, pat_ty), p, guard, (e, ty)) -> ((gen_pat env pat, gen_ty env pat_ty), p, gen env guard, (gen env e, gen_ty env ty))) arms
+        )
+    | Type (defs, (e, ty)) -> Type (defs, (e, ty))
+
+
 let rec f level env =
     let venv, cenv, tenv = env in
     function

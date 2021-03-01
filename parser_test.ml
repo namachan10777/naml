@@ -79,14 +79,12 @@ let rec eq l r =
     | P.Pipeline (a1, f1, _), P.Pipeline (a2, f2, _) -> eq f1 f2 && eq a1 a2
     | P.Tuple (es1, _), P.Tuple (es2, _) ->
         List.for_all (fun (a, b) -> eq a b) @@ Util.zip es1 es2
-    | P.Let (defs1, e1, is_top), P.Let (defs2, e2, is_top') ->
-        eq e1 e2 && is_top = is_top'
-        && List.for_all (fun ((pat1, _, def1), (pat2, _, def2)) ->
+    | P.Let (defs1, e1), P.Let (defs2, e2) ->
+        eq e1 e2 && List.for_all (fun ((pat1, _, def1), (pat2, _, def2)) ->
                eq_pat pat1 pat2 && eq def1 def2)
            @@ Util.zip defs1 defs2
-    | P.LetRec (defs1, e1, is_top), P.LetRec (defs2, e2, is_top') ->
-        eq e1 e2 && is_top = is_top'
-        && List.for_all (fun ((id1, _, def1), (id2, _, def2)) ->
+    | P.LetRec (defs1, e1), P.LetRec (defs2, e2) ->
+        eq e1 e2 && List.for_all (fun ((id1, _, def1), (id2, _, def2)) ->
                Id.approx id1 id2 && eq def1 def2)
            @@ Util.zip defs1 defs2
     | P.Fun (arg1, e1, _), P.Fun (arg2, e2, _) ->
@@ -180,28 +178,24 @@ let () =
     test "let\n   simple" "let x = 1 in\n x"
       (P.Let
          ( [(P.PVar (Id.from_strlist ["x"], nw), nw, P.Int (1, nw))]
-         , P.Var (Id.from_strlist ["x"], nw)
-         , false )) ;
+         , P.Var (Id.from_strlist ["x"], nw))) ;
     test "let rec" "let rec x\n = 1 in x"
       (P.LetRec
          ( [(Id.from_strlist ["x"], nw, P.Int (1, nw))]
-         , P.Var (Id.from_strlist ["x"], nw)
-         , false )) ;
+         , P.Var (Id.from_strlist ["x"], nw))) ;
     test "let add left" "1 + let x = 1 in x"
       (P.Add
          ( P.Int (1, nw)
          , P.Let
              ( [(P.PVar (Id.from_strlist ["x"], nw), nw, P.Int (1, nw))]
-             , P.Var (Id.from_strlist ["x"], nw)
-             , false )
+             , P.Var (Id.from_strlist ["x"], nw))
          , nw )) ;
     test "let add right" "(let x = 1\n   in x) + 1"
       (P.Add
          ( P.Paren
              (P.Let
                 ( [(P.PVar (Id.from_strlist ["x"], nw), nw, P.Int (1, nw))]
-                , P.Var (Id.from_strlist ["x"], nw)
-                , false ))
+                , P.Var (Id.from_strlist ["x"], nw)))
          , P.Int (1, nw)
          , nw )) ;
     test "let complex" "let\n x = let y = 1 in y in let z = x in z"
@@ -210,27 +204,22 @@ let () =
              , nw
              , P.Let
                  ( [(P.PVar (Id.from_strlist ["y"], nw), nw, P.Int (1, nw))]
-                 , P.Var (Id.from_strlist ["y"], nw)
-                 , false ) ) ]
+                 , P.Var (Id.from_strlist ["y"], nw)) ) ]
          , P.Let
              ( [ ( P.PVar (Id.from_strlist ["z"], nw)
                  , nw
                  , P.Var (Id.from_strlist ["x"], nw) ) ]
-             , P.Var (Id.from_strlist ["z"], nw)
-             , false )
-         , false )) ;
+             , P.Var (Id.from_strlist ["z"], nw)))) ;
     test "let and" "let x = 1 and\n   y = 2 in y"
       (P.Let
          ( [ (P.PVar (Id.from_strlist ["x"], nw), nw, P.Int (1, nw))
            ; (P.PVar (Id.from_strlist ["y"], nw), nw, P.Int (2, nw)) ]
-         , P.Var (Id.from_strlist ["y"], nw)
-         , false )) ;
+         , P.Var (Id.from_strlist ["y"], nw))) ;
     test "let rec and" "let rec\n x = 1 and y = 2 in y"
       (P.LetRec
          ( [ (Id.from_strlist ["x"], nw, P.Int (1, nw))
            ; (Id.from_strlist ["y"], nw, P.Int (2, nw)) ]
-         , P.Var (Id.from_strlist ["y"], nw)
-         , false )) ;
+         , P.Var (Id.from_strlist ["y"], nw))) ;
     test "letfun" "let add\n   x y = x + y in add"
       (P.Let
          ( [ ( P.PVar (Id.from_strlist ["add"], nw)
@@ -245,8 +234,7 @@ let () =
                          , nw )
                      , nw )
                  , nw ) ) ]
-         , P.Var (Id.from_strlist ["add"], nw)
-         , false )) ;
+         , P.Var (Id.from_strlist ["add"], nw))) ;
     Parser.count := 0 ;
     test "letfun_pat" "let add (x, y) (z, w) = x + y in add"
       (P.Let
@@ -282,8 +270,7 @@ let () =
                                          , nw ) ) ] ) ) ] )
                      , nw )
                  , nw ) ) ]
-         , P.Var (Id.from_strlist ["add"], nw)
-         , false )) ;
+         , P.Var (Id.from_strlist ["add"], nw))) ;
     test "letrecfun" "let rec add x\n y = x + y in add"
       (P.LetRec
          ( [ ( Id.from_strlist ["add"]
@@ -298,8 +285,7 @@ let () =
                          , nw )
                      , nw )
                  , nw ) ) ]
-         , P.Var (Id.from_strlist ["add"], nw)
-         , false )) ;
+         , P.Var (Id.from_strlist ["add"], nw))) ;
     Parser.count := 0 ;
     test "letrecfun_pat" "let rec add (x, y) (z,\n   w) = x + y in add"
       (P.LetRec
@@ -335,8 +321,7 @@ let () =
                                          , nw ) ) ] ) ) ] )
                      , nw )
                  , nw ) ) ]
-         , P.Var (Id.from_strlist ["add"], nw)
-         , false )) ;
+         , P.Var (Id.from_strlist ["add"], nw))) ;
     test "fun" "fun x\n   y z -> x + y + z"
       (P.Fun
          ( Id.from_strlist ["x"]
@@ -483,8 +468,7 @@ let () =
              , P.Bool (true, nw)
              , P.Let
                  ( [(P.PVar (Id.from_strlist ["x"], nw), nw, P.Int (1, nw))]
-                 , P.Var (Id.from_strlist ["x"], nw)
-                 , false ) )
+                 , P.Var (Id.from_strlist ["x"], nw)) )
            ; ( P.PVar (Id.from_strlist ["z"], nw)
              , nw
              , P.Bool (true, nw)
@@ -659,8 +643,7 @@ let () =
                  , nw )
              , nw
              , P.Var (Id.from_strlist ["z"], nw) ) ]
-         , P.Var (Id.from_strlist ["x"], nw)
-         , false )) ;
+         , P.Var (Id.from_strlist ["x"], nw))) ;
     test "app1" "1 + f 2"
       (P.Add
          ( P.Int (1, nw)
@@ -700,8 +683,7 @@ let () =
          , P.Int (1, nw)
          , P.Let
              ( [(P.PVar (Id.from_strlist ["x"], nw), nw, P.Int (1, nw))]
-             , P.Var (Id.from_strlist ["x"], nw)
-             , false )
+             , P.Var (Id.from_strlist ["x"], nw))
          , nw )) ;
     test "if_nested"
       "if if x then\n\
@@ -753,7 +735,7 @@ let () =
          , nw )) ;
     test "unit" "let () = () in ()"
       (P.Let
-         ([(P.PTuple ([], nw), nw, P.Tuple ([], nw))], P.Tuple ([], nw), false)) ;
+         ([(P.PTuple ([], nw), nw, P.Tuple ([], nw))], P.Tuple ([], nw))) ;
     test_ty "tuple1" "t * t"
       (P.TTuple
          ( [ P.TApp ([], Id.from_strlist ["t"], nw)
@@ -803,8 +785,7 @@ let () =
     test_stmts "let stmt" "let x = 1"
       (P.Let
          ( [(P.PVar (Id.from_strlist ["x"], nw), nw, P.Int (1, nw))]
-         , P.Never
-         , true )) ;
+         , P.Never)) ;
     test_stmts "letfun stmt" "let\n   add x y =\n x + y"
       (P.Let
          ( [ ( P.PVar (Id.from_strlist ["add"], nw)
@@ -819,20 +800,17 @@ let () =
                          , nw )
                      , nw )
                  , nw ) ) ]
-         , P.Never
-         , true )) ;
+         , P.Never)) ;
     test_stmts "letrec and" "let rec f = 1\n   and g = 2"
       (P.LetRec
          ( [ (Id.from_strlist ["f"], nw, P.Int (1, nw))
            ; (Id.from_strlist ["g"], nw, P.Int (2, nw)) ]
-         , P.Never
-         , true )) ;
+         , P.Never)) ;
     test_stmts "let\n and" "let f = 1 and g = 2"
       (P.Let
          ( [ (P.PVar (Id.from_strlist ["f"], nw), nw, P.Int (1, nw))
            ; (P.PVar (Id.from_strlist ["g"], nw), nw, P.Int (2, nw)) ]
-         , P.Never
-         , true )) ;
+         , P.Never)) ;
     P.count := 0 ;
     test_stmts "letfun and" "let add (x, y) (z,\n w) = x + y and add2 = add"
       (P.Let
@@ -871,8 +849,7 @@ let () =
            ; ( P.PVar (Id.from_strlist ["add2"], nw)
              , nw
              , P.Var (Id.from_strlist ["add"], nw) ) ]
-         , P.Never
-         , true )) ;
+         , P.Never)) ;
     test_stmts "type variant" "type t =\n   Leaf of\n int | Node of t * t"
       (P.Type
          ( [ ( Id.from_strlist ["t"]

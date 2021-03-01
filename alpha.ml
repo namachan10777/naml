@@ -122,7 +122,7 @@ let rec f env =
             arms
         in
         Ast.Match (target, arms)
-    | Ast.Let (defs, e, p) ->
+    | Ast.Let (defs, e) ->
         let vars, pats =
             defs |> List.map Util.fst
             |> List.map (fun p -> f_pat cenv p)
@@ -135,8 +135,8 @@ let rec f env =
         then raise @@ Error "Variable bound several times in this matching"
         else
             let venv = register_enabled_names venv names in
-            Ast.Let (defs, f (venv, cenv, tenv) e, p)
-    | Ast.LetRec (defs, e, p) ->
+            Ast.Let (defs, f (venv, cenv, tenv) e)
+    | Ast.LetRec (defs, e) ->
         let ids = List.map Util.fst defs in
         if duplicate_check (List.map Id.name ids)
         then raise @@ Error "Variable bound several times in this matching"
@@ -144,7 +144,7 @@ let rec f env =
             let venv = register_names venv ids in
             let def_exps = defs |> List.map Util.trd |> List.map (f (venv, cenv, tenv)) in
             let defs = Util.zip3 ids (List.map Util.snd defs) def_exps in
-            Ast.LetRec (defs, f (enable_all venv, cenv, tenv) e, p)
+            Ast.LetRec (defs, f (enable_all venv, cenv, tenv) e)
     | Ast.Type (defs, expr) ->
         let tids = List.map (fun (tid, _, _, _) -> tid) defs in
         let tenv = List.fold_left (fun tbl tid -> Tbl.push (Id.name tid) tid tbl) tenv tids in

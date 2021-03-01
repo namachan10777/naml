@@ -105,8 +105,8 @@ type t =
     | Cons of t * t * Lex.pos_t
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
-    | Let of (pat_t * Lex.pos_t * t) list * t * bool
-    | LetRec of (Id.t * Lex.pos_t * t) list * t * bool
+    | Let of (pat_t * Lex.pos_t * t) list * t
+    | LetRec of (Id.t * Lex.pos_t * t) list * t
     | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * t
     | Fun of Id.t * t * Lex.pos_t
     | Match of t * (pat_t * Lex.pos_t * t * t) list
@@ -147,7 +147,7 @@ let rec show =
     | If (cond, then_e, else_e, _) ->
         Printf.sprintf "if %s\nthen %selse %s" (show cond) (show then_e)
           (show else_e)
-    | Let (defs, e, _) ->
+    | Let (defs, e) ->
         let lets =
             List.map
               (fun (id, _, def) ->
@@ -158,7 +158,7 @@ let rec show =
           (fun acc l -> acc ^ "\n" ^ l)
           (List.hd lets) (List.tl lets)
         ^ "\n  " ^ show e
-    | LetRec (defs, e, _) ->
+    | LetRec (defs, e) ->
         let lets =
             List.map
               (fun (id, _, def) ->
@@ -484,7 +484,7 @@ let rec parse_expr = function
       match parse_letrec_ands remain with
       | defs, (Lex.In, _) :: remain ->
           let expr, p, remain = parse_expr remain in
-          (LetRec (defs, expr, false), p, remain)
+          (LetRec (defs, expr), p, remain)
       | _, (_, p) :: _ ->
           raise @@ SyntaxError (Lex.string_of_pos_t p ^ "letrec expr")
       | _, [] -> raise Unreachable )
@@ -492,7 +492,7 @@ let rec parse_expr = function
       match parse_let_ands remain with
       | defs, (Lex.In, _) :: remain ->
           let expr, p, remain = parse_expr remain in
-          (Let (defs, expr, false), p, remain)
+          (Let (defs, expr), p, remain)
       | _, (_, p) :: _ ->
           raise @@ SyntaxError (Lex.string_of_pos_t p ^ "let expr")
       | _, [] -> raise Unreachable )
@@ -958,10 +958,10 @@ let rec parse_stmts = function
       | _, [] -> raise Unreachable )
     | (Lex.Let, _) :: (Lex.Rec, _) :: remain ->
         let defs, remain = parse_letrec_ands remain in
-        LetRec (defs, parse_stmts remain, true)
+        LetRec (defs, parse_stmts remain)
     | (Lex.Let, _) :: remain ->
         let defs, remain = parse_let_ands remain in
-        Let (defs, parse_stmts remain, true)
+        Let (defs, parse_stmts remain)
     | [(Lex.Eof, _)] -> Never
     | (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "stmt")
     | [] -> raise Unreachable

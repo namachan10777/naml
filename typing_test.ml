@@ -1,3 +1,6 @@
+let f s = s |> Lex.f "test.ml" |> Parser.parse |> Ast.of_t |> Alpha.f Alpha.pervasive_env |> Typing.f 0 Typing.pervasive_env
+let f_s s = Ast.f "test.ml" s |> Alpha.f Alpha.pervasive_env
+
 let assert_eq name a b =
     if a = b
     then ()
@@ -89,6 +92,12 @@ let test_instantiate () =
     let i = Typing.inst_ty (1, ref []) t in
     assert_eq "not generalize 1" i (Typing.TTuple [u1; u2; u1])
 
+let test_typing () =
+    Typing.init ();
+    (match f "1" with
+    | (ty, t) when ty = Typing.TInt -> ()
+    | _ -> failwith "typing int failed")
+
 let () =
     unify_unk_unk ();
     unify_unk_ty ();
@@ -96,4 +105,5 @@ let () =
     unify_fun ();
     cannot_unify ();
     test_instantiate ();
-    test_generalize ()
+    test_generalize ();
+    test_typing ()

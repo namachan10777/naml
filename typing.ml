@@ -33,10 +33,12 @@ type pat_t =
     | As of pat_t list * ty * Lex.pos_t
     | Or of pat_t * pat_t list * ty * Lex.pos_t
     | PCtorApp of Id.t * (pat_t * ty) list * ty * Lex.pos_t
+[@@deriving show]
 
 type tydef_t =
     | Variant of (Id.t * Lex.pos_t * Types.t list) list
     | Alias of Types.t
+[@@deriving show]
 
 type t =
     | Never
@@ -52,6 +54,7 @@ type t =
     | Match of (t * ty) * ((pat_t * ty) * Lex.pos_t * t * (t * ty)) list
     | App of (t * ty) * (t * ty) * Lex.pos_t
     | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * (t * ty)
+[@@deriving show]
 
 let store = ref @@ Array.init 2 (fun i -> Unknown (0, i, [i]))
 type tenv_t = ty_var_t array [@@deriving show]
@@ -253,6 +256,20 @@ let rec gen env = function
         )
     | Type (defs, (e, ty)) -> Type (defs, (e, ty))
 
+let rec types2typing = function
+    | Types.Bool -> TBool
+    | Types.Int -> TInt
+    | Types.Str -> TStr
+    | Types.Poly tag -> Poly tag
+    | Types.Fun (f, arg) -> TFun (types2typing f, types2typing arg)
+    | Types.Tuple ts -> TTuple (List.map types2typing ts)
+    | Types.Variant (args, id) -> TVariant (List.map types2typing args, id)
+
+let pervasive_env =
+    let venv = List.map (fun (id, (_, ty)) -> id, types2typing ty) Pervasives.vars in
+    let cenv = List.map (fun (id, (_, args), (_, ty)) -> id, (List.map types2typing args), types2typing ty) Pervasives.ctors in
+    let tenv = List.map (fun (id, (_, ty)) -> id, types2typing ty) Pervasives.types in
+    (venv, cenv, tenv)
 
 let rec f level env =
     let venv, cenv, tenv = env in

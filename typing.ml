@@ -48,8 +48,8 @@ type t =
     | CtorApp of Id.t * Lex.pos_t * (t * ty) list * ty
     | Tuple of (t * ty) list * Lex.pos_t
     | If of t * t * t * ty * Lex.pos_t
-    | Let of (pat_t * Lex.pos_t * (t * ty)) list * (t * ty) * bool
-    | LetRec of (Id.t * Lex.pos_t * (t * ty)) list * (t * ty) * bool
+    | Let of ((pat_t * ty) * Lex.pos_t * (t * ty)) list * (t * ty)
+    | LetRec of (Id.t * Lex.pos_t * (t * ty)) list * (t * ty)
     | Fun of (Id.t * ty) * (t * ty) * Lex.pos_t
     | Match of (t * ty) * ((pat_t * ty) * Lex.pos_t * t * (t * ty)) list
     | App of (t * ty) * (t * ty) * Lex.pos_t
@@ -183,15 +183,15 @@ let rec inst env = function
     | App ((f, f_ty), (arg, arg_ty), p) -> App ((inst env f, inst_ty env f_ty), (inst env arg, inst_ty env arg_ty), p)
     | CtorApp (id, p, args, ty) ->
         CtorApp (id, p, List.map (fun (arg, arg_ty) -> inst env arg, inst_ty env arg_ty) args, inst_ty env ty)
-    | Let (defs, (e, ty), is_top) ->
+    | Let (defs, (e, ty)) ->
         Let (
-            List.map (fun (pat, p, (def, def_ty)) -> inst_pat env pat, p, (inst env def, inst_ty env def_ty)) defs,
-            (inst env e, inst_ty env ty), is_top
+            List.map (fun ((pat, pat_ty), p, (def, def_ty)) -> (inst_pat env pat, inst_ty env pat_ty), p, (inst env def, inst_ty env def_ty)) defs,
+            (inst env e, inst_ty env ty)
         )
-    | LetRec (defs, (e, ty), is_top) ->
+    | LetRec (defs, (e, ty)) ->
         LetRec(
             List.map (fun (id, p, (def, def_ty)) -> id, p, (inst env def, inst_ty env def_ty)) defs,
-            (inst env e, inst_ty env ty), is_top
+            (inst env e, inst_ty env ty)
         )
     | Match ((target, target_ty), arms) ->
         Match (
@@ -200,59 +200,57 @@ let rec inst env = function
         )
     | Type (defs, (e, ty)) -> Type (defs, (e, ty))
 
-let rec gen_ty env =
-    let (level, tbl) = env in
+let rec gen_ty level =
     function
     | TInt -> TInt
     | TBool -> TBool
     | TNever -> TNever
     | TStr -> TStr
-    | TFun (f, arg) -> TFun (gen_ty env f, gen_ty env arg)
-    | TTuple tys -> TTuple (List.map (gen_ty env) tys)
+    | TFun (f, arg) -> TFun (gen_ty level f, gen_ty level arg)
+    | TTuple tys -> TTuple (List.map (gen_ty level) tys)
     | Poly tag -> Poly tag
     | TyVar i -> begin match !store.(i) with
         | Unknown (level', tag, _) when level' > level ->
-            Tbl.lookup_mut_or tag tbl (Poly tag)
+            (Poly tag)
         | Unknown _ -> TyVar i
-        | Just (ty, _) -> gen_ty env ty
+        | Just (ty, _) -> gen_ty level ty
     end
-    | TVariant (args, id) -> TVariant (List.map (gen_ty env) args, id)
+    | TVariant (args, id) -> TVariant (List.map (gen_ty level) args, id)
 
-let rec gen_pat env = function
+let rec gen_pat level = function
     | PInt (i, p) -> PInt (i, p)
     | PBool (b, p) -> PBool (b, p)
     | PVar (id, ty, p) -> PVar (id, ty, p)
-    | PTuple (pats, p) -> PTuple (List.map (fun (pat, ty) -> gen_pat env pat, gen_ty env ty) pats, p)
-    | As (pats, ty, p) -> As (List.map (gen_pat env) pats, gen_ty env ty, p)
-    | Or (pat, pats, ty, p) -> Or (gen_pat env pat, List.map (gen_pat env) pats, gen_ty env ty, p)
-    | PCtorApp (id, args, ty, p) -> PCtorApp (id, List.map (fun (pat, ty) -> gen_pat env pat, gen_ty env ty) args, gen_ty env ty, p)
+    | PTuple (pats, p) -> PTuple (List.map (fun (pat, ty) -> gen_pat level pat, gen_ty level ty) pats, p)
+    | As (pats, ty, p) -> As (List.map (gen_pat level) pats, gen_ty level ty, p)
+    | Or (pat, pats, ty, p) -> Or (gen_pat level pat, List.map (gen_pat level) pats, gen_ty level ty, p)
+    | PCtorApp (id, args, ty, p) -> PCtorApp (id, List.map (fun (pat, ty) -> gen_pat level pat, gen_ty level ty) args, gen_ty level ty, p)
 
-let rec gen env = function
+let rec gen level = function
     | Never -> Never
     | Int (i, p) -> Int (i, p)
     | Bool (b, p) -> Bool (b, p)
-    | Var (id, ty, p) -> Var (id, gen_ty env ty, p)
-    | If (c, t, e, ty, p) -> If (gen env c, gen env t, gen env e, gen_ty env ty, p)
+    | Var (id, ty, p) -> Var (id, gen_ty level ty, p)
+    | If (c, t, e, ty, p) -> If (gen level c, gen level t, gen level e, gen_ty level ty, p)
     | Fun ((arg, arg_ty), (body, body_ty), p) ->
-        Fun ((arg, gen_ty env arg_ty), (gen env body, gen_ty env body_ty), p)
-    | Tuple (es, p) -> Tuple (List.map (fun (e, ty) -> gen env e, gen_ty env ty) es, p)
-    | App ((f, f_ty), (arg, arg_ty), p) -> App ((gen env f, gen_ty env f_ty), (gen env arg, gen_ty env arg_ty), p)
+        Fun ((arg, gen_ty level arg_ty), (gen level body, gen_ty level body_ty), p)
+    | Tuple (es, p) -> Tuple (List.map (fun (e, ty) -> gen level e, gen_ty level ty) es, p)
+    | App ((f, f_ty), (arg, arg_ty), p) -> App ((gen level f, gen_ty level f_ty), (gen level arg, gen_ty level arg_ty), p)
     | CtorApp (id, p, args, ty) ->
-        CtorApp (id, p, List.map (fun (arg, arg_ty) -> gen env arg, gen_ty env arg_ty) args, gen_ty env ty)
-    | Let (defs, (e, ty), is_top) ->
+        CtorApp (id, p, List.map (fun (arg, arg_ty) -> gen level arg, gen_ty level arg_ty) args, gen_ty level ty)
+    | Let (defs, (e, ty)) ->
         Let (
-            List.map (fun (pat, p, (def, def_ty)) -> gen_pat env pat, p, (gen env def, gen_ty env def_ty)) defs,
-            (gen env e, gen_ty env ty), is_top
-        )
-    | LetRec (defs, (e, ty), is_top) ->
+            List.map (fun ((pat, pat_ty), p, (def, def_ty)) -> (gen_pat level pat, gen_ty level pat_ty), p, (gen level def, gen_ty level def_ty)) defs,
+            (gen level e, gen_ty level ty))
+    | LetRec (defs, (e, ty)) ->
         LetRec(
-            List.map (fun (id, p, (def, def_ty)) -> id, p, (gen env def, gen_ty env def_ty)) defs,
-            (gen env e, gen_ty env ty), is_top
+            List.map (fun (id, p, (def, def_ty)) -> id, p, (gen level def, gen_ty level def_ty)) defs,
+            (gen level e, gen_ty level ty)
         )
     | Match ((target, target_ty), arms) ->
         Match (
-            (gen env target, gen_ty env target_ty),
-            List.map (fun ((pat, pat_ty), p, guard, (e, ty)) -> ((gen_pat env pat, gen_ty env pat_ty), p, gen env guard, (gen env e, gen_ty env ty))) arms
+            (gen level target, gen_ty level target_ty),
+            List.map (fun ((pat, pat_ty), p, guard, (e, ty)) -> ((gen_pat level pat, gen_ty level pat_ty), p, gen level guard, (gen level e, gen_ty level ty))) arms
         )
     | Type (defs, (e, ty)) -> Type (defs, (e, ty))
 
@@ -270,6 +268,10 @@ let pervasive_env =
     let cenv = List.map (fun (id, (_, args), (_, ty)) -> id, (List.map types2typing args), types2typing ty) Pervasives.ctors in
     let tenv = List.map (fun (id, (_, ty)) -> id, types2typing ty) Pervasives.types in
     (venv, cenv, tenv)
+
+let rec f_pat level env = function
+    | Ast.PInt (i, p) -> TInt, PInt (i, p), []
+    | _ -> failwith "f_pat unimplemented"
 
 let rec f level env =
     let venv, cenv, tenv = env in
@@ -307,4 +309,19 @@ let rec f level env =
     | Ast.Tuple (es, p) ->
         let tys, es = Util.unzip @@ List.map (f level env) es in
         TTuple tys, Tuple (Util.zip es tys, p)
+    | Ast.Let (defs, expr) ->
+        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f level env def_expr) defs in
+        let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat level env pat) defs in
+        let ps = List.map Util.snd defs in
+        Util.zip pat_tys def_tys |> List.map (fun (pat_ty, def_ty) -> unify pat_ty def_ty) |> ignore;
+        let def_tys = List.map (gen_ty level) def_tys in
+        let def_exprs = List.map (gen level) def_exprs in
+        let pat_tys = List.map (gen_ty level) pat_tys in
+        let pats = List.map (gen_pat level) pats in
+        let venv' = List.map (fun (id, ty) -> id, gen_ty level ty) @@ List.concat pvenv in
+        let pats = Util.zip pats pat_tys in
+        let def_exprs = Util.zip def_exprs def_tys in
+        let defs = Util.zip3 pats ps def_exprs in
+        let ty, expr = f level (venv' @ venv, cenv, tenv) expr in
+        ty, Let (defs, (expr, ty))
     | _ -> failwith "unimplemented"

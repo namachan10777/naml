@@ -165,7 +165,7 @@ let rec inst_ty env =
 let rec inst_pat env = function
     | PInt (i, p) -> PInt (i, p)
     | PBool (b, p) -> PBool (b, p)
-    | PVar (id, ty, p) -> PVar (id, ty, p)
+    | PVar (id, ty, p) -> PVar (id, inst_ty env ty, p)
     | PTuple (pats, p) -> PTuple (List.map (fun (pat, ty) -> inst_pat env pat, inst_ty env ty) pats, p)
     | As (pats, ty, p) -> As (List.map (inst_pat env) pats, inst_ty env ty, p)
     | Or (pat, pats, ty, p) -> Or (inst_pat env pat, List.map (inst_pat env) pats, inst_ty env ty, p)
@@ -220,7 +220,7 @@ let rec gen_ty level =
 let rec gen_pat level = function
     | PInt (i, p) -> PInt (i, p)
     | PBool (b, p) -> PBool (b, p)
-    | PVar (id, ty, p) -> PVar (id, ty, p)
+    | PVar (id, ty, p) -> PVar (id, gen_ty level ty, p)
     | PTuple (pats, p) -> PTuple (List.map (fun (pat, ty) -> gen_pat level pat, gen_ty level ty) pats, p)
     | As (pats, ty, p) -> As (List.map (gen_pat level) pats, gen_ty level ty, p)
     | Or (pat, pats, ty, p) -> Or (gen_pat level pat, List.map (gen_pat level) pats, gen_ty level ty, p)

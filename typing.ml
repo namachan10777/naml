@@ -313,8 +313,9 @@ let rec f level env =
         let tys, es = Util.unzip @@ List.map (f level env) es in
         TTuple tys, Tuple (Util.zip es tys, p)
     | Ast.Let (defs, expr) ->
+        (* letの右辺に入る際にレベルを1段上げる。letの定義の左辺も右辺と同じものが来るのでレベルを1段上げる *)
         let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (level+1) env def_expr) defs in
-        let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat level env pat) defs in
+        let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat (level+1) env pat) defs in
         let ps = List.map Util.snd defs in
         Util.zip pat_tys def_tys |> List.map (fun (pat_ty, def_ty) -> unify pat_ty def_ty) |> ignore;
         let def_tys = List.map (gen_ty level) def_tys in

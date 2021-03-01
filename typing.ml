@@ -73,22 +73,26 @@ let fresh level =
           [!store; Array.init arr_len (fun i -> Unknown (0, i+arr_len, [i + arr_len]))] ;
       let idx = !count in
       count := 1 + !count ;
+      (* levelは初期で全て0なので正しいlevelの不明型を代入する必要がある *)
       !store.(idx) <- Unknown(level, idx, [idx]);
       TyVar idx )
     else (
       let idx = !count in
       count := 1 + !count ;
+      (* levelは初期で全て0なので正しいlevelの不明型を代入する必要がある *)
       !store.(idx) <- Unknown(level, idx, [idx]);
       TyVar idx)
 
 let rec unify t1 t2 = match t1, t2 with
     | TyVar v1, TyVar v2 -> begin match !store.(v1), !store.(v2) with
+        (* UnknownとUnknownの場合はレベルが低い方に合わせる *)
         | Unknown (level1, tag, l1), Unknown (level2, _, l2) when level1 < level2 ->
             let l = l1 @ l2 in
             List.map (fun i -> !store.(i) <- Unknown (level1, tag, l)) l |> ignore
         | Unknown (level1, _, l1), Unknown (level2, tag, l2) ->
             let l = l1 @ l2 in
             List.map (fun i -> !store.(i) <- Unknown (level2, tag, l)) l |> ignore
+        (* Justは中身の型と同一視して良い *)
         | Unknown (_, _, l1), Just (ty, l2) ->
             let l = l1 @ l2 in
             List.map (fun i -> !store.(i) <- Just (ty, l)) l |> ignore
@@ -100,6 +104,7 @@ let rec unify t1 t2 = match t1, t2 with
             let l = l1 @ l2 in
             List.map (fun i -> !store.(i) <- Just (ty1, l)) l |> ignore
     end
+    (* JustとUnknownのunifyとほぼ同じ *)
     | TyVar v, ty -> begin match !store.(v) with
         | Unknown (_, _, l) ->
             List.map (fun i -> !store.(i) <- Just (ty, l)) l |> ignore
@@ -152,6 +157,8 @@ let rec inst_ty env =
     | TStr -> TStr
     | TFun (f, arg) -> TFun (inst_ty env f, inst_ty env arg)
     | TTuple tys -> TTuple (List.map (inst_ty env) tys)
+    (* テーブルを見て未登場なら不明な型を割り付ける。
+     * 既に型があれば流用する（同じ多相タグには同じ不明な型が割り付けられる必要がある *)
     | Poly tag -> begin match Tbl.lookup_mut tag tbl with
         | Some u -> u
         | None ->
@@ -210,6 +217,10 @@ let rec gen_ty level =
     | TTuple tys -> TTuple (List.map (gen_ty level) tys)
     | Poly tag -> Poly tag
     | TyVar i -> begin match !store.(i) with
+        (* Justの場合は実質中身の型と同じとみなして良い
+         * Unknownでレベルが現在のレベルより高い場合は一般化する。
+         * 同じ不明な型には同じtagが付くようunifyしているのでtagをそのまま流用
+         * 最後にdereferenceする際に連番にする*)
         | Unknown (level', tag, _) when level' > level ->
             (Poly tag)
         | Unknown _ -> TyVar i
@@ -283,9 +294,11 @@ let rec f level env =
     | Ast.Int (i, p) -> TInt, Int (i, p)
     | Ast.Bool (b, p) -> TBool, Bool (b, p)
     | Ast.Var (id, p) ->
+        (* 定義が見つからない事はバグ(Alphaでunboundな変数は全て検出されているはず) *)
         let ty = Tbl.lookup id venv |> Tbl.expect "internal error" |> inst_ty (level, ref []) in
         ty, Var (id, ty, p)
     | Ast.Fun (arg, body, p) ->
+        (* argは変数定義として扱えるが、letと違い多相性は導入されないのでレベル据え置きで不明な型と置く *)
         let u = fresh level in
         let venv = Tbl.push arg u venv in
         let body_ty, body = f level (venv, cenv, tenv) body in
@@ -294,13 +307,16 @@ let rec f level env =
         let cond_ty, cond_e = f level env cond_e in
         let then_ty, then_e = f level env then_e in
         let else_ty, else_e = f level env else_e in
+        (* bool, 'a, 'a *)
         unify cond_ty TBool;
         unify then_ty else_ty;
         then_ty, If (cond_e, then_e, else_e, then_ty, p)
     | Ast.App (g, arg, p) ->
         let g_ty, g = f level env g in
         let arg_ty, arg = f level env arg in
+        (* arg_ty -> 'aとなるはずなのでそのように型付け *)
         unify (TFun (arg_ty, fresh level)) g_ty;
+        (* generalizeを待たず直接dereferenceして返る型を取得する *)
         begin match g_ty with
         | TyVar idx -> begin match !store.(idx) with
             | Just (TFun (_, ret_ty), _) -> ret_ty, App ((g, g_ty), (arg, arg_ty), p)
@@ -317,15 +333,20 @@ let rec f level env =
         let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (level+1) env def_expr) defs in
         let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat (level+1) env pat) defs in
         let ps = List.map Util.snd defs in
+        (* 左辺のパターンと右辺の値をunifyする *)
         Util.zip pat_tys def_tys |> List.map (fun (pat_ty, def_ty) -> unify pat_ty def_ty) |> ignore;
+        (* letを抜けるのでgeneralize *)
         let def_tys = List.map (gen_ty level) def_tys in
         let def_exprs = List.map (gen level) def_exprs in
         let pat_tys = List.map (gen_ty level) pat_tys in
         let pats = List.map (gen_pat level) pats in
+        (* generalizeしたvenvの追加分を定義 *)
         let venv' = List.map (fun (id, ty) -> id, gen_ty level ty) @@ List.concat pvenv in
+        (* exprをletで定義した型を使って型付け *)
+        let ty, expr = f level (venv' @ venv, cenv, tenv) expr in
+        (* generalize済みの定義を構築 *)
         let pats = Util.zip pats pat_tys in
         let def_exprs = Util.zip def_exprs def_tys in
         let defs = Util.zip3 pats ps def_exprs in
-        let ty, expr = f level (venv' @ venv, cenv, tenv) expr in
         ty, Let (defs, (expr, ty))
     | _ -> failwith "unimplemented"

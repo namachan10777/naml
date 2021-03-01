@@ -266,6 +266,7 @@ let rec gen level = function
     | Type (defs, (e, ty)) -> Type (defs, (e, ty))
 
 let rec types2typing = function
+    | Types.Never -> failwith "Never type only for internal implementation"
     | Types.Bool -> TBool
     | Types.Int -> TInt
     | Types.Str -> TStr
@@ -286,6 +287,47 @@ let rec f_pat level env = function
         let u = fresh level in
         u, PVar (id, u, p), [id, u]
     | _ -> failwith "f_pat unimplemented"
+
+let rec take_polytags = function
+    | TBool -> []
+    | TInt -> []
+    | TNever -> []
+    | TStr -> []
+    | TFun (f, arg) -> (take_polytags f) @ (take_polytags arg)
+    | TTuple ts -> List.concat @@ List.map take_polytags ts
+    | Poly tag -> [tag]
+    | TVariant (ts, _) -> List.concat @@ List.map take_polytags ts
+    | TyVar idx -> begin match !store.(idx) with
+        | Unknown _ -> []
+        | Just (t, _) -> take_polytags t
+    end
+
+exception DereferenceError
+
+let dereference ty =
+    let polytags = Util.uniq @@ take_polytags ty in
+    let poly_n = List.length polytags in
+    let map tag =
+        let rec f = function
+            | tag' :: _ when tag = tag' -> 0
+            | _ :: tags -> 1 + f tags
+            | [] -> failwith "internal error"
+        in f polytags
+    in
+    let rec f = function
+        | TBool -> Types.Bool
+        | TInt -> Types.Int
+        | TStr -> Types.Str
+        | TNever -> Types.Never
+        | TFun (g, arg) -> Types.Fun (f g, f arg)
+        | TTuple ts -> Types.Tuple (List.map f ts)
+        | Poly tag -> Poly (map tag)
+        | TVariant (ts, id) -> Types.Variant (List.map f ts, id)
+        | TyVar idx -> begin match !store.(idx) with
+            | Unknown _ -> raise DereferenceError
+            | Just (ty, _) -> f ty
+        end
+    in (poly_n, f ty)
 
 let rec f level env =
     let venv, cenv, tenv = env in

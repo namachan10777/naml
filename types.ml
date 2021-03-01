@@ -1,4 +1,5 @@
 type t =
+    | Never
     | Int
     | Bool
     | Str

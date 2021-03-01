@@ -92,18 +92,23 @@ let test_instantiate () =
     let i = Typing.inst_ty (1, ref []) t in
     assert_eq "not generalize 1" i (Typing.TTuple [u1; u2; u1])
 
+module T = Typing
+
 let test_typing () =
     Typing.init ();
     (match f "1" with
     | (ty, t) when ty = Typing.TInt -> ()
     | _ -> failwith "typing int failed");
-    (match f "let id x = x in id 1" with
+    (match f "let id x = x in id true; id 1" with
     | (_, Typing.Let ([(Typing.PVar (_, (Typing.TFun (Typing.Poly tag, Typing.Poly tag') as id_ty), _), id_ty'), _, _], _)) when 
         id_ty = id_ty' && tag = tag' -> ()
     |_ -> failwith "typing int failed");
     (match f "let x = 1 and y = 2 in x + y" with
     | (Typing.TInt, Typing.Let ([(Typing.PVar (_, Typing.TInt, _), _), _, _; (Typing.PVar (_, Typing.TInt, _), _), _, _], _)) -> ()
     | _ -> failwith "typing let and");
+    (match f "let make_pair = fun x -> let f = fun y -> (x, y) in f in let pair = make_pair 42 in let pair_with_true = make_pair true in let pair2 = pair_with_true 13 in pair2" with
+    | ( T.TTuple [T.TBool; T.TInt], _) -> ()
+    | _ -> failwith "typing makepair")
 
 let () =
     unify_unk_unk ();

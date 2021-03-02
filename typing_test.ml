@@ -95,6 +95,14 @@ let test_instantiate () =
 module T = Typing
 module Ty = Types
 
+let expect_unify_error expr =
+    try f expr |> ignore; failwith (Printf.sprintf "expect unify error \"%s\"" expr) with
+    | Typing.UnifyError -> ()
+
+let expect_unify_error expr =
+    try f expr |> ignore; failwith (Printf.sprintf "expect unify error \"%s\"" expr) with
+    | Typing.UnifyError -> ()
+
 let test_typing () =
     Typing.init ();
     (match f "1" with
@@ -109,7 +117,10 @@ let test_typing () =
     | _ -> failwith "typing let and");
     (match f "let make_pair = fun x -> let f = fun y -> (x, y) in f in let pair = make_pair 42 in let pair_with_true = make_pair true in let pair2 = pair_with_true 13 in pair2" with
     | ( ty, _) when (T.dereference ty) = (0, Ty.Tuple [Ty.Bool; Ty.Int]) -> ()
-    | _ -> failwith "typing makepair")
+    | _ -> failwith "typing makepair");
+    expect_unify_error "1 + true";
+    expect_unify_error "(fun x -> x) 1 2";
+    expect_unify_error "(fun f -> f 1; f true) (fun x -> x)"
 
 let () =
     unify_unk_unk ();

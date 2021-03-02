@@ -412,4 +412,24 @@ let rec f level env =
         let def_exprs = Util.zip def_exprs def_tys in
         let defs = Util.zip3 pats ps def_exprs in
         ty, Let (defs, (expr, ty))
+    | Ast.LetRec (defs, expr) ->
+        (* 先に左辺のidを登録した環境を作る *)
+        let venv' = List.map (fun (id, _, _) -> (id, fresh (level+1))) defs in
+        let ids = List.map Util.fst defs in
+        let ps = List.map Util.snd defs in
+        let env' = (venv' @ venv, cenv, tenv) in
+        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (level+1) env' def_expr) defs in
+        (* 左辺と右辺をunify *)
+        Util.zip def_tys (List.map snd venv') |> List.map (fun (id_ty, def_ty) -> unify id_ty def_ty) |> ignore;
+        (* letを抜けるのでgeneralize *)
+        let def_exprs = List.map (gen level) def_exprs in
+        let tys = List.map (gen_ty level) def_tys in
+        (* 一般化した型付け済みの環境を再構築 *)
+        let venv' = Util.zip ids tys in
+        (* letに続く式の型付け *)
+        let ty, expr = f level (venv' @ venv, cenv, tenv) expr in
+        (* ast構築 *)
+        let defs = Util.zip def_exprs tys in
+        let defs = Util.zip3 ids ps defs in
+        ty, LetRec (defs, (expr, ty))
     | _ -> failwith "unimplemented"

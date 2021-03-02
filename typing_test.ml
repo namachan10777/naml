@@ -121,6 +121,9 @@ let test_typing () =
     (match f "let (x, y) = 1, true in y, x" with
     | (ty, t) when (T.dereference ty) = (0, Ty.Tuple [Ty.Bool; Ty.Int]) -> ()
     | _ -> failwith "typing let tuple");
+    (match f "let rec fact n = if n = 0 then 1 else n * fact (n-1) in fact" with
+    | (ty, _) when (T.dereference ty) = (0, Ty.Fun (Ty.Int, Ty.Int)) -> ()
+    | (_, t) -> failwith "typing let tuple");
     expect_unify_error "1 + true";
     expect_unify_error "(fun x -> x) 1 2";
     expect_unify_error "let (x, y) = 1 in x";

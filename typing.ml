@@ -432,4 +432,13 @@ let rec f level env =
         let defs = Util.zip def_exprs tys in
         let defs = Util.zip3 ids ps defs in
         ty, LetRec (defs, (expr, ty))
+    | Ast.CtorApp (cid, p, args) ->
+        (* Ctorの型をtblでインスタンス化 *)
+        let inst_tbl = ref [] in
+        let arg_tys', ty = Tbl.lookup cid cenv |> Tbl.expect "internal error" in
+        let ty = inst_ty (level, inst_tbl) ty in
+        let arg_tys' = List.map (inst_ty (level, inst_tbl)) arg_tys' in
+        let arg_tys, args = Util.unzip @@ List.map (f level env) args in
+        ignore @@ List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') @@ Util.zip arg_tys' arg_tys;
+        ty, CtorApp (cid, p, (Util.zip args arg_tys), ty)
     | _ -> failwith "unimplemented"

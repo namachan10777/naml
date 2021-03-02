@@ -1,4 +1,7 @@
 # NAML
+
+[![CircleCI](https://circleci.com/gh/namachan10777/naml.svg?style=svg)](https://circleci.com/gh/namachan10777/naml)
+
 A OCaml subset.
 
 # Unlicensed

@@ -1,6 +1,6 @@
 # NAML
 
-[![CircleCI](https://circleci.com/gh/namachan10777/naml.svg?style=svg)](https://circleci.com/gh/namachan10777/naml)
+[![CircleCI](https://circleci.com/gh/namachan10777/naml.svg?style=shield)](https://circleci.com/gh/namachan10777/naml)
 
 A OCaml subset.
 

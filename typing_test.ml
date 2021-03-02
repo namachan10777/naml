@@ -118,8 +118,13 @@ let test_typing () =
     (match f "let make_pair = fun x -> let f = fun y -> (x, y) in f in let pair = make_pair 42 in let pair_with_true = make_pair true in let pair2 = pair_with_true 13 in pair2" with
     | ( ty, _) when (T.dereference ty) = (0, Ty.Tuple [Ty.Bool; Ty.Int]) -> ()
     | _ -> failwith "typing makepair");
+    (match f "let (x, y) = 1, true in y, x" with
+    | (ty, t) when (T.dereference ty) = (0, Ty.Tuple [Ty.Bool; Ty.Int]) -> ()
+    | _ -> failwith "typing let tuple");
     expect_unify_error "1 + true";
     expect_unify_error "(fun x -> x) 1 2";
+    expect_unify_error "let (x, y) = 1 in x";
+    expect_unify_error "let (1, 2) = (1, true) in 1";
     expect_unify_error "(fun f -> f 1; f true) (fun x -> x)"
 
 let () =

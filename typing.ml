@@ -277,16 +277,37 @@ let rec types2typing = function
 
 let pervasive_env =
     let venv = List.map (fun (id, (_, ty)) -> id, types2typing ty) Pervasives.vars in
-    let cenv = List.map (fun (id, (_, args), (_, ty)) -> id, (List.map types2typing args), types2typing ty) Pervasives.ctors in
+    let cenv = List.map (fun (id, (_, args), (_, ty)) -> id, (List.map types2typing args, types2typing ty)) Pervasives.ctors in
     let tenv = List.map (fun (id, (_, ty)) -> id, types2typing ty) Pervasives.types in
     (venv, cenv, tenv)
 
 let rec f_pat level env = function
     | Ast.PInt (i, p) -> TInt, PInt (i, p), []
+    | Ast.PBool (b, p) -> TBool, PBool (b, p), []
+    | Ast.PTuple (ts, p) ->
+        let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) ts in
+        (TTuple tys, PTuple (Util.zip pats tys, p), List.concat penvs)
+    | Ast.As (pats, p) ->
+        let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) pats in
+        let ty = List.hd tys in
+        List.map (fun ty' -> unify ty ty') (List.tl tys) |> ignore;
+        (ty, As (pats, ty, p), List.concat penvs)
+    | Ast.Or (pat, pats, p) ->
+        let ty, pat, penv = f_pat level env pat in
+        let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) pats in
+        List.map (fun ty' -> unify ty ty') tys |> ignore;
+        ty, Or (pat, pats, ty, p), penv @ List.concat penvs
     | Ast.PVar (id, p) ->
         let u = fresh level in
         u, PVar (id, u, p), [id, u]
-    | _ -> failwith "f_pat unimplemented"
+    | Ast.PCtorApp (cid, args, p) ->
+        let arg_tys, ty = Tbl.lookup cid env |> Tbl.expect "internal error" in
+        let inst_tbl = ref [] in
+        let arg_tys = List.map (inst_ty (level, inst_tbl)) arg_tys in
+        let ty = inst_ty (level, inst_tbl) ty in
+        let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) args in
+        ignore @@ List.map (fun (ty, ty') -> unify ty ty') @@ Util.zip arg_tys tys;
+        ty, PCtorApp (cid, Util.zip pats tys, ty, p), List.concat penvs
 
 let rec take_polytags = function
     | TBool -> []
@@ -373,7 +394,7 @@ let rec f level env =
     | Ast.Let (defs, expr) ->
         (* letの右辺に入る際にレベルを1段上げる。letの定義の左辺も右辺と同じものが来るのでレベルを1段上げる *)
         let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (level+1) env def_expr) defs in
-        let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat (level+1) env pat) defs in
+        let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat (level+1) cenv pat) defs in
         let ps = List.map Util.snd defs in
         (* 左辺のパターンと右辺の値をunifyする *)
         Util.zip pat_tys def_tys |> List.map (fun (pat_ty, def_ty) -> unify pat_ty def_ty) |> ignore;

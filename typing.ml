@@ -441,4 +441,23 @@ let rec f level env =
         let arg_tys, args = Util.unzip @@ List.map (f level env) args in
         ignore @@ List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') @@ Util.zip arg_tys' arg_tys;
         ty, CtorApp (cid, p, (Util.zip args arg_tys), ty)
+    | Ast.Match (target, arms) ->
+        (* マッチ対象の型付け *)
+        let target_ty, target = f level env target in
+        let pats, ps, guards, exprs = arms |> List.map (fun (pat, p, guard, expr) ->
+            (* 先にパターンを型付けし、パターンによって追加される変数を取得 *)
+            let pat_ty, pat, penv = f_pat level cenv pat in
+            (* パターンによって拡張された環境でexprとguardを型付け *)
+            let ty, expr = f level (penv @ venv, cenv, tenv) expr in
+            let guard_ty, guard = f level (penv @ venv, cenv, tenv) guard in
+            (* guardの型はboolとなる *)
+            unify guard_ty TBool;
+            (pat, pat_ty), p, guard, (expr, ty)
+        ) |> Util.unzip4 in
+        let pat_tys = List.map snd pats in
+        let tys = List.map snd exprs in
+        (* 全てのアームでパターンの型と右辺の型について単一化 *)
+        ignore @@ List.map (fun pat_ty -> unify (List.hd pat_tys) pat_ty) (List.tl pat_tys);
+        ignore @@ List.map (fun ty -> unify (List.hd tys) ty) (List.tl tys);
+        (List.hd tys), Match ((target, target_ty), Util.zip4 pats ps guards exprs)
     | _ -> failwith "unimplemented"

@@ -41,7 +41,7 @@ util.cmx: util.ml
 tbl.cmx: tbl.ml
 	$(OCAMLOPT) $< -c
 
-parser.cmx: parser.ml id.ml lex.ml
+parser.cmx: parser.ml id.cmx lex.cmx
 	$(OCAMLOPT) $< -c
 parser_test.cmx: parser_test.ml util.cmx parser.cmx
 	$(OCAMLOPT) $< -c

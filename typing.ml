@@ -514,6 +514,7 @@ let rec f level env =
         (* 全てのアームでパターンの型と右辺の型について単一化 *)
         ignore @@ List.map (fun pat_ty -> unify (List.hd pat_tys) pat_ty) (List.tl pat_tys);
         ignore @@ List.map (fun ty -> unify (List.hd tys) ty) (List.tl tys);
+        unify (List.hd pat_tys) target_ty;
         (List.hd tys), Match ((target, target_ty), Util.zip4 pats ps guards exprs)
     | Ast.Type (defs, expr) ->
         let tydefs, ctors = canonicalize_type_defs tenv @@ (List.map (fun (id, p, targs, tydef) -> (id, p, List.map fst targs, tydef))) defs in

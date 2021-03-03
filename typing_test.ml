@@ -1,5 +1,5 @@
 let f s = s |> Lex.f "test.ml" |> Parser.parse |> Ast.of_t |> Alpha.f Alpha.pervasive_env |> Typing.f 0 Typing.pervasive_env
-let f_s s = Ast.f "test.ml" s |> Alpha.f Alpha.pervasive_env
+let f_s s = Ast.f "test.ml" s |> Alpha.f Alpha.pervasive_env |> Typing.f 0 Typing.pervasive_env
 
 let assert_eq name a b =
     if a = b
@@ -126,6 +126,12 @@ let test_typing () =
     | (_, t) -> failwith "typing let tuple");
     (match f "let f x = match x with  (1, y) -> 0 | (x, y) -> x in f" with
     | (_, Let ([(_, ty), _, _], _)) when (T.dereference ty) = (1, Ty.Fun (Ty.Tuple [Ty.Int; Ty.Poly 0], Ty.Int)) -> ()
+    | (_, t) -> failwith "typing let tuple");
+    let list_id = Id.lookup ["list"] (List.map fst Pervasives.types) in
+    (match f_s "let rec map f l = match l with x :: xs -> f x :: map f xs | [] -> []" with
+    | (_, T.LetRec([_, _, (_, ty)], _))
+        when (T.dereference ty)
+            = (2, Ty.Fun (Ty.Fun (Ty.Poly 0, Ty.Poly 1), Ty.Fun (Ty.Variant ([Ty.Poly 0], list_id), Ty.Variant ([Ty.Poly 1], list_id)))) -> ()
     | (_, t) -> failwith "typing let tuple");
     expect_unify_error "1 + true";
     expect_unify_error "(fun x -> x) 1 2";

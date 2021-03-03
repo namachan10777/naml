@@ -300,13 +300,30 @@ let rec f_pat level env = function
         let u = fresh level in
         u, PVar (id, u, p), [id, u]
     | Ast.PCtorApp (cid, args, p) ->
-        let arg_tys, ty = Tbl.lookup cid env |> Tbl.expect "internal error" in
+        let param_tys, ty = Tbl.lookup cid env |> Tbl.expect "internal error" in
         let inst_tbl = ref [] in
-        let arg_tys = List.map (inst_ty (level, inst_tbl)) arg_tys in
+        let param_tys = List.map (inst_ty (level, inst_tbl)) param_tys in
         let ty = inst_ty (level, inst_tbl) ty in
         let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) args in
-        ignore @@ List.map (fun (ty, ty') -> unify ty ty') @@ Util.zip arg_tys tys;
-        ty, PCtorApp (cid, Util.zip pats tys, ty, p), List.concat penvs
+        let arg_check param_tys arg_tys =
+            if (List.length param_tys) <> (List.length arg_tys)
+            then failwith @@ Printf.sprintf "%s number of arguments is differ (pattern)" (Lex.show_pos_t p)
+            else
+                ignore @@ List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') @@ Util.zip arg_tys param_tys
+        in
+        begin match param_tys, tys with
+        (* 現状の仕様ではタプルのリテラルが来た場合は複数引数かタプルとしての単一引数かで整合性がある方に合わせる必要がある
+         * Astでタプルリテラルは一旦全て複数引数として解釈しているのでコンストラクタの引数だけ見れば良い*)
+        (* コンストラクタがタプルを取る場合
+         * 引数の数とタプルの要素数が同じならタプルをその場で生成し適用していると解釈する *)
+        | [TTuple param_tys], arg_tys when (List.length param_tys) = (List.length arg_tys) ->
+            arg_check param_tys arg_tys;
+            ty, PCtorApp (cid, [PTuple (Util.zip pats tys, p), TTuple tys], ty, p), List.concat penvs
+        (* それ以外の場合はそのまま *)
+        | param_tys, arg_tys ->
+            arg_check param_tys arg_tys; 
+            ty, PCtorApp (cid, (Util.zip pats tys), ty, p), List.concat penvs
+        end
 
 let rec take_polytags = function
     | TBool -> []
@@ -490,12 +507,29 @@ let rec f level env =
     | Ast.CtorApp (cid, p, args) ->
         (* Ctorの型をtblでインスタンス化 *)
         let inst_tbl = ref [] in
-        let arg_tys', ty = Tbl.lookup cid cenv |> Tbl.expect "internal error" in
+        let param_tys, ty = Tbl.lookup cid cenv |> Tbl.expect "internal error" in
         let ty = inst_ty (level, inst_tbl) ty in
-        let arg_tys' = List.map (inst_ty (level, inst_tbl)) arg_tys' in
+        let param_tys = List.map (inst_ty (level, inst_tbl)) param_tys in
         let arg_tys, args = Util.unzip @@ List.map (f level env) args in
-        ignore @@ List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') @@ Util.zip arg_tys' arg_tys;
-        ty, CtorApp (cid, p, (Util.zip args arg_tys), ty)
+        let arg_check arg_tys param_tys =
+            if (List.length arg_tys) <> (List.length param_tys)
+            then failwith @@ Printf.sprintf "%s number of arguments is differ" (Lex.show_pos_t p)
+            else
+                ignore @@ List.map (fun (arg_ty, arg_ty') -> unify arg_ty arg_ty') @@ Util.zip param_tys arg_tys
+        in
+        begin match param_tys, arg_tys with
+        (* 現状の仕様ではタプルのリテラルが来た場合は複数引数かタプルとしての単一引数かで整合性がある方に合わせる必要がある
+         * Astでタプルリテラルは一旦全て複数引数として解釈しているのでコンストラクタの引数だけ見れば良い*)
+        (* コンストラクタがタプルを取る場合
+         * 引数の数とタプルの要素数が同じならタプルをその場で生成し適用していると解釈する *)
+        | [TTuple param_tys], arg_tys when (List.length arg_tys) = (List.length param_tys) ->
+            arg_check arg_tys param_tys;
+            ty, CtorApp (cid, p, [Tuple (Util.zip args arg_tys, p), TTuple arg_tys], ty)
+        (* それ以外の場合はそのまま *)
+        | param_tys, arg_tys ->
+            arg_check arg_tys param_tys; 
+            ty, CtorApp (cid, p, (Util.zip args arg_tys), ty)
+        end
     | Ast.Match (target, arms) ->
         (* マッチ対象の型付け *)
         let target_ty, target = f level env target in

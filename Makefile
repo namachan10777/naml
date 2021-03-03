@@ -1,4 +1,4 @@
-OCAMLOPT=ocamlfind ocamlopt -package ppx_deriving.show
+OCAMLOPT=ocamlfind ocamlopt -g -package ppx_deriving.show
 
 .PHONY: all
 all: test 1st

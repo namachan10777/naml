@@ -70,9 +70,11 @@ let rec of_t = function
     | Parser.Bool (i, p) -> Bool (i, p)
     | Parser.Var (i, p) -> Var (i, p)
     | Parser.Ctor (i, p) -> CtorApp (i, p, [])
-    | Parser.App (Parser.Ctor (n, _), Parser.Tuple (args, _), p) ->
-        CtorApp (n, p, List.map of_t args)
-    | Parser.App (Parser.Ctor (n, _), t, p) -> CtorApp (n, p, [of_t t])
+    | Parser.App (Parser.Ctor (n, _), arg, p) ->
+        begin match of_t arg with
+        | Tuple (args, _) -> CtorApp (n, p, args)
+        | arg -> CtorApp (n, p, [arg])
+        end
     | Parser.Emp p -> CtorApp (Id.lookup ["[]"] Pervasives.names, p, [])
     | Parser.Add (lhr, rhr, p) -> op "+" lhr rhr p
     | Parser.Sub (lhr, rhr, p) -> op "-" lhr rhr p

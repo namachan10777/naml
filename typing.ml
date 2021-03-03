@@ -83,6 +83,8 @@ let fresh level =
       !store.(idx) <- Unknown(level, idx, [idx]);
       TyVar idx)
 
+(* TODO: 同じ不明な型が含まれていないかチェック
+ * ?1 -> ?1 と?1をunifyすると大変な事になる *)
 let rec unify t1 t2 = match t1, t2 with
     | TyVar v1, TyVar v2 -> begin match !store.(v1), !store.(v2) with
         (* UnknownとUnknownの場合はレベルが低い方に合わせる *)

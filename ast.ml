@@ -56,9 +56,11 @@ let rec of_pat_t = function
     | Parser.PTuple (tp, p) -> PTuple (List.map of_pat_t tp, p)
     | Parser.PParen p -> of_pat_t p
     | Parser.PCtor (id, p) -> PCtorApp (id, [], p)
-    | Parser.PCtorApp (id, Parser.PParen (Parser.PTuple (ps, _)), p) ->
-        PCtorApp (id, List.map of_pat_t ps, p)
-    | Parser.PCtorApp (id, pat, p) -> PCtorApp (id, [of_pat_t pat], p)
+    | Parser.PCtorApp (id, pat, p) ->
+        begin match of_pat_t pat with
+        | PTuple (ps, _) -> PCtorApp (id, ps, p)
+        | pat -> PCtorApp (id, [pat], p)
+        end
     | Parser.PAs (pats, p) -> As (List.map of_pat_t pats, p)
     | Parser.POr (pat, pats, p) -> Or (of_pat_t pat, List.map of_pat_t pats, p)
 

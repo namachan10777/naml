@@ -1,7 +1,7 @@
 OCAMLOPT=ocamlfind ocamlopt -package ppx_deriving.show
 
 .PHONY: all
-all: test
+all: test 1st
 
 .PHONY: clean
 clean:
@@ -69,4 +69,9 @@ typing.cmx: typing.ml ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cm
 typing_test.cmx: typing_test.ml typing.cmx 
 	$(OCAMLOPT) $< -c
 typing_test: id.cmx util.cmx tbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx typing.cmx typing_test.cmx
+	$(OCAMLOPT) $^ -o $@
+
+main.cmx: main.ml typing.cmx alpha.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx
+	$(OCAMLOPT) $< -c
+1st: id.cmx lex.cmx util.cmx parser.cmx tbl.cmx types.cmx pervasives.cmx ast.cmx alpha.cmx typing.cmx main.cmx
 	$(OCAMLOPT) $^ -o $@

@@ -49,7 +49,7 @@ let rec of_pat_t = function
     | Parser.PEmp p -> PCtorApp (Id.lookup ["[]"] Pervasives.names, [], p)
     | Parser.PCons (lhr, rhr, p) ->
         PCtorApp
-          (Id.lookup ["[]"] Pervasives.names, [of_pat_t lhr; of_pat_t rhr], p)
+          (Id.lookup ["::"] Pervasives.names, [of_pat_t lhr; of_pat_t rhr], p)
     | Parser.PInt (i, p) -> PInt (i, p)
     | Parser.PBool (b, p) -> PBool (b, p)
     | Parser.PVar (id, p) -> PVar (id, p)

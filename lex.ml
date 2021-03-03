@@ -1,9 +1,9 @@
 type pos_t = string * int * int * int
 [@@deriving show]
 
-let show_pos_t (fname, _, l, c) = Printf.sprintf "%s:%d:%d" fname l c
+let show_pos_t (fname, l, c, _) = Printf.sprintf "%s:%d:%d" fname l c
 
-let string_of_pos_t (file, col, line, _) =
+let string_of_pos_t (file, line, col, _) =
     Printf.sprintf "%s:%d:%d" file col line
 
 let nowhere = ("", -1, -1, -1)

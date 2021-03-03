@@ -53,7 +53,7 @@ type t =
     | Fun of (Id.t * ty) * (t * ty) * Lex.pos_t
     | Match of (t * ty) * ((pat_t * ty) * Lex.pos_t * t * (t * ty)) list
     | App of (t * ty) * (t * ty) * Lex.pos_t
-    | Type of (Id.t * Lex.pos_t * (string * Lex.pos_t) list * tydef_t) list * (t * ty)
+    | Type of (Id.t * Lex.pos_t * int * Types.t) list * (t * ty)
 [@@deriving show]
 
 let store = ref @@ Array.init 2 (fun i -> Unknown (0, i, [i]))
@@ -278,8 +278,7 @@ let rec types2typing = function
 let pervasive_env =
     let venv = List.map (fun (id, (_, ty)) -> id, types2typing ty) Pervasives.vars in
     let cenv = List.map (fun (id, (_, args), (_, ty)) -> id, (List.map types2typing args, types2typing ty)) Pervasives.ctors in
-    let tenv = List.map (fun (id, (_, ty)) -> id, types2typing ty) Pervasives.types in
-    (venv, cenv, tenv)
+    (venv, cenv, Pervasives.types)
 
 let rec f_pat level env = function
     | Ast.PInt (i, p) -> TInt, PInt (i, p), []
@@ -349,6 +348,62 @@ let dereference ty =
             | Just (ty, _) -> f ty
         end
     in (poly_n, f ty)
+
+type canonicalize_type_defs_input_t = (Id.t * Lex.pos_t * string list * Ast.tydef_t) list
+let canonicalize_type_defs tenv (defs: canonicalize_type_defs_input_t) =
+    let rec lookup_from_codef id =
+        let rec f = function
+            | (id', _, _, _) as def :: _ when id = id' -> Some def
+            | _ :: remain -> f remain
+            | [] -> None
+        in
+        f defs
+    in
+    let rec reassoc_tvar arg_env = function
+        | Types.Int -> Types.Int
+        | Types.Bool -> Types.Str
+        | Types.Str -> Types.Str
+        | Types.Poly i -> List.nth arg_env i
+        | Types.Never -> failwith "unreachable!"
+        | Types.Fun (arg, ret) -> Types.Fun (reassoc_tvar arg_env arg, reassoc_tvar arg_env ret)
+        | Types.Tuple ts -> Types.Tuple (List.map (reassoc_tvar arg_env) ts)
+        | Types.Variant (args, id) -> Types.Variant (List.map (reassoc_tvar arg_env) args, id)
+    in
+    let rec canonicalize_ty arg_env = function
+        | Ast.TInt _ -> Types.Int
+        | Ast.TBool _ -> Types.Bool
+        | Ast.TString _ -> Types.Str
+        | Ast.TVar (arg, p) -> Tbl.lookup arg arg_env |> Tbl.expect (Printf.sprintf "%s unknown type variable '%s" (Lex.show_pos_t p) arg)
+        | Ast.TTuple (tys, _) -> Types.Tuple (List.map (canonicalize_ty arg_env) tys)
+        | Ast.TApp (ty_args, tid, _) ->
+            let ty_args = List.map (canonicalize_ty arg_env) ty_args in
+            begin match Tbl.lookup tid tenv with
+            | Some (polyness, ty) ->
+                if polyness = List.length ty_args
+                then reassoc_tvar ty_args ty
+                else failwith "polyness unmatch"
+            | None -> begin match lookup_from_codef tid with
+                | Some (_, _, targs', Ast.Alias ty) ->
+                    if (List.length targs') = (List.length ty_args)
+                    then canonicalize_ty (Util.zip targs' ty_args) ty
+                    else failwith "polyness unmatch"
+                | Some (_, _, targs', Ast.Variant _) ->
+                    if (List.length targs') = (List.length ty_args)
+                    then Types.Variant (ty_args, tid)
+                    else failwith "polyness unmatch"
+                | None -> failwith "internal error"
+            end
+        end
+    and canonicalize_type_def = function
+        | id, p, targs, Ast.Alias ty -> (id, ((List.length targs), canonicalize_ty (List.mapi (fun i arg -> (arg, Types.Poly i)) targs) ty)), []
+        | id, p, targs, Ast.Variant arms ->
+            let arg_env = List.mapi (fun i arg -> (arg, Types.Poly i)) targs in
+            let ty = Types.Variant (List.map snd arg_env, id) in
+            let ctors = List.map (fun (id, p, tys) -> (id, (List.map (fun ty -> ty |> canonicalize_ty arg_env |> types2typing) tys, types2typing ty))) arms in
+            (id, ((List.length targs), ty)), ctors
+    in
+    let tydefs, ctors = Util.unzip @@ List.map canonicalize_type_def defs in
+    tydefs, List.concat ctors
 
 let rec f level env =
     let venv, cenv, tenv = env in
@@ -460,4 +515,10 @@ let rec f level env =
         ignore @@ List.map (fun pat_ty -> unify (List.hd pat_tys) pat_ty) (List.tl pat_tys);
         ignore @@ List.map (fun ty -> unify (List.hd tys) ty) (List.tl tys);
         (List.hd tys), Match ((target, target_ty), Util.zip4 pats ps guards exprs)
-    | _ -> failwith "unimplemented"
+    | Ast.Type (defs, expr) ->
+        let tydefs, ctors = canonicalize_type_defs tenv @@ (List.map (fun (id, p, targs, tydef) -> (id, p, List.map fst targs, tydef))) defs in
+        let env = (venv, ctors @ cenv, tydefs @ tenv) in
+        let ty, expr = f level env expr in
+        let ps = List.map (fun (_, p, _, _) -> p) defs in
+        let defs = List.map (fun ((id, (polyness, ty)), p) -> (id, p, polyness, ty)) @@ Util.zip tydefs ps in
+        ty, Type (defs, (expr, ty))

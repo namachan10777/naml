@@ -145,6 +145,7 @@ let rec f env =
             let def_exps = defs |> List.map Util.trd |> List.map (f (venv, cenv, tenv)) in
             let defs = Util.zip3 ids (List.map Util.snd defs) def_exps in
             Ast.LetRec (defs, f (enable_all venv, cenv, tenv) e)
+    (* TODO: 型変数の重複チェック & 右辺に左辺に無い型変数が現れないかチェック *)
     | Ast.Type (defs, expr) ->
         let tids = List.map (fun (tid, _, _, _) -> tid) defs in
         let tenv = List.fold_left (fun tbl tid -> Tbl.push (Id.name tid) tid tbl) tenv tids in

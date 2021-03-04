@@ -133,6 +133,9 @@ let test_typing () =
         when (T.dereference ty)
             = (2, Ty.Fun (Ty.Fun (Ty.Poly 0, Ty.Poly 1), Ty.Fun (Ty.Variant ([Ty.Poly 0], list_id), Ty.Variant ([Ty.Poly 1], list_id)))) -> ()
     | (_, t) -> failwith "typing let tuple");
+    (match f_s "type ('a, 'b) t1 = 'a * 'b and 'b t2 = A of ('b, int) t1 let x = A (1, 2)" with
+    | (_, T.Let([_, _, (_, T.TVariant ([T.TInt], (_, "t2", _)))], _)) -> ()
+    | (_, t) -> failwith "typing let tuple");
     expect_unify_error "1 + true";
     expect_unify_error "(fun x -> x) 1 2";
     expect_unify_error "let (x, y) = 1 in x";

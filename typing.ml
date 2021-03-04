@@ -35,11 +35,6 @@ type pat_t =
     | PCtorApp of Id.t * (pat_t * ty) list * ty * Lex.pos_t
 [@@deriving show]
 
-type tydef_t =
-    | Variant of (Id.t * Lex.pos_t * Types.t list) list
-    | Alias of Types.t
-[@@deriving show]
-
 type t =
     | Never
     | Int of int * Lex.pos_t
@@ -53,7 +48,6 @@ type t =
     | Fun of (Id.t * ty) * (t * ty) * Lex.pos_t
     | Match of (t * ty) * ((pat_t * ty) * Lex.pos_t * t * (t * ty)) list
     | App of (t * ty) * (t * ty) * Lex.pos_t
-    | Type of (Id.t * Lex.pos_t * int * Types.t) list * (t * ty)
 [@@deriving show]
 
 let store = ref @@ Array.init 2 (fun i -> Unknown (0, i, [i]))
@@ -207,7 +201,6 @@ let rec inst env = function
             (inst env target, inst_ty env target_ty),
             List.map (fun ((pat, pat_ty), p, guard, (e, ty)) -> ((inst_pat env pat, inst_ty env pat_ty), p, inst env guard, (inst env e, inst_ty env ty))) arms
         )
-    | Type (defs, (e, ty)) -> Type (defs, (e, ty))
 
 let rec gen_ty level =
     function
@@ -265,7 +258,6 @@ let rec gen level = function
             (gen level target, gen_ty level target_ty),
             List.map (fun ((pat, pat_ty), p, guard, (e, ty)) -> ((gen_pat level pat, gen_ty level pat_ty), p, gen level guard, (gen level e, gen_ty level ty))) arms
         )
-    | Type (defs, (e, ty)) -> Type (defs, (e, ty))
 
 let rec types2typing = function
     | Types.Never -> failwith "Never type only for internal implementation"
@@ -556,6 +548,4 @@ let rec f level env =
         let tydefs, ctors = canonicalize_type_defs tenv @@ (List.map (fun (id, p, targs, tydef) -> (id, p, List.map fst targs, tydef))) defs in
         let env = (venv, ctors @ cenv, tydefs @ tenv) in
         let ty, expr = f level env expr in
-        let ps = List.map (fun (_, p, _, _) -> p) defs in
-        let defs = List.map (fun ((id, (polyness, ty)), p) -> (id, p, polyness, ty)) @@ Util.zip tydefs ps in
-        ty, Type (defs, (expr, ty))
+        ty, expr

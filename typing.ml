@@ -46,7 +46,7 @@ type t =
     | Let of ((pat_t * ty) * Lex.pos_t * (t * ty)) list * (t * ty)
     | LetRec of (Id.t * Lex.pos_t * (t * ty)) list * (t * ty)
     | Fun of (Id.t * ty) * (t * ty) * Lex.pos_t
-    | Match of (t * ty) * ((pat_t * ty) * Lex.pos_t * t * (t * ty)) list
+    | Match of (t * ty) * ((pat_t * ty) * Lex.pos_t * t * t) list * ty
     | App of (t * ty) * (t * ty) * Lex.pos_t
 [@@deriving show]
 
@@ -196,10 +196,11 @@ let rec inst env = function
             List.map (fun (id, p, (def, def_ty)) -> id, p, (inst env def, inst_ty env def_ty)) defs,
             (inst env e, inst_ty env ty)
         )
-    | Match ((target, target_ty), arms) ->
+    | Match ((target, target_ty), arms, ty) ->
         Match (
             (inst env target, inst_ty env target_ty),
-            List.map (fun ((pat, pat_ty), p, guard, (e, ty)) -> ((inst_pat env pat, inst_ty env pat_ty), p, inst env guard, (inst env e, inst_ty env ty))) arms
+            List.map (fun ((pat, pat_ty), p, guard, e) -> ((inst_pat env pat, inst_ty env pat_ty), p, inst env guard, inst env e)) arms,
+            inst_ty env ty
         )
 
 let rec gen_ty level =
@@ -253,10 +254,11 @@ let rec gen level = function
             List.map (fun (id, p, (def, def_ty)) -> id, p, (gen level def, gen_ty level def_ty)) defs,
             (gen level e, gen_ty level ty)
         )
-    | Match ((target, target_ty), arms) ->
+    | Match ((target, target_ty), arms, ty) ->
         Match (
             (gen level target, gen_ty level target_ty),
-            List.map (fun ((pat, pat_ty), p, guard, (e, ty)) -> ((gen_pat level pat, gen_ty level pat_ty), p, gen level guard, (gen level e, gen_ty level ty))) arms
+            List.map (fun ((pat, pat_ty), p, guard, e) -> ((gen_pat level pat, gen_ty level pat_ty), p, gen level guard, gen level e)) arms,
+            gen_ty level ty
         )
 
 let rec types2typing = function
@@ -539,11 +541,12 @@ let rec f level env =
         ) |> Util.unzip4 in
         let pat_tys = List.map snd pats in
         let tys = List.map snd exprs in
+        let exprs = List.map fst exprs in
         (* 全てのアームでパターンの型と右辺の型について単一化 *)
         ignore @@ List.map (fun pat_ty -> unify (List.hd pat_tys) pat_ty) (List.tl pat_tys);
         ignore @@ List.map (fun ty -> unify (List.hd tys) ty) (List.tl tys);
         unify (List.hd pat_tys) target_ty;
-        (List.hd tys), Match ((target, target_ty), Util.zip4 pats ps guards exprs)
+        (List.hd tys), Match ((target, target_ty), Util.zip4 pats ps guards exprs, List.hd tys)
     | Ast.Type (defs, expr) ->
         let tydefs, ctors = canonicalize_type_defs tenv @@ (List.map (fun (id, p, targs, tydef) -> (id, p, List.map fst targs, tydef))) defs in
         let env = (venv, ctors @ cenv, tydefs @ tenv) in

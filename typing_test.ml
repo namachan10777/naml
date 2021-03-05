@@ -136,6 +136,9 @@ let test_typing () =
     (match f_s "type ('a, 'b) t1 = 'a * 'b and 'b t2 = A of ('b, int) t1 let x = A (1, 2)" with
     | (_, T.Let([_, _, (_, T.TVariant ([T.TInt], (_, "t2", _)))], _)) -> ()
     | (_, t) -> failwith "typing let tuple");
+    (match f_s "type ('a, 'b) t1 = 'a * 'b type 'b t2 = A of ('b, int) t1 let x = A (1, 2)" with
+    | (_, T.Let([_, _, (_, T.TVariant ([T.TInt], (_, "t2", _)))], _)) -> ()
+    | (_, t) -> failwith "typing let tuple");
     expect_unify_error "1 + true";
     expect_unify_error "(fun x -> x) 1 2";
     expect_unify_error "let (x, y) = 1 in x";

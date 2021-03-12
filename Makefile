@@ -15,12 +15,13 @@ clean:
 	rm -f *.pp.ml
 
 .PHONY: test
-test: lex_test id_test parser_test typing_test alpha_test
+test: lex_test id_test parser_test typing_test alpha_test closure_test
 	./lex_test
 	./id_test
 	./parser_test
 	./alpha_test
 	./typing_test
+	./closure_test
 
 lex.cmx: lex.ml
 	$(OCAMLOPT) $< -c
@@ -69,6 +70,13 @@ typing.cmx: typing.ml ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cm
 typing_test.cmx: typing_test.ml typing.cmx 
 	$(OCAMLOPT) $< -c
 typing_test: id.cmx util.cmx tbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx typing.cmx typing_test.cmx
+	$(OCAMLOPT) $^ -o $@
+
+closure.cmx: closure.ml typing.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx
+	$(OCAMLOPT) $< -c
+closure_test.cmx: closure_test.ml closure.cmx
+	$(OCAMLOPT) $< -c
+closure_test: id.cmx util.cmx tbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx typing.cmx closure.cmx closure_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
 main.cmx: main.ml typing.cmx alpha.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx

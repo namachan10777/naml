@@ -418,6 +418,7 @@ let canonicalize_type_defs tenv (defs: canonicalize_type_defs_input_t) =
     let tydefs, ctors = Util.unzip @@ List.map canonicalize_type_def defs in
     tydefs, List.concat ctors
 
+(* TODO 値制限の導入 *)
 let rec f level env =
     let venv, cenv, tenv = env in
     function

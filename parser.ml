@@ -171,7 +171,6 @@ let rec show =
         ^ "\n  " ^ show e
     | Type (defs, e) ->
         let show_args_t = List.fold_left (fun acc (a, _) -> acc ^ " " ^ a) "" in
-        (* TODO *)
         let lets =
             List.map
               (fun (id, _, args, def) ->
@@ -383,7 +382,6 @@ let rec parse_ty_variant = function
         (Alias ty, p, remain)
 
 let rec parse_pat input =
-    (* TODO or *)
     match parse_pat_or input with
     | pat, p, (Lex.As, _) :: rhr -> (
       match parse_pat rhr with
@@ -930,7 +928,6 @@ let parse input =
     | ast, _, [(Lex.Eof, _)] -> ast
     | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "top")
 
-(* TODO typeをtype_andsを使って省略 *)
 let rec parse_stmts = function
     | (Lex.Type, _) :: (Lex.LIdent name, p) :: (Lex.Eq, _) :: remain ->
         let defs, remain = parse_type_body p name [] remain in

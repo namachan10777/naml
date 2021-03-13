@@ -631,29 +631,20 @@ and parse_and input =
       | rhr, _, remain -> (And (lhr, rhr, p_op), p, remain) )
     | x -> x
 
-(* TODO eqとneqはnonassoc *)
 and parse_eq input =
     match parse_cons input with
     | lhr, p, (Lex.Eq, p_op) :: rhr when succ_lets rhr ->
         let rhr, _, remain = parse_expr rhr in
         (Eq (lhr, rhr, p_op), p, remain)
-    | lhr, p, (Lex.Eq, p_op) :: rhr -> (
-      match parse_eq rhr with
-      | Eq (rhrl, rhrr, p_op'), _, remain ->
-          (Eq (Eq (lhr, rhrl, p_op), rhrr, p_op'), p, remain)
-      | Neq (rhrl, rhrr, p_op'), _, remain ->
-          (Neq (Eq (lhr, rhrl, p_op), rhrr, p_op'), p, remain)
-      | rhr, _, remain -> (Eq (lhr, rhr, p_op), p, remain) )
+    | lhr, p, (Lex.Eq, p_op) :: rhr ->
+        let rhr, _, remain = parse_cons rhr in
+        (Eq (lhr, rhr, p_op), p, remain)
     | lhr, p, (Lex.Neq, p_op) :: rhr when succ_lets rhr ->
         let rhr, _, remain = parse_expr rhr in
         (Neq (lhr, rhr, p_op), p, remain)
-    | lhr, p, (Lex.Neq, p_op) :: rhr -> (
-      match parse_eq rhr with
-      | Eq (rhrl, rhrr, p_op'), _, remain ->
-          (Eq (Neq (lhr, rhrl, p_op), rhrr, p_op'), p, remain)
-      | Neq (rhrl, rhrr, p_op'), _, remain ->
-          (Neq (Neq (lhr, rhrl, p_op), rhrr, p_op'), p, remain)
-      | rhr, _, remain -> (Neq (lhr, rhr, p_op), p, remain) )
+    | lhr, p, (Lex.Neq, p_op) :: rhr ->
+        let rhr, _, remain = parse_cons rhr in
+        (Neq (lhr, rhr, p_op), p, remain)
     | lhr, p, (Lex.Gret, p_op) :: rhr when succ_lets rhr ->
         let rhr, _, remain = parse_expr rhr in
         (Gret (lhr, rhr, p_op), p, remain)

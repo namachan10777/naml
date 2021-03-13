@@ -1,4 +1,4 @@
-type t = string list * string * int [@@deriving show]
+type t = string list * string * int
 
 let show = function
     | [], name, id -> Printf.sprintf "%s(%d)" name id
@@ -8,6 +8,7 @@ let show = function
              (fun name ident -> ident ^ "." ^ name)
              name (List.rev prefix))
           id
+let pp fmt id = Format.pp_print_string fmt (show id)
 
 let global_impure_count = ref 0
 

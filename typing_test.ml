@@ -53,6 +53,12 @@ let unify_fun () =
     assert_eq "unify fun" (!Typing.store).(0) (Typing.Just (Typing.TInt, [0]));
     assert_eq "unify fun" (!Typing.store).(1) (Typing.Just (Typing.TInt, [1]))
 
+let cycle_check () =
+    Typing.init ();
+    let u1 = Typing.fresh 0 in
+    (try Typing.unify (Typing.TFun (u1, u1)) u1; failwith "unexpected unify success" with
+    | Typing.CyclicType -> ())
+
 let cannot_unify () =
     Typing.init ();
     let u1 = Typing.fresh 0 in
@@ -150,6 +156,7 @@ let () =
     unify_unk_ty ();
     unify_unk_just ();
     unify_fun ();
+    cycle_check ();
     cannot_unify ();
     test_instantiate ();
     test_generalize ();

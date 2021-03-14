@@ -77,9 +77,30 @@ let fresh level =
       !store.(idx) <- Unknown(level, idx, [idx]);
       TyVar idx)
 
-(* TODO: 同じ不明な型が含まれていないかチェック
- * ?1 -> ?1 と?1をunifyすると大変な事になる *)
-let rec unify t1 t2 = match t1, t2 with
+exception CyclicType
+
+let rec collect_tags_of_unknown = function
+    | TInt -> []
+    | TNever -> []
+    | TStr -> []
+    | TBool -> []
+    | Poly _ -> []
+    | TFun (t1, t2) -> collect_tags_of_unknown t1 @ collect_tags_of_unknown t2
+    | TTuple ts -> List.concat @@ List.map collect_tags_of_unknown ts
+    | TVariant (ts, _) -> List.concat @@ List.map collect_tags_of_unknown ts
+    | TyVar tag -> begin match !store.(tag) with
+        | Unknown (_, tag, _) -> [tag]
+        | Just (t, _) -> collect_tags_of_unknown t
+    end
+
+let rec occur_check tag t2 =
+    let unknowns = collect_tags_of_unknown t2 in
+    if List.for_all ((<>) tag) unknowns
+    then ()
+    else raise CyclicType
+
+let rec unify t1 t2 =
+    match t1, t2 with
     | TyVar v1, TyVar v2 -> begin match !store.(v1), !store.(v2) with
         (* UnknownとUnknownの場合はレベルが低い方に合わせる *)
         | Unknown (level1, tag, l1), Unknown (level2, _, l2) when level1 < level2 ->
@@ -89,10 +110,12 @@ let rec unify t1 t2 = match t1, t2 with
             let l = l1 @ l2 in
             List.map (fun i -> !store.(i) <- Unknown (level2, tag, l)) l |> ignore
         (* Justは中身の型と同一視して良い *)
-        | Unknown (_, _, l1), Just (ty, l2) ->
+        | Unknown (_, tag, l1), Just (ty, l2) ->
+            occur_check tag ty;
             let l = l1 @ l2 in
             List.map (fun i -> !store.(i) <- Just (ty, l)) l |> ignore
-        | Just (ty, l1), Unknown (_, _, l2) ->
+        | Just (ty, l1), Unknown (_, tag, l2) ->
+            occur_check tag ty;
             let l = l1 @ l2 in
             List.map (fun i -> !store.(i) <- Just (ty, l)) l |> ignore
         | Just (ty1, l1), Just (ty2, l2) ->
@@ -102,12 +125,14 @@ let rec unify t1 t2 = match t1, t2 with
     end
     (* JustとUnknownのunifyとほぼ同じ *)
     | TyVar v, ty -> begin match !store.(v) with
-        | Unknown (_, _, l) ->
+        | Unknown (_, tag, l) ->
+            occur_check tag ty;
             List.map (fun i -> !store.(i) <- Just (ty, l)) l |> ignore
         | Just (ty', l) -> unify ty ty'
     end
     | ty, TyVar v -> begin match !store.(v) with
-        | Unknown (_, _, l) ->
+        | Unknown (_, tag, l) ->
+            occur_check tag ty;
             List.map (fun i -> !store.(i) <- Just (ty, l)) l |> ignore
         | Just (ty', l) -> unify ty ty'
     end

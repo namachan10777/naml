@@ -29,6 +29,7 @@ let vars =
     ; ( Id.from_strlist ["-"]
       , (0, Types.Fun (Types.Int, Types.Fun (Types.Int, Types.Int))) )
     ; (Id.from_strlist ["<neg>"], (0, Types.Fun (Types.Int, Types.Int)))
+    ; (Id.from_strlist ["!"], (0, Types.Fun (Types.Variant ([Types.Poly 0], ref_id), Types.Poly 0)))
     ; (Id.from_strlist ["not"], (0, Types.Fun (Types.Bool, Types.Bool)))
     ; ( Id.from_strlist ["*"]
       , (0, Types.Fun (Types.Int, Types.Fun (Types.Int, Types.Int))) )
@@ -61,6 +62,7 @@ let vars =
         , Types.Fun
             ( Types.Variant ([Types.Poly 0], array_id)
             , Types.Fun (Types.Poly 0, Types.unit) ) ) )
+    ; ( Id.from_strlist ["ref"], (1, Types.Fun (Types.Poly 0, Types.Variant ([Types.Poly 0], ref_id))))
     ; ( Id.from_strlist ["."]
       , ( 1
         , Types.Fun

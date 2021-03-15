@@ -93,6 +93,8 @@ let rec of_t = function
     | Parser.Index (lhr, rhr, p) -> op "." lhr rhr p
     | Parser.Neg (e, p) ->
         App (Var (Id.lookup ["<neg>"] Pervasives.names, p), of_t e, p)
+    | Parser.Deref (e, p) ->
+        App (Var (Id.lookup ["!"] Pervasives.names, p), of_t e, p)
     | Parser.Assign (lhr, rhr, p) -> op ":=" lhr rhr p
     | Parser.ArrayAssign (arr, idx, rhr, p) ->
         App

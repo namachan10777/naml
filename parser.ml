@@ -39,6 +39,7 @@ type t =
     | Div of t * t * Lex.pos_t
     | Mod of t * t * Lex.pos_t
     | Neg of t * Lex.pos_t
+    | Deref of t * Lex.pos_t
     | Eq of t * t * Lex.pos_t
     | Neq of t * t * Lex.pos_t
     | Or of t * t * Lex.pos_t
@@ -582,6 +583,12 @@ and parse_unary = function
     | (Lex.Sub, p) :: remain ->
         let exp, _, remain = parse_unary remain in
         (Neg (exp, p), p, remain)
+    | (Lex.Deref, p) :: remain when succ_lets remain ->
+        let exp, _, remain = parse_expr remain in
+        (Deref (exp, p), p, remain)
+    | (Lex.Deref, p) :: remain ->
+        let exp, _, remain = parse_unary remain in
+        (Deref (exp, p), p, remain)
     | input -> parse_app input
 
 and parse_app input =

@@ -34,6 +34,7 @@ type t =
     | Gret
     | Less
     | Eq
+    | Deref
     | Neq
     | And
     | Or
@@ -86,6 +87,7 @@ let rec show = function
     | Gret -> ">"
     | Less -> "<"
     | Eq -> "="
+    | Deref -> "!"
     | Neq -> "<>"
     | And -> "&&"
     | Or -> "||"
@@ -310,6 +312,8 @@ let rec lex s pos =
         | Some i' -> (And, pos (i+1)) :: lex s (pos i')
         | None -> match match_str "=" s i with
         | Some i' -> (Eq, pos (i+1)) :: lex s (pos i')
+        | None -> match match_str "!" s i with
+        | Some i' -> (Deref, pos (i+1)) :: lex s (pos i')
         | None -> match match_str "<>" s i with
         | Some i' -> (Neq, pos (i+1)) :: lex s (pos i')
         | None -> match match_str ">" s i with

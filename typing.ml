@@ -1,3 +1,19 @@
+type level_t = Expansive of int | NonExpansive of int
+[@@deriving show]
+let inc_level = function
+    | Expansive l -> Expansive l
+    | NonExpansive l -> Expansive (1 + l)
+let raw_level = function
+    | Expansive l -> l - 1
+    | NonExpansive l -> l
+let to_expansive = function
+    | Expansive l -> Expansive l
+    | NonExpansive l -> Expansive l
+
+let to_nonexpansive = function
+    | Expansive l -> NonExpansive l
+    | NonExpansive l -> NonExpansive l
+
 type ty =
     | TNever
     | TInt
@@ -9,7 +25,7 @@ type ty =
     | TyVar of int (* arrayに対するindexとして持つ *)
     | TVariant of ty list * Id.t
 [@@deriving show]
-and ty_var_t = Just of ty * int list | Unknown of int * int * int list [@@deriving show]
+and ty_var_t = Just of ty * int list | Unknown of level_t * int * int list [@@deriving show]
 
 (* 型推論を実装する際に問題となるのは不明な型をどう扱うかである。
  * 不明ではあってもunifyによって不明なまま単一化されることがありうる。
@@ -50,13 +66,13 @@ type t =
     | App of (t * ty) * (t * ty) * Lex.pos_t
 [@@deriving show]
 
-let store = ref @@ Array.init 2 (fun i -> Unknown (0, i, [i]))
+let store = ref @@ Array.init 2 (fun i -> Unknown (Expansive 0, i, [i]))
 type tenv_t = ty_var_t array [@@deriving show]
 
 let count = ref 0
 
 let init () =
-    store := Array.init 2 (fun i -> Unknown (0, i, [i]));
+    store := Array.init 2 (fun i -> Unknown (Expansive 0, i, [i]));
     count := 0
 
 let fresh level =
@@ -64,7 +80,7 @@ let fresh level =
     if !count >= arr_len then (
       store :=
         Array.concat
-          [!store; Array.init arr_len (fun i -> Unknown (0, i+arr_len, [i + arr_len]))] ;
+          [!store; Array.init arr_len (fun i -> Unknown (Expansive 0, i+arr_len, [i + arr_len]))] ;
       let idx = !count in
       count := 1 + !count ;
       (* levelは初期で全て0なので正しいlevelの不明型を代入する必要がある *)
@@ -103,12 +119,14 @@ let rec unify t1 t2 =
     match t1, t2 with
     | TyVar v1, TyVar v2 -> begin match !store.(v1), !store.(v2) with
         (* UnknownとUnknownの場合はレベルが低い方に合わせる *)
-        | Unknown (level1, tag, l1), Unknown (level2, _, l2) when level1 < level2 ->
-            let l = l1 @ l2 in
-            List.map (fun i -> !store.(i) <- Unknown (level1, tag, l)) l |> ignore
-        | Unknown (level1, _, l1), Unknown (level2, tag, l2) ->
-            let l = l1 @ l2 in
-            List.map (fun i -> !store.(i) <- Unknown (level2, tag, l)) l |> ignore
+        | Unknown (level1, tag1, l1), Unknown (level2, tag2, l2) ->
+            if raw_level level1 < raw_level level2
+            then
+                let l = l1 @ l2 in
+                List.map (fun i -> !store.(i) <- Unknown (level1, tag1, l)) l |> ignore
+            else
+                let l = l1 @ l2 in
+                List.map (fun i -> !store.(i) <- Unknown (level2, tag2, l)) l |> ignore
         (* Justは中身の型と同一視して良い *)
         | Unknown (_, tag, l1), Just (ty, l2) ->
             occur_check tag ty;
@@ -242,9 +260,10 @@ let rec gen_ty level =
          * Unknownでレベルが現在のレベルより高い場合は一般化する。
          * 同じ不明な型には同じtagが付くようunifyしているのでtagをそのまま流用
          * 最後にdereferenceする際に連番にする*)
-        | Unknown (level', tag, _) when level' > level ->
-            (Poly tag)
-        | Unknown _ -> TyVar i
+        | Unknown (level', tag, _) ->
+            if raw_level level' > raw_level level
+            then (Poly tag)
+            else TyVar i
         | Just (ty, _) -> gen_ty level ty
     end
     | TVariant (args, id) -> TVariant (List.map (gen_ty level) args, id)
@@ -451,10 +470,12 @@ let rec f level env =
     | Ast.Int (i, p) -> TInt, Int (i, p)
     | Ast.Bool (b, p) -> TBool, Bool (b, p)
     | Ast.Var (id, p) ->
+        let level = to_nonexpansive level in
         (* 定義が見つからない事はバグ(Alphaでunboundな変数は全て検出されているはず) *)
         let ty = Tbl.lookup id venv |> Tbl.expect "internal error" |> inst_ty (level, ref []) in
         ty, Var (id, ty, p)
     | Ast.Fun (arg, body, p) ->
+        let level = to_nonexpansive level in
         (* argは変数定義として扱えるが、letと違い多相性は導入されないのでレベル据え置きで不明な型と置く *)
         let u = fresh level in
         let venv = Tbl.push arg u venv in
@@ -487,8 +508,8 @@ let rec f level env =
         TTuple tys, Tuple (Util.zip es tys, p)
     | Ast.Let (defs, expr) ->
         (* letの右辺に入る際にレベルを1段上げる。letの定義の左辺も右辺と同じものが来るのでレベルを1段上げる *)
-        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (level+1) env def_expr) defs in
-        let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat (level+1) cenv pat) defs in
+        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (inc_level level) env def_expr) defs in
+        let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat (inc_level level) cenv pat) defs in
         let ps = List.map Util.snd defs in
         (* 左辺のパターンと右辺の値をunifyする *)
         Util.zip pat_tys def_tys |> List.map (fun (pat_ty, def_ty) -> unify pat_ty def_ty) |> ignore;
@@ -508,11 +529,11 @@ let rec f level env =
         ty, Let (defs, (expr, ty))
     | Ast.LetRec (defs, expr) ->
         (* 先に左辺のidを登録した環境を作る *)
-        let venv' = List.map (fun (id, _, _) -> (id, fresh (level+1))) defs in
+        let venv' = List.map (fun (id, _, _) -> (id, fresh (inc_level level))) defs in
         let ids = List.map Util.fst defs in
         let ps = List.map Util.snd defs in
         let env' = (venv' @ venv, cenv, tenv) in
-        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (level+1) env' def_expr) defs in
+        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (inc_level level) env' def_expr) defs in
         (* 左辺と右辺をunify *)
         Util.zip def_tys (List.map snd venv') |> List.map (fun (id_ty, def_ty) -> unify id_ty def_ty) |> ignore;
         (* letを抜けるのでgeneralize *)
@@ -578,3 +599,5 @@ let rec f level env =
         let env = (venv, ctors @ cenv, tydefs @ tenv) in
         let ty, expr = f level env expr in
         ty, expr
+
+let f = f (NonExpansive 0)

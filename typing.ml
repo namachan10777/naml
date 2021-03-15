@@ -187,6 +187,7 @@ let rec unify t1 t2 =
  * 不明な型と不明な型のunifyの際はレベルが低い方に合わせ単相に寄せる。
  * [1] Rémy, Didier. Extension of ML Type System with a Sorted Equation Theory on Types. 1992.
  *)
+
 let rec inst_ty env =
     let (level, tbl) = env in
     function
@@ -207,44 +208,6 @@ let rec inst_ty env =
     end
     | TyVar i -> TyVar i
     | TVariant (args, id) -> TVariant (List.map (inst_ty env) args, id)
-
-let rec inst_pat env = function
-    | PInt (i, p) -> PInt (i, p)
-    | PBool (b, p) -> PBool (b, p)
-    | PVar (id, ty, p) -> PVar (id, inst_ty env ty, p)
-    | PTuple (pats, p) -> PTuple (List.map (fun (pat, ty) -> inst_pat env pat, inst_ty env ty) pats, p)
-    | As (pats, ty, p) -> As (List.map (inst_pat env) pats, inst_ty env ty, p)
-    | Or (pat, pats, ty, p) -> Or (inst_pat env pat, List.map (inst_pat env) pats, inst_ty env ty, p)
-    | PCtorApp (id, args, ty, p) -> PCtorApp (id, List.map (fun (pat, ty) -> inst_pat env pat, inst_ty env ty) args, inst_ty env ty, p)
-
-let rec inst env = function
-    | Never -> Never
-    | Int (i, p) -> Int (i, p)
-    | Bool (b, p) -> Bool (b, p)
-    | Var (id, ty, p) -> Var (id, inst_ty env ty, p)
-    | If (c, t, e, ty, p) -> If (inst env c, inst env t, inst env e, inst_ty env ty, p)
-    | Fun ((arg, arg_ty), (body, body_ty), p) ->
-        Fun ((arg, inst_ty env arg_ty), (inst env body, inst_ty env body_ty), p)
-    | Tuple (es, p) -> Tuple (List.map (fun (e, ty) -> inst env e, inst_ty env ty) es, p)
-    | App ((f, f_ty), (arg, arg_ty), p) -> App ((inst env f, inst_ty env f_ty), (inst env arg, inst_ty env arg_ty), p)
-    | CtorApp (id, p, args, ty) ->
-        CtorApp (id, p, List.map (fun (arg, arg_ty) -> inst env arg, inst_ty env arg_ty) args, inst_ty env ty)
-    | Let (defs, (e, ty)) ->
-        Let (
-            List.map (fun ((pat, pat_ty), p, (def, def_ty)) -> (inst_pat env pat, inst_ty env pat_ty), p, (inst env def, inst_ty env def_ty)) defs,
-            (inst env e, inst_ty env ty)
-        )
-    | LetRec (defs, (e, ty)) ->
-        LetRec(
-            List.map (fun (id, p, (def, def_ty)) -> id, p, (inst env def, inst_ty env def_ty)) defs,
-            (inst env e, inst_ty env ty)
-        )
-    | Match ((target, target_ty), arms, ty) ->
-        Match (
-            (inst env target, inst_ty env target_ty),
-            List.map (fun ((pat, pat_ty), p, guard, e) -> ((inst_pat env pat, inst_ty env pat_ty), p, inst env guard, inst env e)) arms,
-            inst_ty env ty
-        )
 
 let rec gen_ty level =
     function

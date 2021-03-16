@@ -1,19 +1,3 @@
-type level_t = Expansive of int | NonExpansive of int
-[@@deriving show]
-let inc_level = function
-    | Expansive l -> Expansive l
-    | NonExpansive l -> Expansive (1 + l)
-let raw_level = function
-    | Expansive l -> l - 1
-    | NonExpansive l -> l
-let to_expansive = function
-    | Expansive l -> Expansive l
-    | NonExpansive l -> Expansive l
-
-let to_nonexpansive = function
-    | Expansive l -> NonExpansive l
-    | NonExpansive l -> NonExpansive l
-
 type ty =
     | TNever
     | TInt
@@ -25,7 +9,7 @@ type ty =
     | TyVar of int (* arrayに対するindexとして持つ *)
     | TVariant of ty list * Id.t
 [@@deriving show]
-and ty_var_t = Just of ty * int list | Unknown of level_t * int * int list [@@deriving show]
+and ty_var_t = Just of ty * int list | Unknown of int * int * int list [@@deriving show]
 
 (* 型推論を実装する際に問題となるのは不明な型をどう扱うかである。
  * 不明ではあってもunifyによって不明なまま単一化されることがありうる。
@@ -66,13 +50,13 @@ type t =
     | App of (t * ty) * (t * ty) * Lex.pos_t
 [@@deriving show]
 
-let store = ref @@ Array.init 2 (fun i -> Unknown (Expansive 0, i, [i]))
+let store = ref @@ Array.init 2 (fun i -> Unknown (0, i, [i]))
 type tenv_t = ty_var_t array [@@deriving show]
 
 let count = ref 0
 
 let init () =
-    store := Array.init 2 (fun i -> Unknown (Expansive 0, i, [i]));
+    store := Array.init 2 (fun i -> Unknown (0, i, [i]));
     count := 0
 
 let fresh level =
@@ -80,7 +64,7 @@ let fresh level =
     if !count >= arr_len then (
       store :=
         Array.concat
-          [!store; Array.init arr_len (fun i -> Unknown (Expansive 0, i+arr_len, [i + arr_len]))] ;
+          [!store; Array.init arr_len (fun i -> Unknown (0, i+arr_len, [i + arr_len]))] ;
       let idx = !count in
       count := 1 + !count ;
       (* levelは初期で全て0なので正しいlevelの不明型を代入する必要がある *)
@@ -109,6 +93,17 @@ let rec collect_tags_of_unknown = function
         | Just (t, _) -> collect_tags_of_unknown t
     end
 
+let rec collect_tags_of_poly = function
+    | TInt -> []
+    | TNever -> []
+    | TStr -> []
+    | TBool -> []
+    | Poly tag -> [tag]
+    | TFun (t1, t2) -> collect_tags_of_poly t1 @ collect_tags_of_poly t2
+    | TTuple ts -> List.concat @@ List.map collect_tags_of_poly ts
+    | TVariant (ts, _) -> List.concat @@ List.map collect_tags_of_poly ts
+    | TyVar _ -> []
+
 let rec occur_check tag t2 =
     let unknowns = collect_tags_of_unknown t2 in
     if List.for_all ((<>) tag) unknowns
@@ -119,12 +114,10 @@ let rec unify t1 t2 =
     match t1, t2 with
     | TyVar v1, TyVar v2 -> begin match !store.(v1), !store.(v2) with
         (* UnknownとUnknownの場合はレベルが低い方に合わせる *)
-        | Unknown (level1, tag1, l1), Unknown (level2, tag2, l2) ->
-            if raw_level level1 < raw_level level2
-            then
+        | Unknown (level1, tag1, l1), Unknown (level2, tag2, l2) when level1 < level2 ->
                 let l = l1 @ l2 in
                 List.map (fun i -> !store.(i) <- Unknown (level1, tag1, l)) l |> ignore
-            else
+        | Unknown (level1, tag1, l1), Unknown (level2, tag2, l2) ->
                 let l = l1 @ l2 in
                 List.map (fun i -> !store.(i) <- Unknown (level2, tag2, l)) l |> ignore
         (* Justは中身の型と同一視して良い *)
@@ -209,63 +202,79 @@ let rec inst_ty env =
     | TyVar i -> TyVar i
     | TVariant (args, id) -> TVariant (List.map (inst_ty env) args, id)
 
-let rec gen_ty level =
+let rec collect_expansive_poly_tags = function
+    | Int _ -> []
+    | Bool _ -> []
+    | Never -> []
+    | Var _ -> []
+    | Fun _ -> []
+    | App ((_, f_ty), (_, arg_ty), _) -> collect_tags_of_unknown f_ty @ collect_tags_of_unknown arg_ty
+    | If (c, t, e, _, _) -> (collect_expansive_poly_tags c) @ (collect_expansive_poly_tags t) @ (collect_expansive_poly_tags e)
+    | CtorApp (_, _, args, _) -> List.concat @@ List.map (fun (arg, _) -> collect_expansive_poly_tags arg) args
+    | Tuple (es, _) -> List.concat @@ List.map (fun (e, _) -> collect_expansive_poly_tags e) es
+    | Let (defs, (e, _)) -> collect_expansive_poly_tags e @ List.concat @@ List.map (fun (_, _, (e, _)) -> collect_expansive_poly_tags e) defs
+    | LetRec (defs, (e, _)) -> collect_expansive_poly_tags e @ List.concat @@ List.map (fun (_, _, (e, _)) -> collect_expansive_poly_tags e) defs
+    | Match ((target, _), arms, _) ->
+        collect_expansive_poly_tags target
+        @ List.concat @@ List.map (fun (_, _, guard, expr) -> collect_expansive_poly_tags guard @ collect_expansive_poly_tags expr) arms
+
+let rec gen_ty deny level =
     function
     | TInt -> TInt
     | TBool -> TBool
     | TNever -> TNever
     | TStr -> TStr
-    | TFun (f, arg) -> TFun (gen_ty level f, gen_ty level arg)
-    | TTuple tys -> TTuple (List.map (gen_ty level) tys)
+    | TFun (f, arg) -> TFun (gen_ty deny level f, gen_ty deny level arg)
+    | TTuple tys -> TTuple (List.map (gen_ty deny level) tys)
     | Poly tag -> Poly tag
     | TyVar i -> begin match !store.(i) with
         (* Justの場合は実質中身の型と同じとみなして良い
          * Unknownでレベルが現在のレベルより高い場合は一般化する。
          * 同じ不明な型には同じtagが付くようunifyしているのでtagをそのまま流用
          * 最後にdereferenceする際に連番にする*)
-        | Unknown (level', tag, _) ->
-            if raw_level level' > raw_level level
-            then (Poly tag)
-            else TyVar i
-        | Just (ty, _) -> gen_ty level ty
+        | Unknown (level', tag, _) when level' > level && List.for_all ((<>) tag) deny ->
+            Poly tag
+        | Unknown _ ->
+            TyVar i
+        | Just (ty, _) -> gen_ty deny level ty
     end
-    | TVariant (args, id) -> TVariant (List.map (gen_ty level) args, id)
+    | TVariant (args, id) -> TVariant (List.map (gen_ty deny level) args, id)
 
-let rec gen_pat level = function
+let rec gen_pat deny level = function
     | PInt (i, p) -> PInt (i, p)
     | PBool (b, p) -> PBool (b, p)
-    | PVar (id, ty, p) -> PVar (id, gen_ty level ty, p)
-    | PTuple (pats, p) -> PTuple (List.map (fun (pat, ty) -> gen_pat level pat, gen_ty level ty) pats, p)
-    | As (pats, ty, p) -> As (List.map (gen_pat level) pats, gen_ty level ty, p)
-    | Or (pat, pats, ty, p) -> Or (gen_pat level pat, List.map (gen_pat level) pats, gen_ty level ty, p)
-    | PCtorApp (id, args, ty, p) -> PCtorApp (id, List.map (fun (pat, ty) -> gen_pat level pat, gen_ty level ty) args, gen_ty level ty, p)
+    | PVar (id, ty, p) -> PVar (id, gen_ty deny level ty, p)
+    | PTuple (pats, p) -> PTuple (List.map (fun (pat, ty) -> gen_pat deny level pat, gen_ty deny level ty) pats, p)
+    | As (pats, ty, p) -> As (List.map (gen_pat deny level) pats, gen_ty deny level ty, p)
+    | Or (pat, pats, ty, p) -> Or (gen_pat deny level pat, List.map (gen_pat deny level) pats, gen_ty deny level ty, p)
+    | PCtorApp (id, args, ty, p) -> PCtorApp (id, List.map (fun (pat, ty) -> gen_pat deny level pat, gen_ty deny level ty) args, gen_ty deny level ty, p)
 
-let rec gen level = function
+let rec gen deny level = function
     | Never -> Never
     | Int (i, p) -> Int (i, p)
     | Bool (b, p) -> Bool (b, p)
-    | Var (id, ty, p) -> Var (id, gen_ty level ty, p)
-    | If (c, t, e, ty, p) -> If (gen level c, gen level t, gen level e, gen_ty level ty, p)
+    | Var (id, ty, p) -> Var (id, gen_ty deny level ty, p)
+    | If (c, t, e, ty, p) -> If (gen deny level c, gen deny level t, gen deny level e, gen_ty deny level ty, p)
     | Fun ((arg, arg_ty), (body, body_ty), p) ->
-        Fun ((arg, gen_ty level arg_ty), (gen level body, gen_ty level body_ty), p)
-    | Tuple (es, p) -> Tuple (List.map (fun (e, ty) -> gen level e, gen_ty level ty) es, p)
-    | App ((f, f_ty), (arg, arg_ty), p) -> App ((gen level f, gen_ty level f_ty), (gen level arg, gen_ty level arg_ty), p)
+        Fun ((arg, gen_ty deny level arg_ty), (gen deny level body, gen_ty deny level body_ty), p)
+    | Tuple (es, p) -> Tuple (List.map (fun (e, ty) -> gen deny level e, gen_ty deny level ty) es, p)
+    | App ((f, f_ty), (arg, arg_ty), p) -> App ((gen deny level f, gen_ty deny level f_ty), (gen deny level arg, gen_ty deny level arg_ty), p)
     | CtorApp (id, p, args, ty) ->
-        CtorApp (id, p, List.map (fun (arg, arg_ty) -> gen level arg, gen_ty level arg_ty) args, gen_ty level ty)
+        CtorApp (id, p, List.map (fun (arg, arg_ty) -> gen deny level arg, gen_ty deny level arg_ty) args, gen_ty deny level ty)
     | Let (defs, (e, ty)) ->
         Let (
-            List.map (fun ((pat, pat_ty), p, (def, def_ty)) -> (gen_pat level pat, gen_ty level pat_ty), p, (gen level def, gen_ty level def_ty)) defs,
-            (gen level e, gen_ty level ty))
+            List.map (fun ((pat, pat_ty), p, (def, def_ty)) -> (gen_pat deny level pat, gen_ty deny level pat_ty), p, (gen deny level def, gen_ty deny level def_ty)) defs,
+            (gen deny level e, gen_ty deny level ty))
     | LetRec (defs, (e, ty)) ->
         LetRec(
-            List.map (fun (id, p, (def, def_ty)) -> id, p, (gen level def, gen_ty level def_ty)) defs,
-            (gen level e, gen_ty level ty)
+            List.map (fun (id, p, (def, def_ty)) -> id, p, (gen deny level def, gen_ty deny level def_ty)) defs,
+            (gen deny level e, gen_ty deny level ty)
         )
     | Match ((target, target_ty), arms, ty) ->
         Match (
-            (gen level target, gen_ty level target_ty),
-            List.map (fun ((pat, pat_ty), p, guard, e) -> ((gen_pat level pat, gen_ty level pat_ty), p, gen level guard, gen level e)) arms,
-            gen_ty level ty
+            (gen deny level target, gen_ty deny level target_ty),
+            List.map (fun ((pat, pat_ty), p, guard, e) -> ((gen_pat deny level pat, gen_ty deny level pat_ty), p, gen deny level guard, gen deny level e)) arms,
+            gen_ty deny level ty
         )
 
 let rec types2typing = function
@@ -433,12 +442,10 @@ let rec f level env =
     | Ast.Int (i, p) -> TInt, Int (i, p)
     | Ast.Bool (b, p) -> TBool, Bool (b, p)
     | Ast.Var (id, p) ->
-        let level = to_nonexpansive level in
         (* 定義が見つからない事はバグ(Alphaでunboundな変数は全て検出されているはず) *)
         let ty = Tbl.lookup id venv |> Tbl.expect "internal error" |> inst_ty (level, ref []) in
         ty, Var (id, ty, p)
     | Ast.Fun (arg, body, p) ->
-        let level = to_nonexpansive level in
         (* argは変数定義として扱えるが、letと違い多相性は導入されないのでレベル据え置きで不明な型と置く *)
         let u = fresh level in
         let venv = Tbl.push arg u venv in
@@ -471,18 +478,22 @@ let rec f level env =
         TTuple tys, Tuple (Util.zip es tys, p)
     | Ast.Let (defs, expr) ->
         (* letの右辺に入る際にレベルを1段上げる。letの定義の左辺も右辺と同じものが来るのでレベルを1段上げる *)
-        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (inc_level level) env def_expr) defs in
-        let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat (inc_level level) cenv pat) defs in
+        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (1 + level) env def_expr) defs in
+        let pat_tys, pats, pvenv = Util.unzip3 @@ List.map (fun (pat, _, _) -> f_pat (1 + level) cenv pat) defs in
         let ps = List.map Util.snd defs in
         (* 左辺のパターンと右辺の値をunifyする *)
         Util.zip pat_tys def_tys |> List.map (fun (pat_ty, def_ty) -> unify pat_ty def_ty) |> ignore;
         (* letを抜けるのでgeneralize *)
-        let def_tys = List.map (gen_ty level) def_tys in
-        let def_exprs = List.map (gen level) def_exprs in
-        let pat_tys = List.map (gen_ty level) pat_tys in
-        let pats = List.map (gen_pat level) pats in
+        (* denylistはsyntacti valueでない式に含まれるunknownのタグを集めたもの
+         * これを使って多相化を阻止してvalue restrictionを行う
+         * tagは一意なので纏めて扱って良い *)
+        let denylist = List.concat @@ List.map collect_expansive_poly_tags def_exprs in
+        let def_tys = List.map (gen_ty denylist level) def_tys in
+        let def_exprs = List.map (gen denylist level) def_exprs in
+        let pat_tys = List.map (gen_ty denylist level) pat_tys in
+        let pats = List.map (gen_pat denylist level) pats in
         (* generalizeしたvenvの追加分を定義 *)
-        let venv' = List.map (fun (id, ty) -> id, gen_ty level ty) @@ List.concat pvenv in
+        let venv' = List.map (fun (id, ty) -> id, gen_ty denylist level ty) @@ List.concat pvenv in
         (* exprをletで定義した型を使って型付け *)
         let ty, expr = f level (venv' @ venv, cenv, tenv) expr in
         (* generalize済みの定義を構築 *)
@@ -492,16 +503,17 @@ let rec f level env =
         ty, Let (defs, (expr, ty))
     | Ast.LetRec (defs, expr) ->
         (* 先に左辺のidを登録した環境を作る *)
-        let venv' = List.map (fun (id, _, _) -> (id, fresh (inc_level level))) defs in
+        let venv' = List.map (fun (id, _, _) -> (id, fresh (1 + level))) defs in
         let ids = List.map Util.fst defs in
         let ps = List.map Util.snd defs in
         let env' = (venv' @ venv, cenv, tenv) in
-        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (inc_level level) env' def_expr) defs in
+        let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (1 + level) env' def_expr) defs in
         (* 左辺と右辺をunify *)
         Util.zip def_tys (List.map snd venv') |> List.map (fun (id_ty, def_ty) -> unify id_ty def_ty) |> ignore;
         (* letを抜けるのでgeneralize *)
-        let def_exprs = List.map (gen level) def_exprs in
-        let tys = List.map (gen_ty level) def_tys in
+        let denylist = List.concat @@ List.map collect_expansive_poly_tags def_exprs in
+        let def_exprs = List.map (gen denylist level) def_exprs in
+        let tys = List.map (gen_ty denylist level) def_tys in
         (* 一般化した型付け済みの環境を再構築 *)
         let venv' = Util.zip ids tys in
         (* letに続く式の型付け *)
@@ -563,4 +575,4 @@ let rec f level env =
         let ty, expr = f level env expr in
         ty, expr
 
-let f = f (NonExpansive 0)
+let f = f 0

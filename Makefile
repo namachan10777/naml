@@ -70,7 +70,7 @@ alpha_test.cmx: alpha_test.ml alpha.cmx
 alpha_test: lex.cmx id.cmx parser.cmx types.cmx pervasives.cmx tbl.cmx util.cmx ast.cmx alpha.cmx alpha_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
-typing.cmx: typing.ml ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx
+typing.cmx: typing.ml ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx alpha.cmx util.cmx
 	$(OCAMLOPT) $< -c
 typing_test.cmx: typing_test.ml typing.cmx 
 	$(OCAMLOPT) $< -c

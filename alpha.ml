@@ -28,6 +28,19 @@ let rec f_tydef tenv = function
         let cenv = List.fold_left (fun tbl cid -> Tbl.push (Id.name cid) cid tbl) Tbl.empty cids in
         cenv, Ast.Variant (List.map (fun (cid, p, targs) -> (cid, p, List.map (f_ty tenv) targs)) defs)
 
+let rec collect_tyvars =
+    let rec f = function
+        | Ast.TInt _ -> []
+        | Ast.TBool _ -> []
+        | Ast.TString _ -> []
+        | Ast.TVar (s, _) -> [s]
+        | Ast.TTuple (ts, _) -> List.concat @@ List.map f ts
+        | Ast.TApp (ts, _, _) -> List.concat @@ List.map f ts
+    in
+    function
+    | Ast.Alias ty -> f ty
+    | Ast.Variant ctors -> List.concat @@ List.map (fun (_, _, tys) -> List.concat @@ List.map f tys) ctors
+
 let rec f_pat cenv pat =
     let rec collect_free_vars = function
         | Ast.PVar (id, p) -> [id]
@@ -145,10 +158,18 @@ let rec f env =
             let def_exps = defs |> List.map Util.trd |> List.map (f (venv, cenv, tenv)) in
             let defs = Util.zip3 ids (List.map Util.snd defs) def_exps in
             Ast.LetRec (defs, f (enable_all venv, cenv, tenv) e)
-    (* TODO: 型変数の重複チェック & 右辺に左辺に無い型変数が現れないかチェック *)
     | Ast.Type (defs, expr) ->
         let tids = List.map (fun (tid, _, _, _) -> tid) defs in
         let tenv = List.fold_left (fun tbl tid -> Tbl.push (Id.name tid) tid tbl) tenv tids in
+        List.map (fun (_, _, targs, tydef) ->
+            let left_targs = List.map fst targs in
+            let right_targs = collect_tyvars tydef in
+            if duplicate_check left_targs
+            then failwith "duplicated targs"
+            else if List.exists (fun targ -> not @@ List.exists ((=) targ) left_targs) right_targs
+            then failwith "unknown targs"
+            else ()
+        ) defs |> ignore;
         let cids, tys = Util.unzip @@ List.map (fun (_, _, _, tydef) -> f_tydef tenv tydef) defs in
         let targs, ps = Util.unzip @@ List.map (fun (_, targ, p, _) -> targ, p) defs in
         let cenv = (List.concat cids) @ cenv in

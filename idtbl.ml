@@ -2,8 +2,8 @@ type ('a, 'b) t = ('a * 'b) list
 
 let empty = []
 
-let rec lookup key = function
-    | (key', value) :: _ when key = key' -> Some value
+let rec lookup ((_, _, id) as key) = function
+    | ((_, _, id'), value) :: _ when id = id' -> Some value
     | _ :: tbl -> lookup key tbl
     | _ -> None
 

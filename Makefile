@@ -42,6 +42,8 @@ util.cmx: util.ml
 	$(OCAMLOPT) $< -c
 tbl.cmx: tbl.ml
 	$(OCAMLOPT) $< -c
+idtbl.cmx: idtbl.ml
+	$(OCAMLOPT) $< -c
 
 parser.cmx: parser.ml id.cmx lex.cmx
 	$(OCAMLOPT) $< -c
@@ -63,28 +65,28 @@ pervasives.cmx: pervasives.ml id.cmx types.cmx
 ast.cmx: ast.ml id.cmx parser.cmx types.cmx pervasives.cmx
 	$(OCAMLOPT) $< -c
 
-alpha.cmx: alpha.ml tbl.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx
+alpha.cmx: alpha.ml tbl.cmx idtbl.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx
 	$(OCAMLOPT) $< -c
 alpha_test.cmx: alpha_test.ml alpha.cmx 
 	$(OCAMLOPT) $< -c
-alpha_test: lex.cmx id.cmx parser.cmx types.cmx pervasives.cmx tbl.cmx util.cmx ast.cmx alpha.cmx alpha_test.cmx
+alpha_test: lex.cmx id.cmx parser.cmx types.cmx pervasives.cmx tbl.cmx idtbl.cmx util.cmx ast.cmx alpha.cmx alpha_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
 typing.cmx: typing.ml ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx alpha.cmx util.cmx
 	$(OCAMLOPT) $< -c
 typing_test.cmx: typing_test.ml typing.cmx 
 	$(OCAMLOPT) $< -c
-typing_test: id.cmx util.cmx tbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx typing.cmx typing_test.cmx
+typing_test: id.cmx util.cmx tbl.cmx idtbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx idtbl.cmx typing.cmx typing_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
 closure.cmx: closure.ml typing.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx
 	$(OCAMLOPT) $< -c
 closure_test.cmx: closure_test.ml closure.cmx
 	$(OCAMLOPT) $< -c
-closure_test: id.cmx util.cmx tbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx typing.cmx closure.cmx closure_test.cmx
+closure_test: id.cmx util.cmx tbl.cmx idtbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx idtbl.cmx typing.cmx closure.cmx closure_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
 main.cmx: main.ml typing.cmx alpha.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx
 	$(OCAMLOPT) $< -c
-1st: id.cmx lex.cmx util.cmx parser.cmx tbl.cmx types.cmx pervasives.cmx ast.cmx alpha.cmx typing.cmx main.cmx
+1st: id.cmx lex.cmx util.cmx parser.cmx tbl.cmx idtbl.cmx types.cmx pervasives.cmx ast.cmx alpha.cmx typing.cmx main.cmx
 	$(OCAMLOPT) $^ -o $@

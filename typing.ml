@@ -312,7 +312,7 @@ let rec f_pat level env = function
         let u = fresh level in
         u, PVar (id, u, p), [id, u]
     | Ast.PCtorApp (cid, args, p) ->
-        let param_tys, ty = Tbl.lookup cid env |> Tbl.expect "internal error" in
+        let param_tys, ty = Idtbl.lookup cid env |> Idtbl.expect "internal error" in
         let inst_tbl = ref [] in
         let param_tys = List.map (inst_ty (level, inst_tbl)) param_tys in
         let ty = inst_ty (level, inst_tbl) ty in
@@ -402,11 +402,11 @@ let canonicalize_type_defs tenv (defs: canonicalize_type_defs_input_t) =
         | Ast.TInt _ -> Types.Int
         | Ast.TBool _ -> Types.Bool
         | Ast.TString _ -> Types.Str
-        | Ast.TVar (arg, p) -> Tbl.lookup arg arg_env |> Tbl.expect (Printf.sprintf "%s unknown type variable '%s" (Lex.show_pos_t p) arg)
+        | Ast.TVar (arg, p) -> Tbl.lookup arg arg_env |> Idtbl.expect (Printf.sprintf "%s unknown type variable '%s" (Lex.show_pos_t p) arg)
         | Ast.TTuple (tys, _) -> Types.Tuple (List.map (canonicalize_ty arg_env) tys)
         | Ast.TApp (ty_args, tid, _) ->
             let ty_args = List.map (canonicalize_ty arg_env) ty_args in
-            begin match Tbl.lookup tid tenv with
+            begin match Idtbl.lookup tid tenv with
             | Some (polyness, ty) ->
                 if polyness = List.length ty_args
                 then reassoc_tvar ty_args ty
@@ -442,12 +442,12 @@ let rec f level env =
     | Ast.Bool (b, p) -> TBool, Bool (b, p)
     | Ast.Var (id, p) ->
         (* 定義が見つからない事はバグ(Alphaでunboundな変数は全て検出されているはず) *)
-        let ty = Tbl.lookup id venv |> Tbl.expect "internal error" |> inst_ty (level, ref []) in
+        let ty = Idtbl.lookup id venv |> Idtbl.expect "internal error" |> inst_ty (level, ref []) in
         ty, Var (id, ty, p)
     | Ast.Fun (arg, body, p) ->
         (* argは変数定義として扱えるが、letと違い多相性は導入されないのでレベル据え置きで不明な型と置く *)
         let u = fresh level in
-        let venv = Tbl.push arg u venv in
+        let venv = Idtbl.push arg u venv in
         let body_ty, body = f level (venv, cenv, tenv) body in
         TFun(u, body_ty), Fun((arg, u), (body, body_ty), p)
     | Ast.If (cond_e, then_e, else_e, p) ->
@@ -524,7 +524,7 @@ let rec f level env =
     | Ast.CtorApp (cid, p, args) ->
         (* Ctorの型をtblでインスタンス化 *)
         let inst_tbl = ref [] in
-        let param_tys, ty = Tbl.lookup cid cenv |> Tbl.expect "internal error" in
+        let param_tys, ty = Idtbl.lookup cid cenv |> Idtbl.expect "internal error" in
         let ty = inst_ty (level, inst_tbl) ty in
         let param_tys = List.map (inst_ty (level, inst_tbl)) param_tys in
         let arg_tys, args = Util.unzip @@ List.map (f level env) args in

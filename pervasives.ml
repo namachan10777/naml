@@ -68,13 +68,6 @@ let vars =
         , Types.Fun
             ( Types.Variant ([Types.Poly 0], array_id)
             , Types.Fun (Types.Int, Types.Poly 0) ) ) )
-    ; ( Id.from_strlist ["::"]
-      , ( 1
-        , Types.Fun
-            ( Types.Poly 0
-            , Types.Fun
-                ( Types.Variant ([Types.Poly 0], list_id)
-                , Types.Variant ([Types.Poly 0], list_id) ) ) ) )
     ; (Id.from_strlist ["print_string"], (0, Types.Fun (Types.Str, Types.unit)))
     ; (Id.from_strlist ["print_int"], (0, Types.Fun (Types.Int, Types.unit)))
     ; (Id.from_strlist ["failwith"], (1, Types.Fun (Types.Str, Types.Poly 0)))

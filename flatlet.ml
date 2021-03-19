@@ -335,7 +335,7 @@ let (typing_module: modules_t -> string -> string -> modules_t) = fun typed fnam
     let (venv, cenv, tenv), lets = typed in
     let ast = Ast.f fname src in
     let alpha = Alpha.f (
-        List.map (fun (id, _) -> (Id.name id, (id, false))) venv,
+        List.map (fun (id, _) -> (Id.name id, (id, true))) venv,
         List.map (fun (id, _, _) -> (Id.name id, id)) cenv,
         List.map (fun (id, _) -> (Id.name id, id)) tenv
     ) ast in

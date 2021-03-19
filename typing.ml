@@ -434,10 +434,14 @@ let canonicalize_type_defs tenv (defs: canonicalize_type_defs_input_t) =
     let tydefs, ctors = Util.unzip @@ List.map canonicalize_type_def defs in
     tydefs, List.concat ctors
 
+let env_ref = ref ([], [], [])
+
 let rec f level env =
     let venv, cenv, tenv = env in
     function
-    | Ast.Never -> TNever, Never
+    | Ast.Never ->
+        env_ref := env;
+        TNever, Never
     | Ast.Int (i, p) -> TInt, Int (i, p)
     | Ast.Bool (b, p) -> TBool, Bool (b, p)
     | Ast.Var (id, p) ->

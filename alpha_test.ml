@@ -40,7 +40,7 @@ let () =
     ], Ast.Int (1, _)) when id_x = id_x' && id_z = id_z' -> ()
     | _ -> failwith "ast test 1 failed" ) ;
     (match f "let x | x = 1 in x" with
-    | Ast.Let ([Ast.Or (Ast.PVar (id1, _), [Ast.PVar (id2, _)], _), _, Ast.Int (1, _)], Ast.Var (id3, _)) when id1 = id2 && id2 = id3 -> ()
+    | Ast.Let ([Ast.POr (Ast.PVar (id1, _), [Ast.PVar (id2, _)], _), _, Ast.Int (1, _)], Ast.Var (id3, _)) when id1 = id2 && id2 = id3 -> ()
     | _ -> failwith "ast or pat test failed");
     (match f "match [] with [] -> 0 | [x] -> x" with
     | Ast.Match (Ast.CtorApp (emp_id1, _, []), [

@@ -48,11 +48,11 @@ let rec f_pat cenv pat =
             List.concat @@ List.map collect_free_vars ps
         | Ast.PInt _ -> []
         | Ast.PBool _ -> []
-        | Ast.As (ps, p) ->
+        | Ast.PAs (ps, p) ->
             List.concat @@ List.map collect_free_vars ps
         | Ast.PCtorApp (_, ps, _) ->
             List.concat @@ List.map collect_free_vars ps
-        | Ast.Or (p, ps, _) ->
+        | Ast.POr (p, ps, _) ->
             let free_vars = collect_free_vars p in
             let other_free_vars = List.map collect_free_vars ps in
             let to_comparable x = x
@@ -68,8 +68,8 @@ let rec f_pat cenv pat =
         | Ast.PBool (b, p) -> Ast.PBool (b, p)
         | Ast.PInt (i, p) -> Ast.PInt (i, p)
         | Ast.PTuple (ps, p) -> Ast.PTuple (List.map (replace (cenv, penv)) ps, p)
-        | Ast.As (ps, p) -> Ast.As (List.map (replace (cenv, penv)) ps, p)
-        | Ast.Or (p, ps, pos) -> Ast.Or (replace (cenv, penv) p, List.map (replace (cenv, penv)) ps, pos)
+        | Ast.PAs (ps, p) -> Ast.PAs (List.map (replace (cenv, penv)) ps, p)
+        | Ast.POr (p, ps, pos) -> Ast.POr (replace (cenv, penv) p, List.map (replace (cenv, penv)) ps, pos)
         | Ast.PCtorApp (id, args, pos) ->
             let ctor_id = Tbl.lookup (Id.name id) cenv
             |> Tbl.expect (Printf.sprintf "%s unbound identifier %s" (Lex.show_pos_t pos) (Id.show id)) in
@@ -110,6 +110,8 @@ let rec f env =
         if snd id 
         then Ast.Var (fst id, p)
         else raise @@ Error "This kind of expression is not allowed as right-hand side of `let rec`"
+    | Ast.Or (lhr, rhr, p) -> Ast.Or (f env lhr, f env rhr, p)
+    | Ast.And (lhr, rhr, p) -> Ast.And (f env lhr, f env rhr, p)
     | Ast.Fun (arg, body, p) ->
         Ast.Fun (arg, f (Tbl.push (Id.name arg) (arg, true) @@ enable_all venv, cenv, tenv) body, p)
     | Ast.App (g, arg, p) ->

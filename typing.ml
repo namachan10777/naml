@@ -40,6 +40,8 @@ type t =
     | Int of int * Lex.pos_t
     | Bool of bool * Lex.pos_t
     | Var of Id.t * ty * Lex.pos_t
+    | Or of t * t * Lex.pos_t
+    | And of t * t * Lex.pos_t
     | CtorApp of Id.t * Lex.pos_t * (t * ty) list * ty
     | Tuple of (t * ty) list * Lex.pos_t
     | If of t * t * t * ty * Lex.pos_t
@@ -208,6 +210,8 @@ let rec collect_expansive_poly_tags = function
     | Never -> []
     | Var _ -> []
     | Fun _ -> []
+    | Or (lhr, rhr, _) -> collect_expansive_poly_tags lhr @ collect_expansive_poly_tags rhr
+    | And (lhr, rhr, _) -> collect_expansive_poly_tags lhr @ collect_expansive_poly_tags rhr
     | App ((_, f_ty), (_, arg_ty), _) -> collect_tags_of_unknown f_ty @ collect_tags_of_unknown arg_ty
     | If (c, t, e, _, _) -> (collect_expansive_poly_tags c) @ (collect_expansive_poly_tags t) @ (collect_expansive_poly_tags e)
     | CtorApp (_, _, args, _) -> List.concat @@ List.map (fun (arg, _) -> collect_expansive_poly_tags arg) args
@@ -254,6 +258,8 @@ let rec gen deny level = function
     | Int (i, p) -> Int (i, p)
     | Bool (b, p) -> Bool (b, p)
     | Var (id, ty, p) -> Var (id, gen_ty deny level ty, p)
+    | And (lhr, rhr, p) -> And (gen deny level lhr, gen deny level rhr, p)
+    | Or (lhr, rhr, p) -> Or (gen deny level lhr, gen deny level rhr, p)
     | If (c, t, e, ty, p) -> If (gen deny level c, gen deny level t, gen deny level e, gen_ty deny level ty, p)
     | Fun ((arg, arg_ty), (body, body_ty), p) ->
         Fun ((arg, gen_ty deny level arg_ty), (gen deny level body, gen_ty deny level body_ty), p)
@@ -298,12 +304,12 @@ let rec f_pat level env = function
     | Ast.PTuple (ts, p) ->
         let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) ts in
         (TTuple tys, PTuple (Util.zip pats tys, p), List.concat penvs)
-    | Ast.As (pats, p) ->
+    | Ast.PAs (pats, p) ->
         let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) pats in
         let ty = List.hd tys in
         List.map (fun ty' -> unify ty ty') (List.tl tys) |> ignore;
         (ty, As (pats, ty, p), List.concat penvs)
-    | Ast.Or (pat, pats, p) ->
+    | Ast.POr (pat, pats, p) ->
         let ty, pat, penv = f_pat level env pat in
         let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) pats in
         List.map (fun ty' -> unify ty ty') tys |> ignore;
@@ -448,6 +454,18 @@ let rec f level env =
         (* 定義が見つからない事はバグ(Alphaでunboundな変数は全て検出されているはず) *)
         let ty = Idtbl.lookup id venv |> Idtbl.expect "internal error" |> inst_ty (level, ref []) in
         ty, Var (id, ty, p)
+    | Ast.Or (lhr, rhr, p) ->
+        let lhr_ty, lhr = f level env lhr in
+        let rhr_ty, rhr = f level env rhr in
+        unify TBool lhr_ty;
+        unify TBool rhr_ty;
+        TBool, Or(lhr, rhr, p)
+    | Ast.And (lhr, rhr, p) ->
+        let lhr_ty, lhr = f level env lhr in
+        let rhr_ty, rhr = f level env rhr in
+        unify TBool lhr_ty;
+        unify TBool rhr_ty;
+        TBool, And(lhr, rhr, p)
     | Ast.Fun (arg, body, p) ->
         (* argは変数定義として扱えるが、letと違い多相性は導入されないのでレベル据え置きで不明な型と置く *)
         let u = fresh level in

@@ -86,6 +86,8 @@ let rec g = function
     | Typing.Never -> failwith "why?"
     | Typing.Int (i, _) -> Int i
     | Typing.Bool (b, _) -> Bool b
+    | Typing.And (lhr, rhr, p) -> And (g lhr, g rhr)
+    | Typing.Or (lhr, rhr, p) -> Or (g lhr, g rhr)
     | Typing.Var (id, ty, _) -> Var (id, deref_ty ty)
     | Typing.CtorApp (id, _, args, ty) -> CtorApp (id, List.map (fun (arg, arg_ty) -> g arg, deref_ty arg_ty) args, deref_ty ty)
     | Typing.Tuple (es, _) -> Tuple (List.map (fun (arg, arg_ty) -> g arg, deref_ty arg_ty) es)
@@ -100,8 +102,6 @@ let rec g = function
     | Typing.App (((Typing.App ((Typing.Var (id, _, _), _), (lhr, _), _), _), (rhr, _), _)) when id = less_id -> Less (g lhr, g rhr)
     | Typing.App (((Typing.App ((Typing.Var (id, _, _), _), (lhr, _), _), _), (rhr, ty), _)) when id = eq_id -> Eq (g lhr, g rhr, deref_ty ty)
     | Typing.App (((Typing.App ((Typing.Var (id, _, _), _), (lhr, _), _), _), (rhr, ty), _)) when id = neq_id -> Neq (g lhr, g rhr, deref_ty ty)
-    | Typing.App (((Typing.App ((Typing.Var (id, _, _), _), (lhr, _), _), _), (rhr, _), _)) when id = or_id -> Or (g lhr, g rhr)
-    | Typing.App (((Typing.App ((Typing.Var (id, _, _), _), (lhr, _), _), _), (rhr, _), _)) when id = and_id -> And (g lhr, g rhr)
     | Typing.App (((Typing.App ((Typing.Var (id, _, _), _), (lhr, ty), _), _), (rhr, _), _)) when id = append_id -> Append (g lhr, g rhr, deref_ty ty)
     | Typing.App (((Typing.App ((Typing.Var (id, _, _), _), (lhr, _), _), _), (rhr, ty), _)) when id = assign_id -> Assign (g lhr, g rhr, deref_ty ty)
     (* TODO *)

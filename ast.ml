@@ -3,8 +3,8 @@ type pat_t =
     | PBool of bool * Lex.pos_t
     | PVar of Id.t * Lex.pos_t
     | PTuple of pat_t list * Lex.pos_t
-    | As of pat_t list * Lex.pos_t
-    | Or of pat_t * pat_t list * Lex.pos_t
+    | PAs of pat_t list * Lex.pos_t
+    | POr of pat_t * pat_t list * Lex.pos_t
     | PCtorApp of Id.t * pat_t list * Lex.pos_t
 [@@deriving show]
 
@@ -25,6 +25,8 @@ type t =
     | Int of int * Lex.pos_t
     | Bool of bool * Lex.pos_t
     | Var of Id.t * Lex.pos_t
+    | Or of t * t * Lex.pos_t
+    | And of t * t * Lex.pos_t
     | CtorApp of Id.t * Lex.pos_t * t list
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
@@ -61,8 +63,8 @@ let rec of_pat_t = function
         | PTuple (ps, _) -> PCtorApp (id, ps, p)
         | pat -> PCtorApp (id, [pat], p)
         end
-    | Parser.PAs (pats, p) -> As (List.map of_pat_t pats, p)
-    | Parser.POr (pat, pats, p) -> Or (of_pat_t pat, List.map of_pat_t pats, p)
+    | Parser.PAs (pats, p) -> PAs (List.map of_pat_t pats, p)
+    | Parser.POr (pat, pats, p) -> POr (of_pat_t pat, List.map of_pat_t pats, p)
 
 let rec of_t = function
     | Parser.Never -> Never
@@ -81,8 +83,8 @@ let rec of_t = function
     | Parser.Mul (lhr, rhr, p) -> op "*" lhr rhr p
     | Parser.Div (lhr, rhr, p) -> op "/" lhr rhr p
     | Parser.Mod (lhr, rhr, p) -> op "mod" lhr rhr p
-    | Parser.Or (lhr, rhr, p) -> If (of_t lhr, Bool (true, p), of_t rhr, p)
-    | Parser.And (lhr, rhr, p) -> If (of_t lhr, of_t rhr, Bool (false, p), p)
+    | Parser.Or (lhr, rhr, p) -> Or (of_t lhr, of_t rhr, p)
+    | Parser.And (lhr, rhr, p) -> And (of_t lhr, of_t rhr, p)
     | Parser.Eq (lhr, rhr, p) -> op "=" lhr rhr p
     | Parser.Neq (lhr, rhr, p) -> op "<>" lhr rhr p
     | Parser.Seq (lhr, rhr, p) -> op ";" lhr rhr p

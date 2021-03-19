@@ -42,6 +42,7 @@ type t =
     | Var of Id.t * ty * Lex.pos_t
     | Or of t * t * Lex.pos_t
     | And of t * t * Lex.pos_t
+    | Seq of t * t * ty * Lex.pos_t
     | CtorApp of Id.t * Lex.pos_t * (t * ty) list * ty
     | Tuple of (t * ty) list * Lex.pos_t
     | If of t * t * t * ty * Lex.pos_t
@@ -212,6 +213,7 @@ let rec collect_expansive_poly_tags = function
     | Fun _ -> []
     | Or (lhr, rhr, _) -> collect_expansive_poly_tags lhr @ collect_expansive_poly_tags rhr
     | And (lhr, rhr, _) -> collect_expansive_poly_tags lhr @ collect_expansive_poly_tags rhr
+    | Seq (lhr, rhr, ty, _) -> collect_expansive_poly_tags lhr @ collect_expansive_poly_tags rhr
     | App ((_, f_ty), (_, arg_ty), _) -> collect_tags_of_unknown f_ty @ collect_tags_of_unknown arg_ty
     | If (c, t, e, _, _) -> (collect_expansive_poly_tags c) @ (collect_expansive_poly_tags t) @ (collect_expansive_poly_tags e)
     | CtorApp (_, _, args, _) -> List.concat @@ List.map (fun (arg, _) -> collect_expansive_poly_tags arg) args
@@ -259,6 +261,7 @@ let rec gen deny level = function
     | Bool (b, p) -> Bool (b, p)
     | Var (id, ty, p) -> Var (id, gen_ty deny level ty, p)
     | And (lhr, rhr, p) -> And (gen deny level lhr, gen deny level rhr, p)
+    | Seq (lhr, rhr, ty, p) -> Seq (gen deny level lhr, gen deny level rhr, gen_ty deny level ty, p)
     | Or (lhr, rhr, p) -> Or (gen deny level lhr, gen deny level rhr, p)
     | If (c, t, e, ty, p) -> If (gen deny level c, gen deny level t, gen deny level e, gen_ty deny level ty, p)
     | Fun ((arg, arg_ty), (body, body_ty), p) ->
@@ -466,6 +469,10 @@ let rec f level env =
         unify TBool lhr_ty;
         unify TBool rhr_ty;
         TBool, And(lhr, rhr, p)
+    | Ast.Seq (lhr, rhr, p) ->
+        let lhr_ty, lhr = f level env lhr in
+        let rhr_ty, rhr = f level env rhr in
+        rhr_ty, Seq(lhr, rhr, rhr_ty, p)
     | Ast.Fun (arg, body, p) ->
         (* argは変数定義として扱えるが、letと違い多相性は導入されないのでレベル据え置きで不明な型と置く *)
         let u = fresh level in

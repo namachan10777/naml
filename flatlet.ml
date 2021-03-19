@@ -20,6 +20,7 @@ type t =
     | Eq of t * t * Types.t
     | Neq of t * t * Types.t
     | Or of t * t
+    | Seq of t * t * Types.t
     | And of t * t
     | Append of t * t * Types.t
     | ArrayAssign of t * t * t * Types.t
@@ -88,6 +89,7 @@ let rec g = function
     | Typing.Bool (b, _) -> Bool b
     | Typing.And (lhr, rhr, p) -> And (g lhr, g rhr)
     | Typing.Or (lhr, rhr, p) -> Or (g lhr, g rhr)
+    | Typing.Seq (lhr, rhr, ty, p) -> Seq (g lhr, g rhr, deref_ty ty)
     | Typing.Var (id, ty, _) -> Var (id, deref_ty ty)
     | Typing.CtorApp (id, _, args, ty) -> CtorApp (id, List.map (fun (arg, arg_ty) -> g arg, deref_ty arg_ty) args, deref_ty ty)
     | Typing.Tuple (es, _) -> Tuple (List.map (fun (arg, arg_ty) -> g arg, deref_ty arg_ty) es)

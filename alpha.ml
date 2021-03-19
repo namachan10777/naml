@@ -112,6 +112,7 @@ let rec f env =
         else raise @@ Error "This kind of expression is not allowed as right-hand side of `let rec`"
     | Ast.Or (lhr, rhr, p) -> Ast.Or (f env lhr, f env rhr, p)
     | Ast.And (lhr, rhr, p) -> Ast.And (f env lhr, f env rhr, p)
+    | Ast.Seq (lhr, rhr, p) -> Ast.Seq (f env lhr, f env rhr, p)
     | Ast.Fun (arg, body, p) ->
         Ast.Fun (arg, f (Tbl.push (Id.name arg) (arg, true) @@ enable_all venv, cenv, tenv) body, p)
     | Ast.App (g, arg, p) ->

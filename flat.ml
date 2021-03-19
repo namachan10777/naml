@@ -11,6 +11,7 @@ type t =
     | Neq of t * t * Types.t
     | Or of t * t
     | And of t * t
+    | Seq of t * t * Types.t
     | Append of t * t * Types.t
     | ArrayAssign of t * t * t * Types.t
     | Assign of t * t * Types.t
@@ -61,6 +62,7 @@ let rec f funs = function
     | Closure.ArrayAssign (target, idx, inner, ty) -> ArrayAssign (f funs target, f funs idx, f funs inner, ty)
     | Closure.Or (lhr, rhr) -> Or (f funs lhr, f funs rhr)
     | Closure.And (lhr, rhr) -> And (f funs lhr, f funs rhr)
+    | Closure.Seq (lhr, rhr, ty) -> Seq (f funs lhr, f funs rhr, ty)
     | Closure.Ref (e, ty) -> Ref (f funs e, ty)
     | Closure.Not e -> Not (f funs e)
     | Closure.Neg e -> Neg (f funs e)

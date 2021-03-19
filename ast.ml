@@ -27,6 +27,7 @@ type t =
     | Var of Id.t * Lex.pos_t
     | Or of t * t * Lex.pos_t
     | And of t * t * Lex.pos_t
+    | Seq of t * t * Lex.pos_t
     | CtorApp of Id.t * Lex.pos_t * t list
     | Tuple of t list * Lex.pos_t
     | If of t * t * t * Lex.pos_t
@@ -87,7 +88,7 @@ let rec of_t = function
     | Parser.And (lhr, rhr, p) -> And (of_t lhr, of_t rhr, p)
     | Parser.Eq (lhr, rhr, p) -> op "=" lhr rhr p
     | Parser.Neq (lhr, rhr, p) -> op "<>" lhr rhr p
-    | Parser.Seq (lhr, rhr, p) -> op ";" lhr rhr p
+    | Parser.Seq (lhr, rhr, p) -> Seq (of_t lhr, of_t rhr, p)
     | Parser.Cons (lhr, rhr, p) ->
         CtorApp (Id.lookup ["::"] Pervasives.names, p, [of_t lhr; of_t rhr])
     | Parser.Gret (lhr, rhr, p) -> op ">" lhr rhr p

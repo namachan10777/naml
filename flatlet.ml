@@ -151,11 +151,17 @@ let strip_exts s =
         else f (n-1)
     in String.sub s 0 (f (String.length s - 1))
 
+let split_path s =
+    String.split_on_char '/' s
+
 let capitalize s =
     String.concat "" [
         String.map Char.uppercase_ascii (String.sub s 0 1);
         String.sub s 1 (String.length s - 1);
     ]
+
+let prefix_of_fname s =
+    s |> strip_exts |> split_path |> List.map capitalize
 
 let rec take_n n l = match n, l with
     | 0, l -> []
@@ -165,7 +171,7 @@ let rec take_n n l = match n, l with
 let rec add_mod_prefix mod_name = function
     | PInt i -> PInt i
     | PBool b -> PBool b
-    | PVar ((pre, name, id), ty) -> PVar ((mod_name :: pre, name, id), ty)
+    | PVar ((pre, name, id), ty) -> PVar ((mod_name @ pre, name, id), ty)
     | PTuple ps -> PTuple (List.map (fun (pat, ty) -> add_mod_prefix mod_name pat, ty) ps)
     | PAs (ps, ty) -> PAs (List.map (add_mod_prefix mod_name) ps, ty)
     | POr (p, ps, ty) -> POr (add_mod_prefix mod_name p, List.map (add_mod_prefix mod_name) ps, ty)
@@ -349,12 +355,12 @@ let (typing_module: modules_t -> string -> string -> modules_t) = fun typed fnam
     let venv' = take_n (List.length venv' - List.length venv) venv' in
     let tenv' = take_n (List.length tenv' - List.length tenv) tenv' in
     let cenv' = take_n (List.length cenv' - List.length cenv) cenv' in
-    let mod_name = capitalize @@ strip_exts fname in
-    let venv' = List.map (fun ((pre, name, id), ty) -> (mod_name :: pre, name, id), Typing.dereference ty) venv' in
-    let tenv' = List.map (fun ((pre, name, id), ty) -> (mod_name :: pre, name, id), ty) tenv' in
+    let mod_name = prefix_of_fname fname in
+    let venv' = List.map (fun ((pre, name, id), ty) -> (mod_name @ pre, name, id), Typing.dereference ty) venv' in
+    let tenv' = List.map (fun ((pre, name, id), ty) -> (mod_name @ pre, name, id), ty) tenv' in
     let cenv' = List.map (fun ((pre, name, id), (args, ty)) ->
         match Typing.dereference (Typing.TTuple args) with
-        | targs_polyness, Types.Tuple targs -> (mod_name :: pre, name, id), (targs_polyness, targs), (Typing.dereference ty)
+        | targs_polyness, Types.Tuple targs -> (mod_name @ pre, name, id), (targs_polyness, targs), (Typing.dereference ty)
         | _ -> failwith ""
     ) cenv' in
     let lets' = List.map (fun (pat, def, def_ty) -> add_mod_prefix mod_name pat, def, def_ty) lets' in

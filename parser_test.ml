@@ -17,7 +17,6 @@ let rec eq_pat l r =
     | P.POr (p1, ps1, _), POr (p2, ps2, _) ->
         eq_pat p1 p2 && List.for_all (fun (a,b) -> eq_pat a b) @@ Util.zip ps1 ps2
     | a, b ->
-        Printf.printf "diff %s\n%s" (P.show_pat_t a) (P.show_pat_t b) ;
         false
 
 let rec eq_ty l r =
@@ -31,7 +30,6 @@ let rec eq_ty l r =
     | P.TParen t1, P.TParen t2 -> eq_ty t1 t2
     | P.TVar (id1, _), P.TVar (id2, _) -> id1 = id2
     | a, b ->
-        Printf.printf "diff %s\n%s" (P.show_ty_t a) (P.show_ty_t b) ;
         false
 
 let rec eq_tydef l r =
@@ -43,7 +41,6 @@ let rec eq_tydef l r =
             && (List.for_all (fun (t1, t2) -> eq_ty t1 t2) @@ Util.zip tys1 tys2))
         @@ Util.zip defs1 defs2
     | a, b ->
-        Printf.printf "diff %s\n%s" (P.show_tydef_t a) (P.show_tydef_t b) ;
         false
 
 let rec eq l r =
@@ -107,9 +104,7 @@ let test name src right =
     let left = P.parse @@ Lex.lex src @@ Lex.initial_pos (name ^ ".ml") in
     if eq right left then ()
     else
-      failwith
-      @@ Printf.sprintf "\"%s\" left  : %s\nright : %s\n" name (P.show left)
-           (P.show right)
+      failwith @@ Printf.sprintf "failed %s" name
 
 let test_ty name src right =
     let left =
@@ -119,17 +114,13 @@ let test_ty name src right =
     in
     if eq_ty right left then ()
     else
-      failwith
-      @@ Printf.sprintf "\"%s\" left  : %s\nright : %s\n" name
-           (P.show_ty_t left) (P.show_ty_t right)
+      failwith @@ Printf.sprintf "failed %s" name
 
 let test_stmts name src right =
     let left = P.parse_stmts @@ Lex.lex src @@ Lex.initial_pos (name ^ ".ml") in
     if eq right left then ()
     else
-      failwith
-      @@ Printf.sprintf "\"%s\" left  : %s\nright : %s\n" name (P.show left)
-           (P.show right)
+      failwith @@ Printf.sprintf "failed %s" name
 
 let p i = ("test.ml", 1, i, i)
 

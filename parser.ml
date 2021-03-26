@@ -8,49 +8,7 @@ type ty_t =
     | TVar of string * Lex.pos_t
     | TTuple of ty_t list * Lex.pos_t
     | TApp of ty_t list * Id.t * Lex.pos_t
-
-let join sep elems =
-    "("
-    ^ List.fold_left
-        (fun s elem -> s ^ sep ^ elem)
-        (List.hd elems) (List.tl elems)
-    ^ ")"
-
-let rec show_ty_t = function
-    | TInt _ -> "int"
-    | TBool _ -> "bool"
-    | TString _ -> "string"
-    | TParen t -> show_ty_t t
-    | TVar (s, _) -> Printf.sprintf "'%s" s
-    | TTuple (ts, _) -> join "," (List.map show_ty_t ts)
-    | TApp (_, _, _) as self ->
-        let rec flatten = function
-            | TApp ([arg], t, _) ->
-                Printf.sprintf "%s %s" (flatten arg) (Id.show t)
-            | TApp (args, t, _) ->
-                Printf.sprintf "%s %s"
-                  (join "," (List.map flatten args))
-                  (Id.show t)
-            | t -> show_ty_t t
-        in
-        flatten self
-
-
 type tydef_t = Variant of (Id.t * Lex.pos_t * ty_t list) list | Alias of ty_t
-
-let rec show_tydef_t = function
-    | Variant defs ->
-        let defs =
-            List.map
-              (fun (id, _, def) ->
-                Printf.sprintf "%s of %s" (Id.show id)
-                  (join "," (List.map show_ty_t def)))
-              defs
-        in
-        List.fold_left
-          (fun acc def -> acc ^ "\n" ^ def)
-          (List.hd defs) (List.tl defs)
-    | Alias def -> show_ty_t def
 
 type pat_t =
     | PInt of int * Lex.pos_t
@@ -64,22 +22,7 @@ type pat_t =
     | PCtorApp of Id.t * pat_t * Lex.pos_t
     | PAs of pat_t list * Lex.pos_t
     | POr of pat_t * pat_t list * Lex.pos_t
-
-let rec show_pat_t =
-    function
-    | PInt (i, p) -> Printf.sprintf "%d" i
-    | PBool (true, p) -> "true"
-    | PBool (false, p) -> "false"
-    | PVar (id, p) -> Id.show id
-    | PEmp _ -> "[]"
-    | PCons (e, l, _) -> Printf.sprintf "%s :: %s" (show_pat_t e) (show_pat_t l)
-    | PTuple (tp, _) -> join ", " (List.map show_pat_t tp)
-    | PParen p -> show_pat_t p
-    | PCtor (id, p) -> Id.show id
-    | PCtorApp (id, p, _) -> Printf.sprintf "%s %s" (Id.show id) (show_pat_t p)
-    | PAs (ps, _) -> join " as " (List.map show_pat_t ps)
-    | POr (p, ps, _) -> join " | " (List.map show_pat_t (p :: ps))
-
+ 
 type t =
     | Never
     | Emp of Lex.pos_t
@@ -114,88 +57,6 @@ type t =
     | Seq of t * t * Lex.pos_t
     | Pipeline of t * t * Lex.pos_t
     | Paren of t
-
-let rec show =
-    function
-    | Never -> "<Never>"
-    | Neg (e, _) -> Printf.sprintf "-%s" @@ show e
-    | Int (i, _) -> Printf.sprintf "%d" i
-    | Bool (true, _) -> "true"
-    | Bool (false, _) -> "false"
-    | Var (id, _) -> Id.show id
-    | Ctor (id, _) -> Id.show id
-    | Index (arr, idx, _) -> Printf.sprintf "%s.(%s)" (show arr) (show idx)
-    | Assign (target, value, _) ->
-        Printf.sprintf "%s := %s" (show target) (show value)
-    | ArrayAssign (arr, idx, value, _) ->
-        Printf.sprintf "%s.(%s) <- %s" (show arr) (show idx) (show value)
-    | Add (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Sub (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Mul (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Div (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Mod (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Eq (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Neq (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | And (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Or (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Gret (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Less (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Seq (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Cons (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
-    | Emp p -> "[]"
-    | Tuple (es, _) -> join "," (List.map show es)
-    | If (cond, then_e, else_e, _) ->
-        Printf.sprintf "if %s\nthen %selse %s" (show cond) (show then_e)
-          (show else_e)
-    | Let (defs, e) ->
-        let lets =
-            List.map
-              (fun (id, _, def) ->
-                Printf.sprintf "letand %s = %s\n" (show_pat_t id) (show def))
-              defs
-        in
-        List.fold_left
-          (fun acc l -> acc ^ "\n" ^ l)
-          (List.hd lets) (List.tl lets)
-        ^ "\n  " ^ show e
-    | LetRec (defs, e) ->
-        let lets =
-            List.map
-              (fun (id, _, def) ->
-                Printf.sprintf "letrecand %s = %s\n" (Id.show id) (show def))
-              defs
-        in
-        List.fold_left
-          (fun acc l -> acc ^ "\n" ^ l)
-          (List.hd lets) (List.tl lets)
-        ^ "\n  " ^ show e
-    | Type (defs, e) ->
-        let show_args_t = List.fold_left (fun acc (a, _) -> acc ^ " " ^ a) "" in
-        let lets =
-            List.map
-              (fun (id, _, args, def) ->
-                Printf.sprintf "typeand %s %s = %s\n" (Id.show id)
-                  (show_args_t args) (show_tydef_t def))
-              defs
-        in
-        List.fold_left
-          (fun acc l -> acc ^ "\n" ^ l)
-          (List.hd lets) (List.tl lets)
-        ^ "\n  " ^ show e
-    | Fun (arg, e, _) -> Printf.sprintf "fun %s -> %s" (Id.show arg) (show e)
-    | Match (e, arms) ->
-        let arms =
-            List.map
-              (fun (pat, _, when_e, e) ->
-                Printf.sprintf "%s when %s -> %s" (show_pat_t pat) (show when_e)
-                  (show e))
-              arms
-        in
-        Printf.sprintf "match %s with%s" (show e)
-          (List.fold_left (fun acc a -> acc ^ "\n" ^ a) "" arms)
-    | App (f, arg, _) -> Printf.sprintf "(%s %s)" (show f) (show arg)
-    | Paren e -> show e
-    | Pipeline (lhr, rhr, p) -> Printf.sprintf "(%s + %s)" (show lhr) (show rhr)
 
 type input_t = (Lex.t * Lex.pos_t) list
 

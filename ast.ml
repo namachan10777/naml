@@ -148,4 +148,4 @@ and op id lhr rhr p =
     App
       (App (Var (Id.lookup [id] Pervasives.names, p), of_t lhr, p), of_t rhr, p)
 
-let f fname src = of_t @@ Parser.f fname src
+let f = of_t

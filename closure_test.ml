@@ -1,5 +1,5 @@
 let f s = s |> Lex.f "test.ml" |> Parser.parse |> Ast.of_t |> Alpha.f Alpha.pervasive_env |> Typing.f 0 Typing.pervasive_env |> snd |> Closure.f
-let f_s s = Ast.f "test.ml" s |> Alpha.f Alpha.pervasive_env |> Typing.f 0 Typing.pervasive_env |> snd |> Closure.f
+let f_s s = Lex.f "test.ml" s |> Parser.f |> Ast.f |> Alpha.f Alpha.pervasive_env |> Typing.f 0 Typing.pervasive_env |> snd |> Closure.f
 
 module C = Closure
 

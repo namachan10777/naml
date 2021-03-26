@@ -1,5 +1,5 @@
 let f s = s |> Lex.f "test.ml" |> Parser.parse |> Ast.of_t |> Alpha.f Alpha.pervasive_env |> Typing.f 0 Typing.pervasive_env
-let f_s s = Ast.f "test.ml" s |> Alpha.f Alpha.pervasive_env |> Typing.f 0 Typing.pervasive_env
+let f_s s = Lex.f "test.ml" s |> Parser.f |> Ast.f |> Alpha.f Alpha.pervasive_env |> Typing.f 0 Typing.pervasive_env
 
 let assert_eq name a b =
     if a = b

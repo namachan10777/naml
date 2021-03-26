@@ -793,4 +793,4 @@ let rec parse_stmts = function
     | (_, p) :: _ -> raise @@ SyntaxError ("stmt", p)
     | [] -> raise Unreachable
 
-let f fname src = parse_stmts @@ Lex.f fname src
+let f = parse_stmts

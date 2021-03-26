@@ -62,7 +62,7 @@ type input_t = (Lex.t * Lex.pos_t) list
 
 type parsed_t = t * Lex.pos_t * input_t
 
-exception SyntaxError of string
+exception SyntaxError of string * Lex.pos_t
 
 exception Unreachable
 
@@ -120,9 +120,7 @@ and parse_tid = function
         let last, _, remain = parse_tid remain in
         (id :: last, p, remain)
     | (_, p) :: _ ->
-        raise
-        @@ SyntaxError
-             (Lex.string_of_pos_t p ^ "syntax error while reading type id")
+        raise @@ SyntaxError ("syntax error while reading type id", p)
     | [] -> raise Unreachable
 
 and parse_tapp_arg =
@@ -140,25 +138,17 @@ and parse_tapp_arg =
         match parse_ty_tuple inner with
         | ty, p, (Lex.RP, _) :: remain -> ([TParen ty], p, remain)
         | _, p, _ ->
-            raise
-            @@ SyntaxError
-                 ( Lex.string_of_pos_t p
-                 ^ "syntax error: paren isn't balanced (reading type tuple)" ) )
+            raise @@ SyntaxError ("syntax error: paren isn't balanced (reading type tuple)", p) )
       | _, p, (Lex.Comma, _) :: _ -> (
         match parse_tapp_args inner with
         | tys, p, (Lex.RP, _) :: remain -> (tys, p, remain)
         | _, p, _ ->
             raise
-            @@ SyntaxError
-                 ( Lex.string_of_pos_t p
-                 ^ "syntax error: paren isn't balanced (reading type \
-                    contructor)" ) )
+            @@ SyntaxError ("syntax error: paren isn't balanced (reading type \
+                    contructor)", p) ) 
       | ty, p, (Lex.RP, _) :: remain -> ([ty], p, remain)
       | _, p, _ ->
-          raise
-          @@ SyntaxError
-               ( Lex.string_of_pos_t p
-               ^ "syntax error: paren isn't balanced (reading type)" ) )
+          raise @@ SyntaxError ("syntax error: paren isn't balanced (reading type)", p ) )
     | input ->
         let ty, p, remain = parse_ty_term input in
         ([ty], p, remain)
@@ -182,7 +172,7 @@ and parse_tapp input =
         let id, _, remain = parse_tid remain in
         f (TApp (ts, Id.from_strlist id, p)) p remain
     | [t], p, remain -> (t, p, remain)
-    | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "syntax error")
+    | _, p, _ -> raise @@ SyntaxError ("syntax error", p)
 
 and parse_ty_term = function
     | (Lex.TVar id, p) :: remain -> (TVar (id, p), p, remain)
@@ -199,10 +189,8 @@ and parse_ty_term = function
       match parse_ty inner with
       | inner, p, (Lex.RP, _) :: remain -> (TParen inner, p, remain)
       | _, p, _ ->
-          raise
-          @@ SyntaxError
-               (Lex.string_of_pos_t p ^ "paren is not balanced in type") )
-    | (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "ty_term")
+          raise @@ SyntaxError ("paren is not balanced in type", p) )
+    | (_, p) :: _ -> raise @@ SyntaxError ("ty_term", p)
     | [] -> raise Unreachable
 
 let rec parse_ty_variant = function
@@ -212,7 +200,7 @@ let rec parse_ty_variant = function
         match parse_ty_variant arms with
         | Variant arms, _, remain ->
             (Variant ((Id.from_strlist [name], pn, t) :: arms), pn, remain)
-        | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ " variant") )
+        | _, p, _ -> raise @@ SyntaxError (" variant", p) )
       | t, _, remain -> (Variant [(Id.from_strlist [name], pn, t)], pn, remain)
       )
     | (Lex.UIdent name, pn) :: (Lex.Of, _) :: remain -> (
@@ -221,21 +209,21 @@ let rec parse_ty_variant = function
         match parse_ty_variant arms with
         | Variant arms, _, remain ->
             (Variant ((Id.from_strlist [name], pn, t) :: arms), pn, remain)
-        | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "variant") )
+        | _, p, _ -> raise @@ SyntaxError ("variant", p) )
       | t, _, remain -> (Variant [(Id.from_strlist [name], pn, t)], pn, remain)
       )
     | (Lex.VBar, _) :: (Lex.UIdent name, pn) :: (Lex.VBar, _) :: arms -> (
       match parse_ty_variant arms with
       | Variant arms, _, remain ->
           (Variant ((Id.from_strlist [name], pn, []) :: arms), pn, remain)
-      | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "variant") )
+      | _, p, _ -> raise @@ SyntaxError ("variant", p) )
     | (Lex.VBar, _) :: (Lex.UIdent name, pn) :: remain ->
         (Variant [(Id.from_strlist [name], pn, [])], pn, remain)
     | (Lex.UIdent name, pn) :: (Lex.VBar, _) :: arms -> (
       match parse_ty_variant arms with
       | Variant arms, _, remain ->
           (Variant ((Id.from_strlist [name], pn, []) :: arms), pn, remain)
-      | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "variant") )
+      | _, p, _ -> raise @@ SyntaxError ("variant", p) )
     | (Lex.UIdent name, pn) :: remain ->
         (Variant [(Id.from_strlist [name], pn, [])], pn, remain)
     | input ->
@@ -295,18 +283,13 @@ and parse_pat_term = function
       match parse_pat_list_elem remain with
       | inner, p, (Lex.RB, _) :: remain -> (inner, p, remain)
       | _, p, _ ->
-          raise
-          @@ SyntaxError
-               (Lex.string_of_pos_t p ^ "paren is not balanced in pattern") )
+          raise @@ SyntaxError ("paren is not balanced in pattern", p) )
     | (Lex.LP, _) :: inner -> (
       match parse_pat inner with
       | inner, p, (Lex.RP, _) :: remain -> (PParen inner, p, remain)
       | _, p, _ ->
-          raise
-          @@ SyntaxError
-               (Lex.string_of_pos_t p ^ "paren is not balanced in pattern") )
-    | (_, p) :: _ ->
-        raise @@ SyntaxError (Lex.string_of_pos_t p ^ "pattern term")
+          raise @@ SyntaxError ("paren is not balanced in pattern", p) )
+    | (_, p) :: _ -> raise @@ SyntaxError ("pattern term", p)
     | [] -> raise Unreachable
 
 and parse_pat_ctor = function
@@ -314,7 +297,7 @@ and parse_pat_ctor = function
         let last, _, remain = parse_pat_ctor remain in
         (id :: last, p, remain)
     | (Lex.UIdent id, p) :: remain -> ([id], p, remain)
-    | (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "ident")
+    | (_, p) :: _ -> raise @@ SyntaxError ("ident", p)
     | [] -> raise Unreachable
 
 and parse_pat_list_elem input =
@@ -345,7 +328,7 @@ let rec parse_expr = function
           let expr, p, remain = parse_expr remain in
           (LetRec (defs, expr), p, remain)
       | _, (_, p) :: _ ->
-          raise @@ SyntaxError (Lex.string_of_pos_t p ^ "letrec expr")
+          raise @@ SyntaxError ("letrec expr", p)
       | _, [] -> raise Unreachable )
     | (Lex.Let, p) :: remain -> (
       match parse_let_ands remain with
@@ -353,14 +336,14 @@ let rec parse_expr = function
           let expr, p, remain = parse_expr remain in
           (Let (defs, expr), p, remain)
       | _, (_, p) :: _ ->
-          raise @@ SyntaxError (Lex.string_of_pos_t p ^ "let expr")
+          raise @@ SyntaxError ("let expr", p)
       | _, [] -> raise Unreachable )
     | (Lex.Fun, p) :: remain -> (
       match parse_params Lex.Arrow remain with
       | args, (Lex.Arrow, _) :: remain ->
           let expr, p, remain = parse_expr remain in
           (unfold_fun p args expr, p, remain)
-      | _, (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "fun")
+      | _, (_, p) :: _ -> raise @@ SyntaxError ("fun", p)
       | _, [] -> raise Unreachable )
     | (Lex.If, p) :: cond -> (
       match parse_expr cond with
@@ -370,10 +353,10 @@ let rec parse_expr = function
             let else_e, _, remain = parse_expr else_e in
             (If (cond, then_e, else_e, p), p, remain)
         | _, p, _ ->
-            raise @@ SyntaxError (Lex.string_of_pos_t p ^ "if: else not found")
+            raise @@ SyntaxError ("if: else not found", p)
         )
       | _, p, _ ->
-          raise @@ SyntaxError (Lex.string_of_pos_t p ^ "if: then not found") )
+          raise @@ SyntaxError ("if: then not found", p) )
     | (Lex.Match, p) :: remain -> (
       match parse_expr remain with
       | target, _, (Lex.With, _) :: (Lex.VBar, _) :: arms ->
@@ -382,7 +365,7 @@ let rec parse_expr = function
       | target, _, (Lex.With, _) :: arms ->
           let arms, _, remain = parse_arms arms in
           (Match (target, arms), p, remain)
-      | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "match") )
+      | _, p, _ -> raise @@ SyntaxError ("match", p) )
     | others -> parse_seq others
 
 and unfold_fun p args expr =
@@ -631,7 +614,7 @@ and parse_app input =
         in
         (app, p, remain)
     | [], (_, p) :: _ ->
-        raise @@ SyntaxError (Lex.string_of_pos_t p ^ "function app")
+        raise @@ SyntaxError ("function app", p)
     | [], [] -> raise Unreachable
 
 and parse_array_access input =
@@ -639,8 +622,7 @@ and parse_array_access input =
     | lhr, p, (Lex.Dot, _) :: (Lex.LP, _) :: remain -> (
       match parse_expr remain with
       | rhr, _, (Lex.RP, _) :: remain -> (Index (lhr, rhr, p), p, remain)
-      | _, p, _ ->
-          raise @@ SyntaxError (Lex.string_of_pos_t p ^ "paren is not balanced")
+      | _, p, _ -> raise @@ SyntaxError ("paren is not balanced", p)
       )
     | x -> x
 
@@ -658,19 +640,15 @@ and parse_term = function
       match parse_list_elem remain with
       | inner, p, (Lex.RB, _) :: remain -> (inner, p, remain)
       | _, p, _ ->
-          raise
-          @@ SyntaxError
-               ( Printf.sprintf "%s paren is not balanced"
-               @@ Lex.string_of_pos_t p ) )
+          raise @@ SyntaxError ( "paren is not balanced", p ) )
     | (Lex.LP, _) :: remain -> (
       match parse_expr remain with
       | inner, p, (Lex.RP, _) :: remain -> (Paren inner, p, remain)
       | _, p, _ ->
-          raise
-          @@ SyntaxError
-               ( Printf.sprintf "%s paren is not balanced"
-               @@ Lex.string_of_pos_t p ) )
-    | x -> raise @@ SyntaxError "term"
+          raise @@ SyntaxError ("paren is not balanced", p ) )
+    | (x, p) :: _ -> raise @@ SyntaxError ("term", p)
+    (* TODO fix *)
+    | [] -> raise @@ SyntaxError ("term", Lex.nowhere)
 
 and parse_ident = function
     | (Lex.UIdent pre, p) :: (Lex.Dot, _) :: remain -> (
@@ -682,7 +660,7 @@ and parse_ident = function
       | _ -> raise @@ Failure "internal error in parsing identifier" )
     | (Lex.LIdent id, p) :: remain -> (Var (Id.from_strlist [id], p), p, remain)
     | (Lex.UIdent id, p) :: remain -> (Ctor (Id.from_strlist [id], p), p, remain)
-    | (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "ident")
+    | (_, p) :: _ -> raise @@ SyntaxError ("ident", p)
     | [] -> raise Unreachable
 
 and parse_list_elem input =
@@ -716,16 +694,16 @@ and parse_arms arm =
         | expr, _, remain ->
             ([(pat, p, Bool (true, p_arm), expr)], p_arm, remain) )
       | _, p, _ ->
-          raise @@ SyntaxError (Lex.string_of_pos_t p ^ "invalid \'when\' guard")
+          raise @@ SyntaxError ("invalid \'when\' guard", p)
       )
-    | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "match arm")
+    | _, p, _ -> raise @@ SyntaxError ("match arm", p)
 
 and take_targs = function
     | (Lex.TVar id, p) :: (Lex.Comma, _) :: remain ->
         let targs, remain = take_targs remain in
         ((id, p) :: targs, remain)
     | (Lex.TVar id, p) :: remain -> ([(id, p)], remain)
-    | (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "targs")
+    | (_, p) :: _ -> raise @@ SyntaxError ("targs", p)
     | [] -> raise Unreachable
 
 and parse_let_ands input =
@@ -742,7 +720,7 @@ and parse_let_ands input =
           let ands, remain = parse_let_ands remain in
           ((PVar (id, p), p, unfold_fun p args def) :: ands, remain)
       | def, _, remain -> ([(PVar (id, p), p, unfold_fun p args def)], remain) )
-    | _, (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "let stmt")
+    | _, (_, p) :: _ -> raise @@ SyntaxError ("let stmt", p)
     | _, [] -> raise Unreachable
 
 and parse_letrec_ands input =
@@ -759,7 +737,7 @@ and parse_letrec_ands input =
           let ands, remain = parse_letrec_ands remain in
           ((id, p, unfold_fun p args def) :: ands, remain)
       | def, _, remain -> ([(id, p, unfold_fun p args def)], remain) )
-    | _, (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "let stmt")
+    | _, (_, p) :: _ -> raise @@ SyntaxError ("let stmt", p)
     | _, [] -> raise Unreachable
 
 let rec parse_type_ands = function
@@ -772,9 +750,9 @@ let rec parse_type_ands = function
       | targs, (Lex.LP, _) :: (Lex.LIdent name, p) :: (Lex.Eq, _) :: remain ->
           parse_type_body p name targs remain
       | _, (_, p) :: _ ->
-          raise @@ SyntaxError (Lex.string_of_pos_t p ^ "and type targs")
+          raise @@ SyntaxError ("and type targs", p)
       | _, [] -> raise Unreachable )
-    | (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "and type")
+    | (_, p) :: _ -> raise @@ SyntaxError ("and type", p)
     | [] -> raise Unreachable
 
 and parse_type_body p name targs input =
@@ -787,7 +765,7 @@ and parse_type_body p name targs input =
 let parse input =
     match parse_expr input with
     | ast, _, [(Lex.Eof, _)] -> ast
-    | _, p, _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "top")
+    | _, p, _ -> raise @@ SyntaxError ("top", p)
 
 let rec parse_stmts = function
     | (Lex.Type, _) :: (Lex.LIdent name, p) :: (Lex.Eq, _) :: remain ->
@@ -803,7 +781,7 @@ let rec parse_stmts = function
       | targs, (Lex.RP, _) :: (Lex.LIdent name, p) :: (Lex.Eq, _) :: remain ->
           let defs, remain = parse_type_body p name targs remain in
           Type (defs, parse_stmts remain)
-      | _, (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "type")
+      | _, (_, p) :: _ -> raise @@ SyntaxError ("type", p)
       | _, [] -> raise Unreachable )
     | (Lex.Let, _) :: (Lex.Rec, _) :: remain ->
         let defs, remain = parse_letrec_ands remain in
@@ -812,7 +790,7 @@ let rec parse_stmts = function
         let defs, remain = parse_let_ands remain in
         Let (defs, parse_stmts remain)
     | [(Lex.Eof, _)] -> Never
-    | (_, p) :: _ -> raise @@ SyntaxError (Lex.string_of_pos_t p ^ "stmt")
+    | (_, p) :: _ -> raise @@ SyntaxError ("stmt", p)
     | [] -> raise Unreachable
 
 let f fname src = parse_stmts @@ Lex.f fname src

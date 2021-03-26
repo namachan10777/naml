@@ -43,6 +43,11 @@ util.cmx: util.ml
 tbl.cmx: tbl.ml
 	$(OCAMLOPT) $< -c
 
+env.cmi: env.mli
+	$(OCAMLOPT) $< -c
+env.cmx: env.ml env.cmi
+	$(OCAMLOPT) $< -c
+
 parser.cmx: parser.ml id.cmx lex.cmx
 	$(OCAMLOPT) $< -c
 parser_test.cmx: parser_test.ml util.cmx parser.cmx
@@ -57,7 +62,9 @@ types_test.cmx: types_test.ml id.cmx types.cmx
 types_test: id.cmx types.cmx types_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
-pervasives.cmx: pervasives.ml id.cmx types.cmx
+pervasives.cmi: pervasives.mli id.cmx types.cmx env.cmx
+	$(OCAMLOPT) $< -c
+pervasives.cmx: pervasives.ml pervasives.cmi id.cmx types.cmx env.cmx
 	$(OCAMLOPT) $< -c
 
 ast.cmx: ast.ml id.cmx parser.cmx types.cmx pervasives.cmx

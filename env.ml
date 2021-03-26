@@ -1,5 +1,7 @@
 type 'a t = (Id.t * 'a) list
 
+exception NotFound
+
 let get tbl key =
     let rec f = function
         | [] -> None
@@ -13,3 +15,5 @@ let get_unwrap tbl key = match get tbl key with
 
 let push tbl key value =
     (key, value) :: tbl
+
+let make tbl = tbl

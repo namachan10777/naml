@@ -80,3 +80,4 @@ let vars =
 
 let names =
     List.map (fun (n, _, _) -> n) ctors @ List.map fst vars @ List.map fst types
+let vars = Env.make vars

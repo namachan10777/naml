@@ -57,31 +57,31 @@ let rec g_pat = function
     | Typing.Or (p, ps, ty, _) -> POr (g_pat p, List.map g_pat ps, deref_ty ty)
     | Typing.PCtorApp (id, args, ty, _) -> PCtorApp (id, List.map (fun (p, ty) -> g_pat p, deref_ty ty) args, deref_ty ty)
 
-let add_id = Id.lookup ["+"] @@ List.map fst Pervasives.vars
-let sub_id = Id.lookup ["-"] @@ List.map fst Pervasives.vars
-let mul_id = Id.lookup ["*"] @@ List.map fst Pervasives.vars
-let div_id = Id.lookup ["/"] @@ List.map fst Pervasives.vars
-let mod_id = Id.lookup ["mod"] @@ List.map fst Pervasives.vars
-let gret_id = Id.lookup [">"] @@ List.map fst Pervasives.vars
-let less_id = Id.lookup ["<"] @@ List.map fst Pervasives.vars
-let eq_id = Id.lookup ["="] @@ List.map fst Pervasives.vars
-let neq_id = Id.lookup ["<>"] @@ List.map fst Pervasives.vars
-let or_id = Id.lookup ["||"] @@ List.map fst Pervasives.vars
-let and_id = Id.lookup ["&&"] @@ List.map fst Pervasives.vars
-let append_id = Id.lookup ["@"] @@ List.map fst Pervasives.vars
-let assign_id = Id.lookup [":="] @@ List.map fst Pervasives.vars
-let arrayassign_id = Id.lookup ["<-"] @@ List.map fst Pervasives.vars
-let arrayaccess_id = Id.lookup ["."] @@ List.map fst Pervasives.vars
-let ref_id = Id.lookup ["ref"] @@ List.map fst Pervasives.vars
-let not_id = Id.lookup ["not"] @@ List.map fst Pervasives.vars
-let neg_id = Id.lookup ["<neg>"] @@ List.map fst Pervasives.vars
-let print_int_id = Id.lookup ["print_int"] @@ List.map fst Pervasives.vars
-let print_string_id = Id.lookup ["print_string"] @@ List.map fst Pervasives.vars
-let failwith_id = Id.lookup ["failwith"] @@ List.map fst Pervasives.vars
+let add_id = Id.lookup ["+"] @@ Env.names Pervasives.vars
+let sub_id = Id.lookup ["-"] @@ Env.names Pervasives.vars
+let mul_id = Id.lookup ["*"] @@ Env.names Pervasives.vars
+let div_id = Id.lookup ["/"] @@ Env.names Pervasives.vars
+let mod_id = Id.lookup ["mod"] @@ Env.names Pervasives.vars
+let gret_id = Id.lookup [">"] @@ Env.names Pervasives.vars
+let less_id = Id.lookup ["<"] @@ Env.names Pervasives.vars
+let eq_id = Id.lookup ["="] @@ Env.names Pervasives.vars
+let neq_id = Id.lookup ["<>"] @@ Env.names Pervasives.vars
+let or_id = Id.lookup ["||"] @@ Env.names Pervasives.vars
+let and_id = Id.lookup ["&&"] @@ Env.names Pervasives.vars
+let append_id = Id.lookup ["@"] @@ Env.names Pervasives.vars
+let assign_id = Id.lookup [":="] @@ Env.names Pervasives.vars
+let arrayassign_id = Id.lookup ["<-"] @@ Env.names Pervasives.vars
+let arrayaccess_id = Id.lookup ["."] @@ Env.names Pervasives.vars
+let ref_id = Id.lookup ["ref"] @@ Env.names Pervasives.vars
+let not_id = Id.lookup ["not"] @@ Env.names Pervasives.vars
+let neg_id = Id.lookup ["<neg>"] @@ Env.names Pervasives.vars
+let print_int_id = Id.lookup ["print_int"] @@ Env.names Pervasives.vars
+let print_string_id = Id.lookup ["print_string"] @@ Env.names Pervasives.vars
+let failwith_id = Id.lookup ["failwith"] @@ Env.names Pervasives.vars
 
-let ref_type_id = Id.lookup ["ref"] @@ List.map fst Pervasives.types
-let list_type_id = Id.lookup ["list"] @@ List.map fst Pervasives.types
-let array_type_id = Id.lookup ["array"] @@ List.map fst Pervasives.types
+let ref_type_id = Id.lookup ["ref"] @@ Env.names Pervasives.types
+let list_type_id = Id.lookup ["list"] @@ Env.names Pervasives.types
+let array_type_id = Id.lookup ["array"] @@ Env.names Pervasives.types
 
 let rec g = function
     | Typing.Never -> failwith "why?"
@@ -165,10 +165,6 @@ let capitalize s =
 let prefix_of_fname s =
     s |> strip_exts |> split_path |> List.map capitalize
 
-let rec take_n n l = match n, l with
-    | 0, l -> []
-    | _, [] -> []
-    | n, x :: xs -> x :: take_n (n-1) xs
 
 let rec add_mod_prefix mod_name = function
     | PInt i -> PInt i
@@ -180,9 +176,9 @@ let rec add_mod_prefix mod_name = function
     | PCtorApp (id, args, ty) -> PCtorApp (id, List.map (fun (p, ty) -> add_mod_prefix mod_name p, ty) args, ty)
 
 
-type venv_t = (Id.t * (int * Types.t)) list
-type cenv_t = (Id.t * (int * Types.t list) * (int * Types.t)) list
-type tenv_t = (Id.t * (int * Types.t)) list
+type venv_t = (int * Types.t) Env.t
+type cenv_t = ((int * Types.t list) * (int * Types.t)) Env.t
+type tenv_t = (int * Types.t) Env.t
 type lets_t = (pat_t * t * Types.t) list
 [@@deriving show]
 type modules_t = (venv_t * cenv_t * tenv_t) * lets_t
@@ -341,30 +337,27 @@ let failwith_id = Id.lookup ["failwith"] @@ List.map fst Pervasives.vars
 
 let (typing_module: modules_t -> string -> string -> modules_t) = fun typed fname src ->
     let (venv, cenv, tenv), lets = typed in
-    let ast = Ast.f fname src in
+    let ast = Lex.f fname src |> Parser.f |> Ast.f in
     let alpha = Alpha.f (
-        List.map (fun (id, _) -> (Id.name id, (id, true))) venv,
-        List.map (fun (id, _, _) -> (Id.name id, id)) cenv,
-        List.map (fun (id, _) -> (Id.name id, id)) tenv
+        Env.alpha_var_env venv,
+        Env.alpha_env cenv,
+        Env.alpha_env tenv
     ) ast in
     let typed = snd @@ Typing.f (
-        List.map (fun (id, (_, ty)) -> id, Typing.types2typing ty) venv,
-        List.map (fun (id, (_, targs), (_, ty)) -> id, (List.map Typing.types2typing targs, Typing.types2typing ty)) cenv,
+        Env.map (fun (_, ty) -> Typing.types2typing ty) venv,
+        Env.map (fun ((_, targs), (_, ty)) -> List.map Typing.types2typing targs, Typing.types2typing ty) cenv,
         tenv
     ) alpha in
     let lets' = f typed in
     let (venv', cenv', tenv') = !Typing.env_ref in
-    let venv' = take_n (List.length venv' - List.length venv) venv' in
-    let tenv' = take_n (List.length tenv' - List.length tenv) tenv' in
-    let cenv' = take_n (List.length cenv' - List.length cenv) cenv' in
     let mod_name = prefix_of_fname fname in
-    let venv' = List.map (fun ((pre, name, id), ty) -> (mod_name @ pre, name, id), Typing.dereference ty) venv' in
-    let tenv' = List.map (fun ((pre, name, id), ty) -> (mod_name @ pre, name, id), ty) tenv' in
-    let cenv' = List.map (fun ((pre, name, id), (args, ty)) ->
-        match Typing.dereference (Typing.TTuple args) with
-        | targs_polyness, Types.Tuple targs -> (mod_name @ pre, name, id), (targs_polyness, targs), (Typing.dereference ty)
+    let venv' = (Env.enclose_module venv (Env.map Typing.dereference venv') mod_name) in
+    let tenv' = (Env.enclose_module tenv tenv' mod_name) in
+    let deref_cenv (args, ty) = match Typing.dereference (Typing.TTuple args) with
+        | targs_polyness, Types.Tuple targs -> (targs_polyness, targs), (Typing.dereference ty)
         | _ -> failwith ""
-    ) cenv' in
+    in
+    let cenv' = (Env.enclose_module cenv (Env.map deref_cenv cenv') mod_name) in
     let lets' = List.map (fun (pat, def, def_ty) -> add_mod_prefix mod_name pat, def, def_ty) lets' in
-    let env = (venv' @ venv, cenv @ cenv', tenv' @ tenv) in
+    let env = (venv', cenv', tenv') in
     (env, lets' @ lets)

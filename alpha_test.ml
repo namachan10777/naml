@@ -51,13 +51,13 @@ let () =
         ], _), _, Ast.Bool(true, _), Ast.Var (x_id2, _));
     ]) when emp_id1 = emp_id2 && emp_id2 = emp_id4 && x_id1 = x_id2 -> ()
     | _ -> failwith "alpha ctor failed");
-    (let emp_id1 = Id.lookup  ["[]"] (List.map Util.fst Pervasives.ctors) in
+    (let emp_id1 = Id.lookup  ["[]"] (Env.names Pervasives.ctors) in
     match f "let x = [] in 0" with
     | Ast.Let ([
         (Ast.PVar (x, _), _, Ast.CtorApp (emp_id2, _, []));
     ], Ast.Int (0, _)) when emp_id1 = emp_id2 -> ()
     | _ -> failwith "alpha CtorApp failed");
-    (let list_id1 = Id.lookup  ["list"] (List.map fst Pervasives.types) in
+    (let list_id1 = Id.lookup  ["list"] (Env.names Pervasives.types) in
     match f_s "type 'a t = 'a list and t2 = int t" with
     | Ast.Type ([
         (tid1, _, [("a", _)], Ast.Alias (Ast.TApp ([Ast.TVar ("a", _)], list_id2, _)));

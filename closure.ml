@@ -236,7 +236,7 @@ let rec conv mask = function
         let free_variables = sub (collect_free_variable f) mask in
         (* 自由変数を明示的に渡される引数に変換*)
         let replace_table = List.map (fun (id, ty) -> id, Id.from_strlist ["<cap>"], ty) free_variables in
-        let body = replace (List.map (fun (id, id', _) -> id, id') replace_table) body in
+        let body = replace (Tbl.make @@ List.map (fun (id, id', _) -> id, id') replace_table) body in
         let implicit_args = List.map (fun (_, id, ty) -> id, ty) replace_table in
         let f = Fun (implicit_args @ args, body, ret_ty) in
         let funty = List.fold_right (fun arg_ty ret_ty -> Types.Fun (arg_ty, ret_ty)) (List.map snd args) ret_ty in
@@ -260,7 +260,7 @@ let rec conv mask = function
         Match (conv mask target, target_ty, arms, ty)
 
 let f mask tree = conv mask @@ shrink @@ tree
-let pervasives = List.map (fun (id, _) -> id) Pervasives.vars
+let pervasives = Env.names Pervasives.vars
 let f pervasives lets =
     let ids = List.concat @@ List.map (fun (p, _, _) -> collect_free_ids_pat p) lets in
     List.map (fun (pat, def, ty) -> (pat, f (ids @ pervasives) def, ty)) lets

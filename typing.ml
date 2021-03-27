@@ -297,32 +297,32 @@ let rec types2typing = function
     | Types.Variant (args, id) -> TVariant (List.map types2typing args, id)
 
 let pervasive_env =
-    let venv = List.map (fun (id, (_, ty)) -> id, types2typing ty) Pervasives.vars in
-    let cenv = List.map (fun (id, (_, args), (_, ty)) -> id, (List.map types2typing args, types2typing ty)) Pervasives.ctors in
+    let venv = Env.map (fun (_, ty) -> types2typing ty) Pervasives.vars in
+    let cenv = Env.map (fun ((_, args), (_, ty)) -> List.map types2typing args, types2typing ty) Pervasives.ctors in
     (venv, cenv, Pervasives.types)
 
-let rec f_pat level env = function
-    | Ast.PInt (i, p) -> TInt, PInt (i, p), []
-    | Ast.PBool (b, p) -> TBool, PBool (b, p), []
+let rec f_pat level (env: (ty list * ty) Env.t) = function
+    | Ast.PInt (i, p) -> TInt, PInt (i, p), Env.make []
+    | Ast.PBool (b, p) -> TBool, PBool (b, p), Env.make []
     | Ast.PTuple (ts, p) ->
         let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) ts in
-        (TTuple tys, PTuple (Util.zip pats tys, p), List.concat penvs)
+        (TTuple tys, PTuple (Util.zip pats tys, p), Env.concat penvs)
     | Ast.PAs (pats, p) ->
         let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) pats in
         let ty = List.hd tys in
         List.map (fun ty' -> unify ty ty') (List.tl tys) |> ignore;
-        (ty, As (pats, ty, p), List.concat penvs)
+        (ty, As (pats, ty, p), Env.concat penvs)
     | Ast.POr (pat, pats, p) ->
         let ty, pat, penv = f_pat level env pat in
         let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) pats in
         List.map (fun ty' -> unify ty ty') tys |> ignore;
-        ty, Or (pat, pats, ty, p), penv @ List.concat penvs
+        ty, Or (pat, pats, ty, p), Env.concat (penv :: penvs)
     | Ast.PVar (id, p) ->
         let u = fresh level in
-        u, PVar (id, u, p), [id, u]
+        u, PVar (id, u, p), Env.make [id, u]
     | Ast.PCtorApp (cid, args, p) ->
-        let param_tys, ty = Idtbl.lookup cid env |> Idtbl.expect "internal error" in
-        let inst_tbl = ref [] in
+        let param_tys, ty = Env.get env cid |> Idtbl.expect "internal error" in
+        let inst_tbl = Tbl.make_mut [] in
         let param_tys = List.map (inst_ty (level, inst_tbl)) param_tys in
         let ty = inst_ty (level, inst_tbl) ty in
         let tys, pats, penvs = Util.unzip3 @@ List.map (f_pat level env) args in
@@ -339,11 +339,11 @@ let rec f_pat level env = function
          * 引数の数とタプルの要素数が同じならタプルをその場で生成し適用していると解釈する *)
         | [TTuple param_tys], arg_tys when (List.length param_tys) = (List.length arg_tys) ->
             arg_check param_tys arg_tys;
-            ty, PCtorApp (cid, [PTuple (Util.zip pats tys, p), TTuple tys], ty, p), List.concat penvs
+            ty, PCtorApp (cid, [PTuple (Util.zip pats tys, p), TTuple tys], ty, p), Env.concat penvs
         (* それ以外の場合はそのまま *)
         | param_tys, arg_tys ->
             arg_check param_tys arg_tys; 
-            ty, PCtorApp (cid, (Util.zip pats tys), ty, p), List.concat penvs
+            ty, PCtorApp (cid, (Util.zip pats tys), ty, p), Env.concat penvs
         end
 
 let rec take_polytags = function
@@ -415,7 +415,7 @@ let canonicalize_type_defs tenv (defs: canonicalize_type_defs_input_t) =
         | Ast.TTuple (tys, _) -> Types.Tuple (List.map (canonicalize_ty arg_env) tys)
         | Ast.TApp (ty_args, tid, _) ->
             let ty_args = List.map (canonicalize_ty arg_env) ty_args in
-            begin match Idtbl.lookup tid tenv with
+            begin match Env.get tenv tid with
             | Some (polyness, ty) ->
                 if polyness = List.length ty_args
                 then reassoc_tvar ty_args ty
@@ -423,7 +423,7 @@ let canonicalize_type_defs tenv (defs: canonicalize_type_defs_input_t) =
             | None -> begin match lookup_from_codef tid with
                 | Some (_, _, targs', Ast.Alias ty) ->
                     if (List.length targs') = (List.length ty_args)
-                    then canonicalize_ty (Util.zip targs' ty_args) ty
+                    then canonicalize_ty (Tbl.make @@ Util.zip targs' ty_args) ty
                     else failwith "polyness unmatch"
                 | Some (_, _, targs', Ast.Variant _) ->
                     if (List.length targs') = (List.length ty_args)
@@ -433,19 +433,23 @@ let canonicalize_type_defs tenv (defs: canonicalize_type_defs_input_t) =
             end
         end
     and canonicalize_type_def = function
-        | id, p, targs, Ast.Alias ty -> (id, ((List.length targs), canonicalize_ty (List.mapi (fun i arg -> (arg, Types.Poly i)) targs) ty)), []
+        | id, p, targs, Ast.Alias ty -> (id, ((List.length targs), canonicalize_ty (Tbl.make @@ List.mapi (fun i arg -> (arg, Types.Poly i)) targs) ty)), Env.make []
         | id, p, targs, Ast.Variant arms ->
             let arg_env = List.mapi (fun i arg -> (arg, Types.Poly i)) targs in
             let ty = Types.Variant (List.map snd arg_env, id) in
-            let ctors = List.map (fun (id, p, tys) -> (id, (List.map (fun ty -> ty |> canonicalize_ty arg_env |> types2typing) tys, types2typing ty))) arms in
-            (id, ((List.length targs), ty)), ctors
+            let ctors = List.map (fun (id, p, tys) -> (id, (List.map (fun ty -> ty |> canonicalize_ty (Tbl.make arg_env) |> types2typing) tys, types2typing ty))) arms in
+            (id, ((List.length targs), ty)), Env.make ctors
     in
     let tydefs, ctors = Util.unzip @@ List.map canonicalize_type_def defs in
-    tydefs, List.concat ctors
+    Env.make tydefs, Env.concat ctors
 
-let env_ref = ref ([], [], [])
+let env_ref = ref (Env.make [], Env.make [], Env.make [])
 
-let rec f level env =
+type tys_t = ty list
+[@@deriving show]
+
+let rec f level (env:          ty Env.t * (ty list * ty) Env.t *
+         Types.scheme_t Env.t) =
     let venv, cenv, tenv = env in
     function
     | Ast.Never ->
@@ -455,7 +459,7 @@ let rec f level env =
     | Ast.Bool (b, p) -> TBool, Bool (b, p)
     | Ast.Var (id, p) ->
         (* 定義が見つからない事はバグ(Alphaでunboundな変数は全て検出されているはず) *)
-        let ty = Idtbl.lookup id venv |> Idtbl.expect "internal error" |> inst_ty (level, ref []) in
+        let ty = Env.get_unwrap venv id |> inst_ty (level, Tbl.make_mut []) in
         ty, Var (id, ty, p)
     | Ast.Or (lhr, rhr, p) ->
         let lhr_ty, lhr = f level env lhr in
@@ -476,7 +480,7 @@ let rec f level env =
     | Ast.Fun (arg, body, p) ->
         (* argは変数定義として扱えるが、letと違い多相性は導入されないのでレベル据え置きで不明な型と置く *)
         let u = fresh level in
-        let venv = Idtbl.push arg u venv in
+        let venv = Env.push venv arg u in
         let body_ty, body = f level (venv, cenv, tenv) body in
         TFun(u, body_ty), Fun((arg, u), (body, body_ty), p)
     | Ast.If (cond_e, then_e, else_e, p) ->
@@ -521,9 +525,9 @@ let rec f level env =
         let pat_tys = List.map (gen_ty denylist level) pat_tys in
         let pats = List.map (gen_pat denylist level) pats in
         (* generalizeしたvenvの追加分を定義 *)
-        let venv' = List.map (fun (id, ty) -> id, gen_ty denylist level ty) @@ List.concat pvenv in
+        let venv' = Env.map (fun ty -> gen_ty denylist level ty) @@ Env.concat pvenv in
         (* exprをletで定義した型を使って型付け *)
-        let ty, expr = f level (venv' @ venv, cenv, tenv) expr in
+        let ty, expr = f level (Env.concat [venv'; venv], cenv, tenv) expr in
         (* generalize済みの定義を構築 *)
         let pats = Util.zip pats pat_tys in
         let def_exprs = Util.zip def_exprs def_tys in
@@ -534,7 +538,7 @@ let rec f level env =
         let venv' = List.map (fun (id, _, _) -> (id, fresh (1 + level))) defs in
         let ids = List.map Util.fst defs in
         let ps = List.map Util.snd defs in
-        let env' = (venv' @ venv, cenv, tenv) in
+        let env' = (Env.concat [Env.make venv'; venv], cenv, tenv) in
         let def_tys, def_exprs = Util.unzip @@ List.map (fun (_, _, def_expr) -> f (1 + level) env' def_expr) defs in
         (* 左辺と右辺をunify *)
         Util.zip def_tys (List.map snd venv') |> List.map (fun (id_ty, def_ty) -> unify id_ty def_ty) |> ignore;
@@ -545,17 +549,17 @@ let rec f level env =
         (* 一般化した型付け済みの環境を再構築 *)
         let venv' = Util.zip ids tys in
         (* letに続く式の型付け *)
-        let ty, expr = f level (venv' @ venv, cenv, tenv) expr in
+        let ty, expr = f level (Env.concat [Env.make venv'; venv], cenv, tenv) expr in
         (* ast構築 *)
         let defs = Util.zip def_exprs tys in
         let defs = Util.zip3 ids ps defs in
         ty, LetRec (defs, (expr, ty))
     | Ast.CtorApp (cid, p, args) ->
         (* Ctorの型をtblでインスタンス化 *)
-        let inst_tbl = ref [] in
-        let param_tys, ty = Idtbl.lookup cid cenv |> Idtbl.expect "internal error" in
-        let ty = inst_ty (level, inst_tbl) ty in
-        let param_tys = List.map (inst_ty (level, inst_tbl)) param_tys in
+        let param_tys, ty = Env.get_unwrap cenv cid in
+        let tbl = Tbl.make_mut [] in
+        let ty = inst_ty (level, tbl) ty in
+        let param_tys = List.map (inst_ty (level, tbl)) param_tys in
         let arg_tys, args = Util.unzip @@ List.map (f level env) args in
         let arg_check arg_tys param_tys =
             if (List.length arg_tys) <> (List.length param_tys)
@@ -583,8 +587,8 @@ let rec f level env =
             (* 先にパターンを型付けし、パターンによって追加される変数を取得 *)
             let pat_ty, pat, penv = f_pat level cenv pat in
             (* パターンによって拡張された環境でexprとguardを型付け *)
-            let ty, expr = f level (penv @ venv, cenv, tenv) expr in
-            let guard_ty, guard = f level (penv @ venv, cenv, tenv) guard in
+            let ty, expr = f level (Env.concat [penv; venv], cenv, tenv) expr in
+            let guard_ty, guard = f level (Env.concat [penv; venv], cenv, tenv) guard in
             (* guardの型はboolとなる *)
             unify guard_ty TBool;
             (pat, pat_ty), p, guard, (expr, ty)
@@ -599,7 +603,7 @@ let rec f level env =
         (List.hd tys), Match ((target, target_ty), Util.zip4 pats ps guards exprs, List.hd tys)
     | Ast.Type (defs, expr) ->
         let tydefs, ctors = canonicalize_type_defs tenv @@ (List.map (fun (id, p, targs, tydef) -> (id, p, List.map fst targs, tydef))) defs in
-        let env = (venv, ctors @ cenv, tydefs @ tenv) in
+        let env = (venv, Env.concat [ctors; cenv], Env.concat [tydefs; tenv]) in
         let ty, expr = f level env expr in
         ty, expr
 

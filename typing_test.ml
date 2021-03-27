@@ -96,7 +96,7 @@ let test_instantiate () =
     let u2 = Typing.fresh 1 in
     Typing.init ();
     let t = Typing.TTuple [Typing.Poly 0; Typing.Poly 1; Typing.Poly 0] in
-    let i = Typing.inst_ty (1, ref []) t in
+    let i = Typing.inst_ty (1, Tbl.make_mut []) t in
     assert_eq "not generalize 1" i (Typing.TTuple [u1; u2; u1])
 
 module T = Typing
@@ -130,25 +130,25 @@ let test_typing () =
     | _ -> failwith "typing let tuple");
     (match f "let rec fact n = if n = 0 then 1 else n * fact (n-1) in fact" with
     | (ty, _) when (T.dereference ty) = (0, Ty.Fun (Ty.Int, Ty.Int)) -> ()
-    | (_, t) -> failwith "typing let tuple");
+    | (_, t) -> failwith "typing fact");
     (match f "let f x = match x with  (1, y) -> 0 | (x, y) -> x in f" with
     | (_, Let ([(_, ty), _, _], _)) when (T.dereference ty) = (1, Ty.Fun (Ty.Tuple [Ty.Int; Ty.Poly 0], Ty.Int)) -> ()
-    | (_, t) -> failwith "typing let tuple");
-    let list_id = Id.lookup ["list"] (List.map fst Pervasives.types) in
+    | (_, t) -> failwith "typing match");
+    let list_id = Id.lookup ["list"] (Env.names Pervasives.types) in
     (match f_s "let rec map f l = match l with x :: xs -> f x :: map f xs | [] -> []" with
     | (_, T.LetRec([_, _, (_, ty)], _))
         when (T.dereference ty)
             = (2, Ty.Fun (Ty.Fun (Ty.Poly 0, Ty.Poly 1), Ty.Fun (Ty.Variant ([Ty.Poly 0], list_id), Ty.Variant ([Ty.Poly 1], list_id)))) -> ()
-    | (_, t) -> failwith "typing let tuple");
+    | (_, t) -> failwith "typing map");
     (match f_s "type ('a, 'b) t1 = 'a * 'b and 'b t2 = A of ('b, int) t1 let x = A (1, 2)" with
     | (_, T.Let([_, _, (_, T.TVariant ([T.TInt], (_, "t2", _)))], _)) -> ()
-    | (_, t) -> failwith "typing let tuple");
+    | (_, t) -> failwith "typing variant 1");
     (match f_s "type ('a, 'b) t1 = 'a * 'b type 'b t2 = A of ('b, int) t1 let x = A (1, 2)" with
     | (_, T.Let([_, _, (_, T.TVariant ([T.TInt], (_, "t2", _)))], _)) -> ()
-    | (_, t) -> failwith "typing let tuple");
+    | (_, t) -> failwith "typing variant 2");
     (match f "let x = ref (fun x -> x) in (!x) 1; (!x)" with
     | (ty, _) when (Typing.dereference ty) = (0, Types.Fun (Types.Int, Types.Int)) -> ()
-    | (_, _) -> failwith "typing let tuple");
+    | (_, _) -> failwith "value restriction");
     expect_unify_error "1 + true";
     expect_unify_error "(fun x -> x) 1 2";
     expect_unify_error "let (x, y) = 1 in x";

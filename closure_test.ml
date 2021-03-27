@@ -1,4 +1,11 @@
-let f_s s = Lex.f "test.ml" s |> Parser.f |> Ast.f |> Alpha.f Alpha.pervasive_env |> Typing.f Typing.pervasive_env |> snd |> Closure.f
+let f_s s =
+    Lex.f "test.ml" s
+    |> Parser.f
+    |> Ast.f
+    |> Alpha.f Alpha.pervasive_env
+    |> Typing.f Typing.pervasive_env |> snd
+    |> Flatlet.f
+    |> Closure.f Closure.pervasives
 
 module C = Closure
 

@@ -10,6 +10,7 @@ type t =
     | Eq of t * t * Types.t
     | Neq of t * t * Types.t
     | Or of t * t
+    | Seq of t * t * Types.t
     | And of t * t
     | Append of t * t * Types.t
     | ArrayAssign of t * t * t * Types.t
@@ -43,6 +44,7 @@ let rec shrink = function
     | Flatlet.Mod (lhr, rhr) -> Mod(shrink lhr, shrink rhr)
     | Flatlet.Eq (lhr, rhr, ty) -> Eq(shrink lhr, shrink rhr, ty)
     | Flatlet.Neq (lhr, rhr, ty) -> Neq(shrink lhr, shrink rhr, ty)
+    | Flatlet.Seq (lhr, rhr, ty) -> Seq(shrink lhr, shrink rhr, ty)
     | Flatlet.Append (lhr, rhr, ty) -> Append(shrink lhr, shrink rhr, ty)
     | Flatlet.ArrayAssign (target, idx, inner, ty) -> ArrayAssign(shrink target, shrink idx, shrink inner, ty)
     | Flatlet.ArrayAccess (lhr, rhr, ty) -> ArrayAccess(shrink lhr, shrink rhr, ty)
@@ -119,6 +121,7 @@ let rec collect_free_variable = function
     | Mod (lhr, rhr) -> collect_free_variable lhr @ collect_free_variable rhr
     | Eq (lhr, rhr, _) -> collect_free_variable lhr @ collect_free_variable rhr
     | Neq (lhr, rhr, _) -> collect_free_variable lhr @ collect_free_variable rhr
+    | Seq (lhr, rhr, _) -> collect_free_variable lhr @ collect_free_variable rhr
     | ArrayAccess (lhr, rhr, _) -> collect_free_variable lhr @ collect_free_variable rhr
     | ArrayAssign (target, idx, inner, _) -> collect_free_variable target @ collect_free_variable idx @ collect_free_variable inner
     | Assign (lhr, rhr, _) -> collect_free_variable lhr @ collect_free_variable rhr
@@ -168,6 +171,7 @@ let rec replace tbl = function
     | Assign (lhr, rhr, ty) -> Assign (replace tbl lhr, replace tbl rhr, ty)
     | Eq (lhr, rhr, ty) -> Eq (replace tbl lhr, replace tbl rhr, ty)
     | Neq (lhr, rhr, ty) -> Neq (replace tbl lhr, replace tbl rhr, ty)
+    | Seq (lhr, rhr, ty) -> Seq (replace tbl lhr, replace tbl rhr, ty)
     | ArrayAssign (target, idx, inner, ty) -> ArrayAssign (replace tbl target, replace tbl idx, replace tbl inner, ty)
     | ArrayAccess (lhr, rhr, ty) -> ArrayAccess (replace tbl lhr, replace tbl rhr, ty)
     | Append (lhr, rhr, ty) -> Append (replace tbl lhr, replace tbl rhr, ty)
@@ -217,6 +221,7 @@ let rec conv mask = function
     | ArrayAccess (lhr, rhr, ty) -> ArrayAccess (conv mask lhr, conv mask rhr, ty)
     | Eq (lhr, rhr, ty) -> Eq (conv mask lhr, conv mask rhr, ty)
     | Neq (lhr, rhr, ty) -> Neq (conv mask lhr, conv mask rhr, ty)
+    | Seq (lhr, rhr, ty) -> Seq (conv mask lhr, conv mask rhr, ty)
     | Ref (e, ty) -> Ref (conv mask e, ty)
     | Not e -> Not (conv mask e)
     | Neg e -> Neg (conv mask e)
@@ -231,7 +236,7 @@ let rec conv mask = function
         let free_variables = sub (collect_free_variable f) mask in
         (* 自由変数を明示的に渡される引数に変換*)
         let replace_table = List.map (fun (id, ty) -> id, Id.from_strlist ["<cap>"], ty) free_variables in
-        let body = replace (List.map (fun (id, id', _) -> id, id') replace_table) body in
+        let body = replace (Tbl.make @@ List.map (fun (id, id', _) -> id, id') replace_table) body in
         let implicit_args = List.map (fun (_, id, ty) -> id, ty) replace_table in
         let f = Fun (implicit_args @ args, body, ret_ty) in
         let funty = List.fold_right (fun arg_ty ret_ty -> Types.Fun (arg_ty, ret_ty)) (List.map snd args) ret_ty in
@@ -255,7 +260,7 @@ let rec conv mask = function
         Match (conv mask target, target_ty, arms, ty)
 
 let f mask tree = conv mask @@ shrink @@ tree
-let pervasives = List.map (fun (id, _) -> id) Pervasives.vars
+let pervasives = Env.names Pervasives.vars
 let f pervasives lets =
     let ids = List.concat @@ List.map (fun (p, _, _) -> collect_free_ids_pat p) lets in
     List.map (fun (pat, def, ty) -> (pat, f (ids @ pervasives) def, ty)) lets

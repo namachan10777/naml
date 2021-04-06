@@ -6,11 +6,11 @@ let array_id = Id.from_strlist ["array"]
 
 let ctors =
     [ ( Id.from_strlist ["[]"]
-      , (1, [])
-      , (1, Types.Variant ([Types.Poly 0], list_id)) )
+      , ((1, [])
+      , (1, Types.Variant ([Types.Poly 0], list_id))) )
     ; ( Id.from_strlist ["::"]
-      , (1, [Types.Poly 0; Types.Variant ([Types.Poly 0], list_id)])
-      , (1, Types.Variant ([Types.Poly 0], list_id)) ) ]
+      , ((1, [Types.Poly 0; Types.Variant ([Types.Poly 0], list_id)])
+      , (1, Types.Variant ([Types.Poly 0], list_id)) )) ]
 
 let types =
     [ (list_id, (1, Types.Variant ([Types.Poly 0], list_id)))
@@ -74,4 +74,7 @@ let vars =
     ]
 
 let names =
-    List.map (fun (n, _, _) -> n) ctors @ List.map fst vars @ List.map fst types
+    List.map (fun (n, (_, _)) -> n) ctors @ List.map fst vars @ List.map fst types
+let vars = Env.make vars
+let ctors = Env.make ctors
+let types = Env.make types

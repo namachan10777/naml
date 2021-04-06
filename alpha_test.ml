@@ -1,5 +1,5 @@
 let f s = s |> Lex.f "test.ml" |> Parser.parse |> Ast.of_t |> Alpha.f Alpha.pervasive_env
-let f_s s = Ast.f "test.ml" s |> Alpha.f Alpha.pervasive_env
+let f_s s = Lex.f "test.ml" s |> Parser.f |> Ast.f |> Alpha.f Alpha.pervasive_env
 let nw = Lex.nowhere
 
 
@@ -40,7 +40,7 @@ let () =
     ], Ast.Int (1, _)) when id_x = id_x' && id_z = id_z' -> ()
     | _ -> failwith "ast test 1 failed" ) ;
     (match f "let x | x = 1 in x" with
-    | Ast.Let ([Ast.Or (Ast.PVar (id1, _), [Ast.PVar (id2, _)], _), _, Ast.Int (1, _)], Ast.Var (id3, _)) when id1 = id2 && id2 = id3 -> ()
+    | Ast.Let ([Ast.POr (Ast.PVar (id1, _), [Ast.PVar (id2, _)], _), _, Ast.Int (1, _)], Ast.Var (id3, _)) when id1 = id2 && id2 = id3 -> ()
     | _ -> failwith "ast or pat test failed");
     (match f "match [] with [] -> 0 | [x] -> x" with
     | Ast.Match (Ast.CtorApp (emp_id1, _, []), [
@@ -51,13 +51,13 @@ let () =
         ], _), _, Ast.Bool(true, _), Ast.Var (x_id2, _));
     ]) when emp_id1 = emp_id2 && emp_id2 = emp_id4 && x_id1 = x_id2 -> ()
     | _ -> failwith "alpha ctor failed");
-    (let emp_id1 = Id.lookup  ["[]"] (List.map Util.fst Pervasives.ctors) in
+    (let emp_id1 = Id.lookup  ["[]"] (Env.names Pervasives.ctors) in
     match f "let x = [] in 0" with
     | Ast.Let ([
         (Ast.PVar (x, _), _, Ast.CtorApp (emp_id2, _, []));
     ], Ast.Int (0, _)) when emp_id1 = emp_id2 -> ()
     | _ -> failwith "alpha CtorApp failed");
-    (let list_id1 = Id.lookup  ["list"] (List.map fst Pervasives.types) in
+    (let list_id1 = Id.lookup  ["list"] (Env.names Pervasives.types) in
     match f_s "type 'a t = 'a list and t2 = int t" with
     | Ast.Type ([
         (tid1, _, [("a", _)], Ast.Alias (Ast.TApp ([Ast.TVar ("a", _)], list_id2, _)));

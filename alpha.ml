@@ -1,8 +1,8 @@
 type pat_tbl = (string list, Id.t) Tbl.t * (string list, unit) Tbl.t ref
 
-let pervasive_var_env = List.map (fun (id, _) -> (Id.name id, (id, true))) Pervasives.vars
-let pervasive_ctor_env = List.map (fun (id, _, _) -> (Id.name id, id)) Pervasives.ctors
-let pervasive_type_env = List.map (fun (id, _) -> (Id.name id, id)) Pervasives.types
+let pervasive_var_env = Env.alpha_var_env Pervasives.vars
+let pervasive_ctor_env = Env.alpha_env Pervasives.ctors
+let pervasive_type_env = Env.alpha_env Pervasives.types
 let pervasive_env = (pervasive_var_env, pervasive_ctor_env, pervasive_type_env)
 
 exception Error of string
@@ -22,7 +22,7 @@ let rec f_ty tenv = function
     | Ast.TVar (id, p) -> Ast.TVar (id, p)
     | Ast.TTuple (tys, p) -> Ast.TTuple (List.map (f_ty tenv) tys, p)
 let rec f_tydef tenv = function
-    | Ast.Alias ty -> [], Ast.Alias (f_ty tenv ty)
+    | Ast.Alias ty -> Tbl.empty, Ast.Alias (f_ty tenv ty)
     | Ast.Variant defs ->
         let cids = List.map Util.fst defs in
         let cenv = List.fold_left (fun tbl cid -> Tbl.push (Id.name cid) cid tbl) Tbl.empty cids in
@@ -48,11 +48,11 @@ let rec f_pat cenv pat =
             List.concat @@ List.map collect_free_vars ps
         | Ast.PInt _ -> []
         | Ast.PBool _ -> []
-        | Ast.As (ps, p) ->
+        | Ast.PAs (ps, p) ->
             List.concat @@ List.map collect_free_vars ps
         | Ast.PCtorApp (_, ps, _) ->
             List.concat @@ List.map collect_free_vars ps
-        | Ast.Or (p, ps, _) ->
+        | Ast.POr (p, ps, _) ->
             let free_vars = collect_free_vars p in
             let other_free_vars = List.map collect_free_vars ps in
             let to_comparable x = x
@@ -68,8 +68,8 @@ let rec f_pat cenv pat =
         | Ast.PBool (b, p) -> Ast.PBool (b, p)
         | Ast.PInt (i, p) -> Ast.PInt (i, p)
         | Ast.PTuple (ps, p) -> Ast.PTuple (List.map (replace (cenv, penv)) ps, p)
-        | Ast.As (ps, p) -> Ast.As (List.map (replace (cenv, penv)) ps, p)
-        | Ast.Or (p, ps, pos) -> Ast.Or (replace (cenv, penv) p, List.map (replace (cenv, penv)) ps, pos)
+        | Ast.PAs (ps, p) -> Ast.PAs (List.map (replace (cenv, penv)) ps, p)
+        | Ast.POr (p, ps, pos) -> Ast.POr (replace (cenv, penv) p, List.map (replace (cenv, penv)) ps, pos)
         | Ast.PCtorApp (id, args, pos) ->
             let ctor_id = Tbl.lookup (Id.name id) cenv
             |> Tbl.expect (Printf.sprintf "%s unbound identifier %s" (Lex.show_pos_t pos) (Id.show id)) in
@@ -78,7 +78,7 @@ let rec f_pat cenv pat =
     let free_vars = collect_free_vars pat in
     if duplicate_check (List.map Id.name free_vars)
     then raise @@ Error "duplicated variable"
-    else free_vars, replace (cenv, List.map (fun id -> (Id.name id, id)) free_vars) pat
+    else free_vars, replace (cenv, Tbl.make @@ List.map (fun id -> (Id.name id, id)) free_vars) pat
 
 let register_names tbl =
     List.fold_left (fun tbl id -> Tbl.push (Id.name id) (id, false) tbl) tbl
@@ -110,6 +110,9 @@ let rec f env =
         if snd id 
         then Ast.Var (fst id, p)
         else raise @@ Error "This kind of expression is not allowed as right-hand side of `let rec`"
+    | Ast.Or (lhr, rhr, p) -> Ast.Or (f env lhr, f env rhr, p)
+    | Ast.And (lhr, rhr, p) -> Ast.And (f env lhr, f env rhr, p)
+    | Ast.Seq (lhr, rhr, p) -> Ast.Seq (f env lhr, f env rhr, p)
     | Ast.Fun (arg, body, p) ->
         Ast.Fun (arg, f (Tbl.push (Id.name arg) (arg, true) @@ enable_all venv, cenv, tenv) body, p)
     | Ast.App (g, arg, p) ->
@@ -172,6 +175,6 @@ let rec f env =
         ) defs |> ignore;
         let cids, tys = Util.unzip @@ List.map (fun (_, _, _, tydef) -> f_tydef tenv tydef) defs in
         let targs, ps = Util.unzip @@ List.map (fun (_, targ, p, _) -> targ, p) defs in
-        let cenv = (List.concat cids) @ cenv in
+        let cenv = Tbl.concat (cenv :: cids) in
         let defs = Util.zip4 tids targs ps tys in
         Ast.Type (defs, f (venv, cenv, tenv) expr)

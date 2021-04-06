@@ -40,7 +40,16 @@ id_test:  id.cmx id_test.cmx
 
 util.cmx: util.ml
 	$(OCAMLOPT) $< -c
-tbl.cmx: tbl.ml
+tbl.cmi: tbl.mli
+	$(OCAMLOPT) $< -c
+tbl.cmx: tbl.ml tbl.cmi
+	$(OCAMLOPT) $< -c
+idtbl.cmx: idtbl.ml
+	$(OCAMLOPT) $< -c
+
+env.cmi: env.mli tbl.cmi
+	$(OCAMLOPT) $< -c
+env.cmx: env.ml env.cmi tbl.cmx
 	$(OCAMLOPT) $< -c
 idtbl.cmx: idtbl.ml
 	$(OCAMLOPT) $< -c
@@ -59,24 +68,26 @@ types_test.cmx: types_test.ml id.cmx types.cmx
 types_test: id.cmx types.cmx types_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
-pervasives.cmx: pervasives.ml id.cmx types.cmx
+pervasives.cmi: pervasives.mli id.cmx types.cmx env.cmx
+	$(OCAMLOPT) $< -c
+pervasives.cmx: pervasives.ml pervasives.cmi id.cmx types.cmx env.cmx
 	$(OCAMLOPT) $< -c
 
 ast.cmx: ast.ml id.cmx parser.cmx types.cmx pervasives.cmx
 	$(OCAMLOPT) $< -c
 
-alpha.cmx: alpha.ml tbl.cmx idtbl.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx
+alpha.cmx: alpha.ml tbl.cmx idtbl.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx env.cmx
 	$(OCAMLOPT) $< -c
 alpha_test.cmx: alpha_test.ml alpha.cmx 
 	$(OCAMLOPT) $< -c
-alpha_test: lex.cmx id.cmx parser.cmx types.cmx pervasives.cmx tbl.cmx idtbl.cmx util.cmx ast.cmx alpha.cmx alpha_test.cmx
+alpha_test: lex.cmx id.cmx parser.cmx types.cmx tbl.cmx env.cmx pervasives.cmx tbl.cmx idtbl.cmx util.cmx ast.cmx alpha.cmx alpha_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
 typing.cmx: typing.ml ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx alpha.cmx util.cmx
 	$(OCAMLOPT) $< -c
 typing_test.cmx: typing_test.ml typing.cmx 
 	$(OCAMLOPT) $< -c
-typing_test: id.cmx util.cmx tbl.cmx idtbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx idtbl.cmx typing.cmx typing_test.cmx
+typing_test: id.cmx util.cmx tbl.cmx idtbl.cmx types.cmx env.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx idtbl.cmx typing.cmx typing_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
 flatlet.cmx: flatlet.ml typing.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx
@@ -86,17 +97,17 @@ flatlet_test.cmx: flatlet_test.ml flatlet.cmx
 flatlet_test: id.cmx util.cmx tbl.cmx idtbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx idtbl.cmx typing.cmx flatlet.cmx flatlet_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
-closure.cmx: closure.ml flatlet.cmx typing.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx
+closure.cmx: closure.ml flatlet.cmx typing.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx env.cmx
 	$(OCAMLOPT) $< -c
-closure_test.cmx: closure_test.ml flatlet.cmx closure.cmx
+closure_test.cmx: closure_test.ml env.cmx flatlet.cmx closure.cmx
 	$(OCAMLOPT) $< -c
-closure_test: id.cmx util.cmx tbl.cmx idtbl.cmx types.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx idtbl.cmx typing.cmx flatlet.cmx closure.cmx closure_test.cmx
+closure_test: id.cmx util.cmx tbl.cmx idtbl.cmx types.cmx env.cmx pervasives.cmx lex.cmx parser.cmx ast.cmx alpha.cmx util.cmx tbl.cmx idtbl.cmx typing.cmx flatlet.cmx closure.cmx closure_test.cmx
 	$(OCAMLOPT) $^ -o $@
 
-flat.cmx: flat.ml closure.cmx flatlet.cmx typing.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx
+flat.cmx: flat.ml closure.cmx flatlet.cmx typing.cmx ast.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx env.cmx
 	$(OCAMLOPT) $< -c
 
-main.cmx: main.ml flat.cmx closure.cmx flatlet.cmx typing.cmx alpha.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx
+main.cmx: main.ml flat.cmx closure.cmx flatlet.cmx typing.cmx alpha.cmx id.cmx parser.cmx types.cmx pervasives.cmx util.cmx env.cmx
 	$(OCAMLOPT) $< -c
-1st: id.cmx lex.cmx util.cmx parser.cmx tbl.cmx idtbl.cmx types.cmx pervasives.cmx ast.cmx alpha.cmx typing.cmx flatlet.cmx closure.cmx flat.cmx main.cmx
+1st: id.cmx lex.cmx util.cmx parser.cmx tbl.cmx idtbl.cmx types.cmx env.cmx pervasives.cmx ast.cmx alpha.cmx typing.cmx flatlet.cmx closure.cmx flat.cmx main.cmx
 	$(OCAMLOPT) $^ -o $@

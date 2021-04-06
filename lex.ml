@@ -1,7 +1,7 @@
 type pos_t = string * int * int * int
-[@@deriving show]
 
 let show_pos_t (fname, l, c, _) = Printf.sprintf "%s:%d:%d" fname l c
+let pp_pos_t f p = Format.pp_print_string f (show_pos_t p)
 
 let string_of_pos_t (file, line, col, _) =
     Printf.sprintf "%s:%d:%d" file col line

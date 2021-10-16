@@ -12,3 +12,7 @@ opam exec -- dune exec naml ... # run compiler
 opam exec -- dune runtest       # test
 opam exec -- dune build @fmt    # format
 ```
+
+## License
+
+[The Unlicense](https://unlicense.org/)

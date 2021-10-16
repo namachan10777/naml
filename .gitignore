@@ -1,9 +1,1 @@
-*.cmt
-*.o
-*.cmi
-*.cmx
-*.cmti
-!.merlin
-1st
-*.pp.ml
-*_test
+_build

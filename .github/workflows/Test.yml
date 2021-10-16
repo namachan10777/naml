@@ -1,0 +1,16 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: 4.12.1
+      - run: opam install dune ppx_deriving ocamlformat
+      - run: opam exec -- dune runtest
+      - run: opam exec -- dune build
+      - run: opam exec -- dune build @fmt

@@ -1,2 +1,4 @@
 (library
- (name naml))
+ (name naml)
+ (preprocess
+  (pps ppx_deriving.show)))
